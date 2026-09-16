@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -83,7 +84,7 @@ import { inputValue } from '../../core/utils/form.utils';
 
         <section class="bg-white rounded-xl shadow-sm border border-[#e6e8ea] p-5 sm:p-6 mb-6">
           <div class="flex flex-col 2xl:flex-row gap-6">
-            <div class="flex items-start gap-4 shrink-0">
+            <div class="flex flex-col sm:flex-row items-start gap-4 shrink-0">
               <img class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover ring-2 ring-[#eceef0] shadow-sm shrink-0" [alt]="data.activePatient().name" [src]="data.activePatient().avatarUrl" />
               <div class="flex flex-col">
                 <div class="flex flex-wrap items-center gap-2 mb-1">
@@ -437,6 +438,7 @@ import { inputValue } from '../../core/utils/form.utils';
 })
 export class PatientHistoryComponent {
   nav = inject(NavigationService);
+  private router = inject(Router);
   data = inject(MockDataService);
   toast = inject(ToastService);
 
@@ -554,6 +556,6 @@ export class PatientHistoryComponent {
   }
 
   handleNewConsulta(): void {
-    this.toast.show('Nueva Consulta Iniciada', 'Cargando protocolo de atención para Juan Pérez Morales.');
+    this.router.navigate(['nueva-consulta']);
   }
 }

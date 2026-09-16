@@ -1,4 +1,5 @@
 import { Component, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -364,6 +365,7 @@ import { ToastComponent } from '../../shared/toast/toast.component';
 })
 export class DashboardComponent {
   nav = inject(NavigationService);
+  private router = inject(Router);
   data = inject(MockDataService);
   toast = inject(ToastService);
 
@@ -372,7 +374,7 @@ export class DashboardComponent {
   }
 
   handleRegisterConsultation(): void {
-    this.toast.show('Registro de Consulta', 'Cargando formulario de registro clínico para la cita en curso.');
+    this.router.navigate(['nueva-consulta']);
   }
 
   handleDeclareEmergency(): void {

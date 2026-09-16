@@ -105,3 +105,32 @@ export interface NewPatientInput {
   bloodType: string;
   allergies: string;
 }
+
+export interface VitalSigns {
+  systolic: number;
+  diastolic: number;
+  pulse: number;
+  temperature: number;
+  spo2: number;
+  weight: number;
+  height: number;
+}
+
+export interface Consultation {
+  id: string;
+  patientId: string;
+  patientName: string;
+  doctorName: string;
+  date: string;
+  time: string;
+  type: string;
+  chiefComplaint: string;
+  historyOfPresentIllness: string;
+  physicalExam: string;
+  vitals: VitalSigns;
+  diagnosisCode: string;
+  diagnosisDescription: string;
+  treatmentPlan: string;
+  notes: string;
+  status: 'draft' | 'completed';
+}

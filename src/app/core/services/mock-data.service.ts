@@ -5,6 +5,7 @@ import {
   AppointmentItem,
   DaySchedule,
   AbsenceBlock,
+  Consultation,
 } from '../models/types';
 
 @Injectable({ providedIn: 'root' })
@@ -280,5 +281,15 @@ export class MockDataService {
       0
     );
     return (max + 1).toString();
+  }
+
+  readonly consultations = signal<Consultation[]>([]);
+
+  addConsultation(consultation: Consultation): void {
+    this.consultations.update((list) => [consultation, ...list]);
+  }
+
+  getConsultationsByPatient(patientId: string): Consultation[] {
+    return this.consultations().filter((c) => c.patientId === patientId);
   }
 }

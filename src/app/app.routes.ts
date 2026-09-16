@@ -8,5 +8,6 @@ export const routes: Routes = [
   { path: 'configuracion-del-sistema', loadComponent: () => import('./views/doctor-config/doctor-config.component').then(m => m.DoctorConfigComponent) },
   { path: 'recetas-y-examenes', loadComponent: () => import('./views/recetas/recetas.component').then(m => m.RecetasComponent) },
   { path: 'notificaciones-y-alertas', loadComponent: () => import('./views/alertas/alertas.component').then(m => m.AlertasComponent) },
+  { path: 'nueva-consulta', loadComponent: () => import('./views/consulta/consulta.component').then(m => m.ConsultaComponent) },
   { path: '**', redirectTo: 'dashboard-de-citas' },
 ];
