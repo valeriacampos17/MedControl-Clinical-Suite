@@ -93,3 +93,15 @@ export interface AbsenceBlock {
   validationStatus: string;
   iconName: string;
 }
+
+export interface NewPatientInput {
+  name: string;
+  rut: string;
+  age: string;
+  birthDate: string;
+  phone: string;
+  email: string;
+  insurance: string;
+  bloodType: string;
+  allergies: string;
+}

@@ -5,14 +5,13 @@ import { ToastService } from '../../core/services/toast.service';
 import { ButtonComponent } from '../../shared/button/button.component';
 import { BadgeComponent } from '../../shared/badge/badge.component';
 import { SwitchComponent } from '../../shared/switch/switch.component';
-import { ModalComponent } from '../../shared/modal/modal.component';
 import { ToastComponent } from '../../shared/toast/toast.component';
 import { DaySchedule } from '../../core/models/types';
 
 @Component({
   selector: 'app-doctor-config',
   standalone: true,
-  imports: [ButtonComponent, BadgeComponent, SwitchComponent, ModalComponent, ToastComponent],
+  imports: [ButtonComponent, BadgeComponent, SwitchComponent, ToastComponent],
   template: `
     <div class="flex flex-col w-full">
       <div class="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-6">
@@ -77,7 +76,7 @@ import { DaySchedule } from '../../core/models/types';
                     <tr class="transition-colors" [class.opacity-60]="!day.enabled">
                       <td class="py-3 px-3">
                         <div class="flex items-center gap-2.5">
-                          <app-switch [checked]="day.enabled" (change)="toggleDay(idx)" size="sm" />
+                          <app-switch [checked]="day.enabled" (toggled)="toggleDay(idx)" size="sm" />
                           <span class="font-bold text-[13px] text-[#191c1e]">{{ day.day }}</span>
                           @if (day.specialBadge) {
                             <span class="px-1.5 py-0.2 rounded bg-[#f2f4f6] text-[#45464d] text-[10px] font-semibold border border-[#e0e3e5]">{{ day.specialBadge }}</span>

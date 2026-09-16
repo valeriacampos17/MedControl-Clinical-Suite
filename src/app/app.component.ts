@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { HeaderComponent } from './layout/header/header.component';
 import { SidebarComponent } from './layout/sidebar/sidebar.component';
@@ -46,16 +46,14 @@ import { NavigationService } from './core/services/navigation.service';
   `,
 })
 export class AppComponent {
-  nav: NavigationService;
+  nav = inject(NavigationService);
 
   screens = [
     { id: 'dashboard-de-citas' as const, label: '1. Dashboard Citas' },
     { id: 'pacientes-y-historial-clinico' as const, label: '2. Historial Paciente' },
     { id: 'agenda-y-disponibilidad' as const, label: '3. Agendar Cita' },
-    { id: 'configuracion-del-sistema' as const, label: '4. Configuración Doctor' },
+    { id: 'recetas-y-examenes' as const, label: '4. Recetas & Exámenes' },
+    { id: 'notificaciones-y-alertas' as const, label: '5. Alertas' },
+    { id: 'configuracion-del-sistema' as const, label: '6. Configuración Doctor' },
   ];
-
-  constructor(nav: NavigationService) {
-    this.nav = nav;
-  }
 }

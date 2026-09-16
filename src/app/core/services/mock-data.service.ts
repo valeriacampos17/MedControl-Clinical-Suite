@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import {
   Patient,
   Doctor,
@@ -253,4 +253,32 @@ export class MockDataService {
       iconName: 'medical_services',
     },
   ]);
+
+  readonly patients = signal<Patient[]>([
+    this.patientJuanPerez,
+    this.patientMariaMorales,
+  ]);
+
+  readonly activePatientId = signal<string>(this.patientJuanPerez.id);
+
+  readonly activePatient = computed<Patient>(
+    () => this.patients().find((p) => p.id === this.activePatientId()) ?? this.patients()[0]
+  );
+
+  selectPatient(id: string): void {
+    this.activePatientId.set(id);
+  }
+
+  addPatient(patient: Patient): void {
+    this.patients.update((list) => [...list, patient]);
+    this.activePatientId.set(patient.id);
+  }
+
+  nextFileNumber(): string {
+    const max = this.patients().reduce(
+      (acc, p) => Math.max(acc, Number(p.fileNumber) || 0),
+      0
+    );
+    return (max + 1).toString();
+  }
 }

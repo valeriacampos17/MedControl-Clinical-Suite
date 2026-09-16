@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { NavigationService } from '../../core/services/navigation.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ButtonComponent } from '../../shared/button/button.component';

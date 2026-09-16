@@ -1,16 +1,15 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ButtonComponent } from '../../shared/button/button.component';
 import { BadgeComponent } from '../../shared/badge/badge.component';
-import { SwitchComponent } from '../../shared/switch/switch.component';
 import { ToastComponent } from '../../shared/toast/toast.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [ButtonComponent, BadgeComponent, SwitchComponent, ToastComponent],
+  imports: [ButtonComponent, BadgeComponent, ToastComponent],
   template: `
     <div class="flex flex-col w-full">
       <div class="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-6">
@@ -59,7 +58,7 @@ import { ToastComponent } from '../../shared/toast/toast.component';
               <app-button variant="light" size="md" icon="emergency" (click)="handleDeclareEmergency()">
                 Declarar Urgencia
               </app-button>
-              <app-button variant="primary" size="md" icon="stethoscope" (click)="showConsultationDrawer.set(true)">
+              <app-button variant="primary" size="md" icon="stethoscope" (click)="handleOpenConsultation()">
                 Consulta en Curso
               </app-button>
             </div>
@@ -240,7 +239,7 @@ import { ToastComponent } from '../../shared/toast/toast.component';
                               <p class="text-[12px] text-[#45464d] truncate">{{ apt.reason }}</p>
                             </div>
                           </div>
-                          <app-button variant="primary" size="sm" icon="clinical_notes" (click)="showConsultationDrawer.set(true)" class="shrink-0">
+                          <app-button variant="primary" size="sm" icon="clinical_notes" (click)="handleRegisterConsultation()" class="shrink-0">
                             Registrar Consulta / Historial
                           </app-button>
                         </div>
@@ -368,9 +367,13 @@ export class DashboardComponent {
   data = inject(MockDataService);
   toast = inject(ToastService);
 
-  showConsultationDrawer = signal(true);
-  emergencyLock = signal(true);
-  vacationMode = signal(false);
+  handleOpenConsultation(): void {
+    this.toast.show('Consulta en Curso', 'Abriendo protocolo de atención activo del Dr. Mendoza.');
+  }
+
+  handleRegisterConsultation(): void {
+    this.toast.show('Registro de Consulta', 'Cargando formulario de registro clínico para la cita en curso.');
+  }
 
   handleDeclareEmergency(): void {
     this.toast.show('Alerta de Urgencia Activada', 'Notificación transmitida a Triage y Secretaría Central.');

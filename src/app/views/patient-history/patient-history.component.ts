@@ -1,15 +1,19 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ButtonComponent } from '../../shared/button/button.component';
 import { BadgeComponent } from '../../shared/badge/badge.component';
+import { ModalComponent } from '../../shared/modal/modal.component';
 import { ToastComponent } from '../../shared/toast/toast.component';
+import { Patient, NewPatientInput } from '../../core/models/types';
+import { inputValue } from '../../core/utils/form.utils';
 
 @Component({
   selector: 'app-patient-history',
   standalone: true,
-  imports: [ButtonComponent, BadgeComponent, ToastComponent],
+  imports: [FormsModule, ButtonComponent, BadgeComponent, ModalComponent, ToastComponent],
   template: `
     <div class="flex flex-col w-full">
       <div class="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-6">
@@ -31,24 +35,70 @@ import { ToastComponent } from '../../shared/toast/toast.component';
           </div>
         </div>
 
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 mb-4 border-b border-[#eceef0]">
+          <div class="relative flex-1 max-w-md">
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#76777d] text-[18px] pointer-events-none">search</span>
+              <input
+                type="text"
+                placeholder="Buscar paciente por nombre o RUT..."
+                class="w-full pl-9 pr-3 py-2 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61] transition-colors"
+                [value]="searchPatientTerm()"
+                (input)="onSearchPatient($event)"
+                (focus)="showPatientDropdown.set(true)"
+                (blur)="onBlurPatient()"
+              />
+            </div>
+            @if (showPatientDropdown() && filteredPatients().length > 0) {
+              <div class="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-lg border border-[#e6e8ea] max-h-60 overflow-y-auto">
+                @for (p of filteredPatients(); track p.id) {
+                  <button
+                    type="button"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[#f2f4f6] transition-colors first:rounded-t-xl last:rounded-b-xl"
+                    [class]="data.activePatientId() === p.id ? 'bg-[#f2f4f6]' : ''"
+                    (mousedown)="handleSelectPatient(p.id)"
+                  >
+                    <img [src]="p.avatarUrl" [alt]="p.name" class="w-8 h-8 rounded-lg object-cover ring-1 ring-[#eceef0] shrink-0" />
+                    <div class="flex flex-col min-w-0">
+                      <span class="text-[13px] font-semibold text-[#191c1e] truncate">{{ p.name }}</span>
+                      <span class="text-[11px] text-[#76777d]">RUT: {{ p.rut }} · {{ p.age }} años</span>
+                    </div>
+                    @if (data.activePatientId() === p.id) {
+                      <span class="material-symbols-outlined text-[#006a61] text-[16px] ml-auto shrink-0">check</span>
+                    }
+                  </button>
+                }
+              </div>
+            }
+            @if (showPatientDropdown() && searchPatientTerm() && filteredPatients().length === 0) {
+              <div class="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-lg border border-[#e6e8ea] p-4 text-center">
+                <span class="text-[12px] text-[#76777d]">No se encontraron pacientes con "{{ searchPatientTerm() }}"</span>
+              </div>
+            }
+          </div>
+          <app-button variant="primary" size="md" icon="person_add" (click)="handleOpenNewPatient()">
+            Nuevo Paciente
+          </app-button>
+        </div>
+
         <section class="bg-white rounded-xl shadow-sm border border-[#e6e8ea] p-5 sm:p-6 mb-6">
-          <div class="flex flex-col lg:flex-row gap-6">
+          <div class="flex flex-col 2xl:flex-row gap-6">
             <div class="flex items-start gap-4 shrink-0">
-              <img class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover ring-2 ring-[#eceef0] shadow-sm shrink-0" alt="Juan Pérez Morales" [src]="data.patientJuanPerez.avatarUrl" />
+              <img class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover ring-2 ring-[#eceef0] shadow-sm shrink-0" [alt]="data.activePatient().name" [src]="data.activePatient().avatarUrl" />
               <div class="flex flex-col">
                 <div class="flex flex-wrap items-center gap-2 mb-1">
-                  <h1 class="text-[20px] sm:text-[24px] font-bold text-[#191c1e] tracking-tight">{{ data.patientJuanPerez.name }}</h1>
+                  <h1 class="text-[20px] sm:text-[24px] font-bold text-[#191c1e] tracking-tight">{{ data.activePatient().name }}</h1>
                   <app-badge variant="teal">Isapre Colmena Golden</app-badge>
                   <span class="px-2.5 py-0.5 rounded-full bg-[#f2f4f6] text-[#45464d] text-[11px] font-semibold">Golden Health 15%</span>
                 </div>
                 <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-[#45464d]">
-                  <span>{{ data.patientJuanPerez.age }} años ({{ data.patientJuanPerez.birthDate }})</span>
+                  <span>{{ data.activePatient().age }} años ({{ data.activePatient().birthDate }})</span>
                   <span>•</span>
-                  <span>RUT: {{ data.patientJuanPerez.rut }}</span>
+                  <span>RUT: {{ data.activePatient().rut }}</span>
                   <span>•</span>
-                  <span>Grupo Sanguíneo: <strong class="text-[#191c1e]">{{ data.patientJuanPerez.bloodType }}</strong></span>
+                  <span>Grupo Sanguíneo: <strong class="text-[#191c1e]">{{ data.activePatient().bloodType }}</strong></span>
                   <span>•</span>
-                  <span>Tutor: {{ data.patientJuanPerez.tutor }}</span>
+                  <span>Tutor: {{ data.activePatient().tutor }}</span>
                 </div>
                 <div class="mt-3 p-2.5 rounded-lg bg-[#ffdad6] border border-[#ba1a1a]/30 flex items-center gap-2 text-[#ba1a1a] text-[12px] font-semibold">
                   <span class="material-symbols-outlined text-[18px] shrink-0">warning</span>
@@ -61,19 +111,19 @@ import { ToastComponent } from '../../shared/toast/toast.component';
                 </div>
               </div>
             </div>
-            <div class="lg:ml-auto flex flex-col justify-between pt-4 lg:pt-0 border-t lg:border-t-0 lg:border-l border-[#eceef0] lg:pl-6 text-[12px] text-[#45464d] gap-2 min-w-[260px]">
+            <div class="2xl:ml-auto flex flex-col justify-between pt-4 2xl:pt-0 border-t 2xl:border-t-0 2xl:border-l border-[#eceef0] 2xl:pl-6 text-[12px] text-[#45464d] gap-2 min-w-[260px]">
               <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-[#006a61] text-[18px]">call</span>
-                <span class="text-[#191c1e] font-semibold">{{ data.patientJuanPerez.phone }}</span>
+                <span class="text-[#191c1e] font-semibold">{{ data.activePatient().phone }}</span>
                 <span class="px-1.5 py-0.2 rounded bg-[#86f2e4]/40 text-[#006f66] text-[10px] font-bold">WhatsApp Verificado</span>
               </div>
               <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-[#76777d] text-[18px]">mail</span>
-                <span>{{ data.patientJuanPerez.email }}</span>
+                <span>{{ data.activePatient().email }}</span>
               </div>
               <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-[#76777d] text-[18px]">home</span>
-                <span class="truncate">{{ data.patientJuanPerez.address }}</span>
+                <span class="truncate">{{ data.activePatient().address }}</span>
               </div>
               <div class="flex items-center gap-2 pt-1 border-t border-[#eceef0]">
                 <span class="material-symbols-outlined text-[#006a61] text-[18px]">assignment_turned_in</span>
@@ -245,6 +295,142 @@ import { ToastComponent } from '../../shared/toast/toast.component';
           </div>
         </div>
       </div>
+      <app-modal
+        [isOpen]="showNewPatientModal()"
+        title="Registrar Nuevo Paciente"
+        subtitle="Complete los datos del paciente. El resto de la ficha clínica se carga con datos de demostración."
+        icon="person_add"
+        [footerTemplate]="true"
+        (dismiss)="closeNewPatientModal()"
+      >
+        <form class="flex flex-col gap-4" (ngSubmit)="handleCreatePatient()" #newPatientFormElement="ngForm">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="flex flex-col gap-1.5 sm:col-span-2">
+              <span class="text-[12px] font-bold text-[#191c1e]">Nombre Completo *</span>
+              <input
+                type="text"
+                name="name"
+                required
+                placeholder="Ej: Carlos Soto Riquelme"
+                class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                (input)="setField('name', $event)"
+                [value]="newPatientForm().name"
+              />
+            </label>
+
+            <label class="flex flex-col gap-1.5">
+              <span class="text-[12px] font-bold text-[#191c1e]">RUT *</span>
+              <input
+                type="text"
+                name="rut"
+                required
+                placeholder="Ej: 12.345.678-9"
+                class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                (input)="setField('rut', $event)"
+                [value]="newPatientForm().rut"
+              />
+            </label>
+
+            <label class="flex flex-col gap-1.5">
+              <span class="text-[12px] font-bold text-[#191c1e]">Edad (años)</span>
+              <input
+                type="number"
+                name="age"
+                min="0"
+                max="120"
+                placeholder="Ej: 45"
+                class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                (input)="setField('age', $event)"
+                [value]="newPatientForm().age"
+              />
+            </label>
+
+            <label class="flex flex-col gap-1.5">
+              <span class="text-[12px] font-bold text-[#191c1e]">Teléfono</span>
+              <input
+                type="tel"
+                name="phone"
+                placeholder="+56 9 ..."
+                class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                (input)="setField('phone', $event)"
+                [value]="newPatientForm().phone"
+              />
+            </label>
+
+            <label class="flex flex-col gap-1.5">
+              <span class="text-[12px] font-bold text-[#191c1e]">Email</span>
+              <input
+                type="email"
+                name="email"
+                placeholder="paciente@correo.cl"
+                class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                (input)="setField('email', $event)"
+                [value]="newPatientForm().email"
+              />
+            </label>
+
+            <label class="flex flex-col gap-1.5">
+              <span class="text-[12px] font-bold text-[#191c1e]">Previsión</span>
+              <input
+                type="text"
+                name="insurance"
+                placeholder="Ej: Isapre Colmena Golden"
+                class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                (input)="setField('insurance', $event)"
+                [value]="newPatientForm().insurance"
+              />
+            </label>
+
+            <label class="flex flex-col gap-1.5">
+              <span class="text-[12px] font-bold text-[#191c1e]">Grupo Sanguíneo</span>
+              <select
+                name="bloodType"
+                class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                (change)="setField('bloodType', $event)"
+                [value]="newPatientForm().bloodType"
+              >
+                <option value="">Seleccionar…</option>
+                <option value="O Rh(+)">O Rh(+)</option>
+                <option value="O Rh(-)">O Rh(-)</option>
+                <option value="A Rh(+)">A Rh(+)</option>
+                <option value="A Rh(-)">A Rh(-)</option>
+                <option value="B Rh(+)">B Rh(+)</option>
+                <option value="B Rh(-)">B Rh(-)</option>
+                <option value="AB Rh(+)">AB Rh(+)</option>
+                <option value="AB Rh(-)">AB Rh(-)</option>
+              </select>
+            </label>
+
+            <label class="flex flex-col gap-1.5 sm:col-span-2">
+              <span class="text-[12px] font-bold text-[#191c1e]">Alergias (separadas por coma)</span>
+              <input
+                type="text"
+                name="allergies"
+                placeholder="Ej: Penicilina, Ibuprofeno"
+                class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                (input)="setField('allergies', $event)"
+                [value]="newPatientForm().allergies"
+              />
+            </label>
+          </div>
+          <div class="flex gap-2 pt-1 text-[11.5px] text-[#76777d] leading-relaxed">
+            <span class="material-symbols-outlined text-[16px] shrink-0 mt-0.5">info</span>
+            <span>Los datos clínicos (consentimiento, condiciones crónicas y medicamentos) se precargan con la ficha de demostración hasta que se agregue información real.</span>
+          </div>
+        </form>
+        <div modal-footer>
+          <app-button variant="light" size="md" (click)="closeNewPatientModal()">Cancelar</app-button>
+          <app-button
+            variant="primary"
+            size="md"
+            type="submit"
+            icon="person_add"
+            (click)="handleCreatePatient()"
+          >
+            Registrar Paciente
+          </app-button>
+        </div>
+      </app-modal>
       <app-toast />
     </div>
   `,
@@ -260,8 +446,107 @@ export class PatientHistoryComponent {
     { name: 'Ácido Acetilsalicílico 100 mg', dose: '1 comp con almuerzo · Vía Oral', status: 'Activo', daysLeft: '78 días restantes' },
   ]);
 
+  readonly showNewPatientModal = signal(false);
+  readonly searchPatientTerm = signal('');
+  readonly showPatientDropdown = signal(false);
+
+  readonly filteredPatients = computed(() => {
+    const term = this.searchPatientTerm().toLowerCase().trim();
+    if (!term) return this.data.patients();
+    return this.data.patients().filter(
+      (p) => p.name.toLowerCase().includes(term) || p.rut.toLowerCase().includes(term)
+    );
+  });
+
+  newPatientForm = signal({
+    name: '',
+    rut: '',
+    age: '',
+    birthDate: '',
+    phone: '',
+    email: '',
+    insurance: '',
+    bloodType: '',
+    allergies: '',
+  });
+
+  readonly avatarPreview = computed(() => {
+    const name = this.newPatientForm().name.trim();
+    if (!name) return '';
+    const parts = name.split(/\s+/).filter(Boolean);
+    const initials = parts.length >= 2
+      ? parts[0][0] + parts[parts.length - 1][0]
+      : (parts[0]![0] ?? '');
+    return initials.toUpperCase();
+  });
+
+  setField(field: keyof NewPatientInput, event: Event): void {
+    const value = inputValue(event);
+    this.newPatientForm.update((f) => ({ ...f, [field]: value }));
+  }
+
+  handleSelectPatient(id: string): void {
+    this.data.selectPatient(id);
+    this.searchPatientTerm.set('');
+    this.showPatientDropdown.set(false);
+  }
+
+  onSearchPatient(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.searchPatientTerm.set(value);
+    this.showPatientDropdown.set(true);
+  }
+
+  onBlurPatient(): void {
+    setTimeout(() => this.showPatientDropdown.set(false), 150);
+  }
+
+  handleOpenNewPatient(): void {
+    this.showNewPatientModal.set(true);
+  }
+
+  closeNewPatientModal(): void {
+    this.showNewPatientModal.set(false);
+  }
+
+  handleCreatePatient(): void {
+    const f = this.newPatientForm();
+    const name = f.name.trim();
+    if (!name) {
+      this.toast.show('Faltan Datos', 'Ingrese al menos el nombre completo del paciente.');
+      return;
+    }
+    const sample = this.data.patientJuanPerez;
+    const fileNumber = this.data.nextFileNumber();
+    const age = Number(f.age) || 0;
+    const patient: Patient = {
+      id: 'MED-' + fileNumber,
+      fileNumber,
+      name,
+      rut: f.rut.trim() || 'Registrado sin RUT',
+      age,
+      birthDate: f.birthDate.trim() || (age ? `Edad registrada: ${age} años` : 'Sin fecha registrada'),
+      phone: f.phone.trim() || sample.phone,
+      email: f.email.trim() || sample.email,
+      address: sample.address,
+      insurance: f.insurance.trim() || sample.insurance,
+      insuranceDetail: sample.insuranceDetail,
+      bloodType: f.bloodType || sample.bloodType,
+      tutor: sample.tutor,
+      allergies: f.allergies.split(',').map((a) => a.trim()).filter(Boolean),
+      severeAllergies: sample.severeAllergies,
+      chronicConditions: sample.chronicConditions,
+      consentSigned: sample.consentSigned,
+      avatarUrl: sample.avatarUrl,
+    };
+    this.data.addPatient(patient);
+    this.closeNewPatientModal();
+    this.newPatientForm.set({ name: '', rut: '', age: '', birthDate: '', phone: '', email: '', insurance: '', bloodType: '', allergies: '' });
+    this.toast.show('Paciente Registrado', `${patient.name} fue agregado y seleccionado en la ficha.`);
+  }
+
   handleDownloadPDF(): void {
-    this.toast.show('Generando Expediente PDF', 'Expediente clínico completo de Juan Pérez descargado con éxito.');
+    this.toast.show('Generando Expediente PDF', 'Expediente clínico completo descargado con éxito.');
   }
 
   handleEmitRecipe(): void {
