@@ -2,6 +2,7 @@ import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
+import { Patient } from '../../core/models/types';
 import { ButtonComponent } from '../../shared/button/button.component';
 import { BadgeComponent } from '../../shared/badge/badge.component';
 import { ModalComponent } from '../../shared/modal/modal.component';
@@ -39,13 +40,15 @@ import { ToastComponent } from '../../shared/toast/toast.component';
               </div>
               <div class="p-4 rounded-xl bg-[#f2f4f6] border border-[#e0e3e5]">
                 <div class="flex items-start gap-3.5">
-                  <img class="w-12 h-12 rounded-xl object-cover shrink-0 ring-1 ring-[#c6c6cd]" alt="Juan Pérez Morales" [src]="data.patientJuanPerez.avatarUrl" />
+                  <div class="w-12 h-12 rounded-xl bg-[#006a61] text-white flex items-center justify-center text-[16px] font-bold shrink-0 ring-1 ring-[#c6c6cd]">
+                    {{ data.getInitials(selectedPatient().name) }}
+                  </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
-                      <span class="text-[14px] font-bold text-[#191c1e] truncate">{{ data.patientJuanPerez.name }}</span>
-                      <span class="text-[11px] text-[#45464d]">58 años (12/05/1966)</span>
+                      <span class="text-[14px] font-bold text-[#191c1e] truncate">{{ selectedPatient().name }}</span>
+                      <span class="text-[11px] text-[#45464d]">{{ selectedPatient().age }} años ({{ selectedPatient().birthDate }})</span>
                     </div>
-                    <p class="text-[12px] text-[#45464d] truncate mt-0.5">Ficha: {{ data.patientJuanPerez.fileNumber }} · RUT: {{ data.patientJuanPerez.rut }}</p>
+                    <p class="text-[12px] text-[#45464d] truncate mt-0.5">Expediente: {{ selectedPatient().id }} · CI: {{ selectedPatient().ci }}</p>
                   </div>
                 </div>
               </div>
@@ -60,10 +63,12 @@ import { ToastComponent } from '../../shared/toast/toast.component';
                 <app-badge variant="teal" size="sm">Asignado</app-badge>
               </div>
               <div class="p-3 rounded-xl bg-[#f2f4f6] border border-[#e0e3e5] flex items-center gap-3 mb-4">
-                <img class="w-10 h-10 rounded-lg object-cover ring-1 ring-[#c6c6cd]" [alt]="data.doctor.name" [src]="data.doctor.avatarUrl" />
+                <div class="w-10 h-10 rounded-lg bg-[#006a61] text-white flex items-center justify-center text-[13px] font-bold shrink-0 ring-1 ring-[#c6c6cd]">
+                  {{ data.getInitials(data.doctor.name) }}
+                </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-[13px] font-bold text-[#191c1e] truncate">{{ data.doctor.name }}</p>
-                  <p class="text-[11px] text-[#45464d] truncate">Subespecialidad: {{ data.doctor.subspecialty }} · {{ data.doctor.box }}</p>
+                  <p class="text-[11px] text-[#45464d] truncate">Especialidad: {{ data.doctor.specialty }}</p>
                 </div>
               </div>
             </div>
@@ -126,7 +131,7 @@ import { ToastComponent } from '../../shared/toast/toast.component';
               <div class="flex flex-col gap-2 text-[12px] text-[#45464d] mb-4">
                 <div class="flex items-center justify-between">
                   <span>Paciente:</span>
-                  <span class="font-bold text-[#191c1e]">{{ data.patientJuanPerez.name }}</span>
+                  <span class="font-bold text-[#191c1e]">{{ selectedPatient().name }}</span>
                 </div>
                 <div class="flex items-center justify-between">
                   <span>Médico:</span>
@@ -156,7 +161,7 @@ import { ToastComponent } from '../../shared/toast/toast.component';
         <div class="space-y-3 text-[13px]">
           <p class="text-[#45464d]">Se reservará un bloque de atención clínica para:</p>
           <div class="p-3.5 rounded-xl bg-[#f2f4f6] border border-[#e0e3e5] space-y-1.5">
-            <p class="font-bold text-[#191c1e]">Paciente: {{ data.patientJuanPerez.name }}</p>
+            <p class="font-bold text-[#191c1e]">Paciente: {{ selectedPatient().name }}</p>
             <p class="text-[#45464d]">Profesional: {{ data.doctor.name }}</p>
             <p class="text-[#45464d]">Fecha: Lunes {{ selectedDay() }} Octubre 2024 a las {{ selectedTime() }}</p>
           </div>
@@ -181,6 +186,7 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
   selectedTime = signal('12:15 PM');
   consultationType = signal('control');
   showConfirmModal = signal(false);
+  selectedPatient = signal<Patient>(this.data.patients()[0]);
 
   private timer: ReturnType<typeof setInterval> | null = null;
 
@@ -212,6 +218,6 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
 
   handleConfirmBooking(): void {
     this.showConfirmModal.set(false);
-    this.toast.show('¡Cita Médica Agendada Exitosamente!', `Cita reservada para Juan Pérez Morales el Lunes ${this.selectedDay()} Octubre.`);
+    this.toast.show('¡Cita Médica Agendada Exitosamente!', `Cita reservada para ${this.selectedPatient().name} el Lunes ${this.selectedDay()} Octubre.`);
   }
 }

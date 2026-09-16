@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
+import { Patient } from '../../core/models/types';
 import { ButtonComponent } from '../../shared/button/button.component';
 import { BadgeComponent } from '../../shared/badge/badge.component';
 import { ToastComponent } from '../../shared/toast/toast.component';
@@ -21,7 +22,7 @@ import { ToastComponent } from '../../shared/toast/toast.component';
             <span (click)="nav.navigate('dashboard-de-citas')" class="hover:text-[#006a61] cursor-pointer">Pacientes</span>
             <span class="material-symbols-outlined text-[16px] text-[#76777d]">chevron_right</span>
             <span class="font-semibold text-[#191c1e]">Ficha Clínica Electrónica</span>
-            <span class="px-2 py-0.5 rounded-md bg-[#e6e8ea] text-[11px] font-mono text-[#45464d]">HCE-9482</span>
+            <span class="px-2 py-0.5 rounded-md bg-[#e6e8ea] text-[11px] font-mono text-[#45464d]">HCE-{{ selectedPatient().id }}</span>
           </div>
           <div class="flex items-center gap-2.5 flex-wrap">
             <app-button variant="light" size="md" icon="picture_as_pdf" (click)="handleDownloadPDF()">Descargar Expediente PDF</app-button>
@@ -34,50 +35,55 @@ import { ToastComponent } from '../../shared/toast/toast.component';
         <section class="bg-white rounded-xl shadow-sm border border-[#e6e8ea] p-5 sm:p-6 mb-6">
           <div class="flex flex-col lg:flex-row gap-6">
             <div class="flex items-start gap-4 shrink-0">
-              <img class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover ring-2 ring-[#eceef0] shadow-sm shrink-0" alt="Juan Pérez Morales" [src]="data.patientJuanPerez.avatarUrl" />
+              <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#006a61] text-white flex items-center justify-center text-[28px] sm:text-[32px] font-bold ring-2 ring-[#eceef0] shadow-sm shrink-0">
+                {{ data.getInitials(selectedPatient().name) }}
+              </div>
               <div class="flex flex-col">
                 <div class="flex flex-wrap items-center gap-2 mb-1">
-                  <h1 class="text-[20px] sm:text-[24px] font-bold text-[#191c1e] tracking-tight">{{ data.patientJuanPerez.name }}</h1>
-                  <app-badge variant="teal">Isapre Colmena Golden</app-badge>
-                  <span class="px-2.5 py-0.5 rounded-full bg-[#f2f4f6] text-[#45464d] text-[11px] font-semibold">Golden Health 15%</span>
+                  <h1 class="text-[20px] sm:text-[24px] font-bold text-[#191c1e] tracking-tight">{{ selectedPatient().name }}</h1>
+                  <app-badge variant="teal">{{ selectedPatient().insurance }}</app-badge>
+                  <span class="px-2.5 py-0.5 rounded-full bg-[#f2f4f6] text-[#45464d] text-[11px] font-semibold">Expediente {{ selectedPatient().id }}</span>
                 </div>
                 <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-[#45464d]">
-                  <span>{{ data.patientJuanPerez.age }} años ({{ data.patientJuanPerez.birthDate }})</span>
+                  <span>{{ selectedPatient().age }} años ({{ selectedPatient().birthDate }})</span>
                   <span>•</span>
-                  <span>RUT: {{ data.patientJuanPerez.rut }}</span>
+                  <span>CI: {{ selectedPatient().ci }}</span>
                   <span>•</span>
-                  <span>Grupo Sanguíneo: <strong class="text-[#191c1e]">{{ data.patientJuanPerez.bloodType }}</strong></span>
-                  <span>•</span>
-                  <span>Tutor: {{ data.patientJuanPerez.tutor }}</span>
+                  <span>Grupo Sanguíneo: <strong class="text-[#191c1e]">{{ selectedPatient().bloodType }}</strong></span>
                 </div>
-                <div class="mt-3 p-2.5 rounded-lg bg-[#ffdad6] border border-[#ba1a1a]/30 flex items-center gap-2 text-[#ba1a1a] text-[12px] font-semibold">
-                  <span class="material-symbols-outlined text-[18px] shrink-0">warning</span>
-                  <span>ALERGIAS SEVERAS: Penicilina (Anafilaxia) · AINEs (Ibuprofeno/Ketoprofeno)</span>
-                </div>
-                <div class="flex items-center gap-2 mt-2 flex-wrap">
-                  <span class="text-[11px] font-bold text-[#76777d] uppercase tracking-wider">Condiciones Crónicas:</span>
-                  <span class="px-2 py-0.5 rounded-md bg-[#fffbeb] text-[#92400e] text-[11px] font-semibold border border-[#fde68a]">HTA Grado 2</span>
-                  <span class="px-2 py-0.5 rounded-md bg-[#f2f4f6] text-[#45464d] text-[11px] font-semibold border border-[#e0e3e5]">Dislipidemia Mixta</span>
-                </div>
+                @if (selectedPatient().allergies.length) {
+                  <div class="mt-3 p-2.5 rounded-lg bg-[#ffdad6] border border-[#ba1a1a]/30 flex items-center gap-2 text-[#ba1a1a] text-[12px] font-semibold">
+                    <span class="material-symbols-outlined text-[18px] shrink-0">warning</span>
+                    <span>ALERGIAS: {{ selectedPatient().allergies.join(' · ') }}</span>
+                  </div>
+                }
+                @if (selectedPatient().chronicConditions.length) {
+                  <div class="flex items-center gap-2 mt-2 flex-wrap">
+                    <span class="text-[11px] font-bold text-[#76777d] uppercase tracking-wider">Condiciones Crónicas:</span>
+                    @for (cond of selectedPatient().chronicConditions; track cond) {
+                      <span class="px-2 py-0.5 rounded-md bg-[#fffbeb] text-[#92400e] text-[11px] font-semibold border border-[#fde68a]">{{ cond }}</span>
+                    }
+                  </div>
+                }
               </div>
             </div>
             <div class="lg:ml-auto flex flex-col justify-between pt-4 lg:pt-0 border-t lg:border-t-0 lg:border-l border-[#eceef0] lg:pl-6 text-[12px] text-[#45464d] gap-2 min-w-[260px]">
               <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-[#006a61] text-[18px]">call</span>
-                <span class="text-[#191c1e] font-semibold">{{ data.patientJuanPerez.phone }}</span>
+                <span class="text-[#191c1e] font-semibold">{{ selectedPatient().phone }}</span>
                 <span class="px-1.5 py-0.2 rounded bg-[#86f2e4]/40 text-[#006f66] text-[10px] font-bold">WhatsApp Verificado</span>
               </div>
               <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-[#76777d] text-[18px]">mail</span>
-                <span>{{ data.patientJuanPerez.email }}</span>
+                <span>{{ selectedPatient().email }}</span>
               </div>
               <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-[#76777d] text-[18px]">home</span>
-                <span class="truncate">{{ data.patientJuanPerez.address }}</span>
+                <span class="truncate">{{ selectedPatient().address }}</span>
               </div>
               <div class="flex items-center gap-2 pt-1 border-t border-[#eceef0]">
                 <span class="material-symbols-outlined text-[#006a61] text-[18px]">assignment_turned_in</span>
-                <span class="text-[#006a61] font-semibold">Consentimiento Informado Firmado</span>
+                <span class="text-[#006a61] font-semibold">Consentimiento Informado {{ selectedPatient().consentSigned ? 'Firmado' : 'Pendiente' }}</span>
               </div>
             </div>
           </div>
@@ -202,14 +208,19 @@ import { ToastComponent } from '../../shared/toast/toast.component';
               </div>
               <div class="flex flex-col gap-2 mb-4">
                 <span class="text-[11px] font-bold text-[#ba1a1a] uppercase tracking-wider">Alergias Medicamentosas</span>
-                <div class="p-2.5 rounded-lg bg-[#ffdad6]/40 border border-[#ba1a1a]/20 flex flex-col gap-1">
-                  <span class="text-[12px] font-bold text-[#ba1a1a]">Penicilinas (Anafilaxia)</span>
-                  <span class="text-[11px] text-[#45464d]">Reacción severa en 2012. Contraindicación absoluta.</span>
-                </div>
-                <div class="p-2.5 rounded-lg bg-[#fffbeb] border border-[#fde68a] flex flex-col gap-1">
-                  <span class="text-[12px] font-bold text-[#92400e]">AINEs (Ibuprofeno/Ketoprofeno)</span>
-                  <span class="text-[11px] text-[#45464d]">Broncoespasmo y edema palpebral.</span>
-                </div>
+                @if (selectedPatient().allergies.length) {
+                  @for (allergy of selectedPatient().allergies; track allergy) {
+                    <div class="p-2.5 rounded-lg bg-[#ffdad6]/40 border border-[#ba1a1a]/20 flex flex-col gap-1">
+                      <span class="text-[12px] font-bold text-[#ba1a1a]">{{ allergy }}</span>
+                      <span class="text-[11px] text-[#45464d]">Reacción adversa registrada. Se recomienda precaución.</span>
+                    </div>
+                  }
+                } @else {
+                  <div class="p-2.5 rounded-lg bg-[#ecfdf5] border border-[#86efac]/40 flex flex-col gap-1">
+                    <span class="text-[12px] font-bold text-[#065f46]">Sin alergias registradas</span>
+                    <span class="text-[11px] text-[#45464d]">No se han registrado alergias medicamentosas.</span>
+                  </div>
+                }
               </div>
             </div>
 
@@ -254,6 +265,8 @@ export class PatientHistoryComponent {
   data = inject(MockDataService);
   toast = inject(ToastService);
 
+  selectedPatient = signal<Patient>(this.data.getPatient('MED-0001')!);
+
   medications = signal([
     { name: 'Losartán Potásico 50 mg', dose: '1 comp cada 12 horas · Vía Oral', status: 'Activo', daysLeft: '62 días restantes' },
     { name: 'Atorvastatina 20 mg', dose: '1 comp cada noche · Vía Oral', status: 'Activo', daysLeft: '45 días restantes' },
@@ -261,7 +274,7 @@ export class PatientHistoryComponent {
   ]);
 
   handleDownloadPDF(): void {
-    this.toast.show('Generando Expediente PDF', 'Expediente clínico completo de Juan Pérez descargado con éxito.');
+    this.toast.show('Generando Expediente PDF', `Expediente clínico completo de ${this.selectedPatient().name} descargado con éxito.`);
   }
 
   handleEmitRecipe(): void {
@@ -269,6 +282,6 @@ export class PatientHistoryComponent {
   }
 
   handleNewConsulta(): void {
-    this.toast.show('Nueva Consulta Iniciada', 'Cargando protocolo de atención para Juan Pérez Morales.');
+    this.toast.show('Nueva Consulta Iniciada', `Cargando protocolo de atención para ${this.selectedPatient().name}.`);
   }
 }

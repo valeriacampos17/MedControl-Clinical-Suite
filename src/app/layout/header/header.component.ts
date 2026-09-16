@@ -27,37 +27,6 @@ import { NavRoute } from '../../core/models/types';
               class="h-8 w-auto object-contain"
               src="https://lh3.googleusercontent.com/aida/AEtjO1V82pwfuDLTk5-ehmXKHF892ZY_9YFqOHRFT6iLpeObTH2QZ_NHJTPzdxf_OS4xlUsvSN6oMowcQTI1BfBXq2Y7W21gTuFX-lxdEPIT-r3of9FRU9BprnBayQE2pXODaIAfeNHb-2T6ajlkh62f8pO51MMv46ew6r440Fqu2sJbisJ-8vEtk_Gca6Yc8ZCr1h6iQzmrz-y7dIR78MIbXDRjcUmjqIqnfTFgw4D7rcEm8Rn1jTP86ebNDhc"
             />
-            <div class="flex flex-col">
-              <span class="text-[17px] font-bold text-[#191c1e] tracking-tight leading-none">
-                MedControl
-              </span>
-              <span class="text-[10px] font-bold text-[#006a61] leading-tight uppercase tracking-wider">
-                Clinical Suite
-              </span>
-            </div>
-          </div>
-
-          <div class="hidden xl:flex items-center bg-[#f2f4f6] p-0.5 rounded-lg border border-[#e0e3e5]">
-            <button
-              type="button"
-              (click)="activePanel.set('medico')"
-              class="px-3 py-1 text-[12px] font-semibold rounded-md transition-all"
-              [class]="activePanel() === 'medico'
-                ? 'bg-white shadow-sm text-[#191c1e]'
-                : 'text-[#45464d] hover:text-[#191c1e]'"
-            >
-              Panel Médico
-            </button>
-            <button
-              type="button"
-              (click)="activePanel.set('paciente')"
-              class="px-3 py-1 text-[12px] font-semibold rounded-md transition-all"
-              [class]="activePanel() === 'paciente'
-                ? 'bg-white shadow-sm text-[#191c1e]'
-                : 'text-[#45464d] hover:text-[#191c1e]'"
-            >
-              Panel Paciente
-            </button>
           </div>
         </div>
 
@@ -208,7 +177,6 @@ import { NavRoute } from '../../core/models/types';
 export class HeaderComponent {
   nav = inject(NavigationService);
 
-  activePanel = signal<'medico' | 'paciente'>('medico');
   searchQuery = signal('');
   showNotifications = signal(false);
   showUserMenu = signal(false);

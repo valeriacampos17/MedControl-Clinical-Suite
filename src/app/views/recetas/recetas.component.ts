@@ -33,7 +33,7 @@ import { ToastComponent } from '../../shared/toast/toast.component';
                 <div>
                   <div class="flex items-center gap-2 flex-wrap">
                     <span class="text-[15px] font-bold text-[#191c1e]">{{ rx.patient }}</span>
-                    <span class="text-[12px] text-[#76777d]">RUT: {{ rx.rut }}</span>
+                    <span class="text-[12px] text-[#76777d]">CI: {{ rx.ci }}</span>
                     <app-badge [variant]="rx.status === 'Finalizada' ? 'neutral' : 'teal'" size="sm">{{ rx.status }}</app-badge>
                   </div>
                   <p class="text-[12px] text-[#45464d] mt-0.5">Receta #{{ rx.id }} · Emitida: {{ rx.date }} por {{ rx.doctor }}</p>
@@ -63,28 +63,28 @@ export class RecetasComponent {
   prescriptions = [
     {
       id: 'RX-99412',
-      patient: 'Juan Pérez Morales',
-      rut: '14.892.401-2',
+      patient: 'María García López',
+      ci: 'V-12.345.678',
       date: '14 Oct 2024',
-      doctor: 'Dr. Carlos Mendoza',
+      doctor: 'Dra. Noemí Aguirre',
       meds: ['Losartán Potásico 50 mg (90 días)', 'Atorvastatina 20 mg (90 días)'],
       status: 'Vigente en Farmacia',
     },
     {
       id: 'RX-98210',
-      patient: 'María Elena Morales',
-      rut: '15.204.912-3',
+      patient: 'Sofía Ramírez Torres',
+      ci: 'V-16.782.339',
       date: '28 Oct 2024',
-      doctor: 'Dr. Carlos Mendoza',
+      doctor: 'Dra. Noemí Aguirre',
       meds: ['Bisoprolol 2.5 mg (60 días)'],
       status: 'Emitida Hoy',
     },
     {
       id: 'RX-95430',
-      patient: 'Roberto Gómez',
-      rut: '11.450.812-9',
+      patient: 'Roberto Sánchez Díaz',
+      ci: 'V-11.450.812',
       date: '02 Oct 2024',
-      doctor: 'Dra. Patricia Silva',
+      doctor: 'Dr. Jorge Mawad',
       meds: ['Amlodipino 5 mg (30 días)', 'Enalapril 10 mg (30 días)'],
       status: 'Finalizada',
     },

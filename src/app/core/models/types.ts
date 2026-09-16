@@ -8,78 +8,66 @@ export type NavRoute =
 
 export interface Patient {
   id: string;
+  ci: string;
   name: string;
-  rut: string;
   age: number;
   birthDate: string;
   phone: string;
   email: string;
   address: string;
   insurance: string;
-  insuranceDetail?: string;
   bloodType: string;
-  tutor: string;
   allergies: string[];
-  severeAllergies: string[];
   chronicConditions: string[];
   consentSigned: boolean;
-  avatarUrl: string;
-  fileNumber: string;
 }
 
 export interface Doctor {
   id: string;
   name: string;
-  regNumber: string;
-  sisNumber: string;
   specialty: string;
-  subspecialty: string;
-  level: string;
-  box: string;
-  floor: string;
-  wing: string;
-  avatarUrl: string;
-  email: string;
-  phone: string;
-  annex: string;
-  statusText: string;
-  activeToday: boolean;
 }
+
+export type AppointmentStatus = 'pending' | 'confirmed' | 'checked-in' | 'in-triage' | 'triaged' | 'in-progress' | 'completed' | 'break' | 'no-show';
 
 export interface AppointmentItem {
   id: string;
+  date: string;
   time: string;
   durationMinutes: number;
-  patientName: string;
-  patientAge: number;
-  patientInitials: string;
-  patientRut: string;
-  insurance: string;
+  patientId: string;
+  doctorId: string;
   reason: string;
-  status: 'completed' | 'in-progress' | 'confirmed' | 'break' | 'pending';
+  status: AppointmentStatus;
   relativeTime?: string;
-  vitals?: {
-    bp: string;
-    pulse: number;
-    temp: number;
-    spo2: number;
-  };
+  vitals?: TriageVitalsSnapshot;
+}
+
+export interface TriageVitalsSnapshot {
+  bp: string;
+  pulse: number;
+  temp: number;
+  spo2: number;
+}
+
+export interface RescheduleData {
+  appointmentId: string;
+  patientId: string;
+  currentDate: string;
+  currentTime: string;
+}
+
+export interface WorkingDay {
+  date: string;
+  note?: string;
 }
 
 export interface DaySchedule {
   day: string;
   enabled: boolean;
-  morningStart: string;
-  morningEnd: string;
-  morningPatients: number;
-  breakStart: string;
-  breakEnd: string;
-  breakNote: string;
-  afternoonStart: string;
-  afternoonEnd: string;
-  afternoonPatients: number;
+  startTime: string;
+  endTime: string;
   totalCapacity: number;
-  specialBadge?: string;
 }
 
 export interface AbsenceBlock {
@@ -92,4 +80,15 @@ export interface AbsenceBlock {
   collisionStatus: string;
   validationStatus: string;
   iconName: string;
+}
+
+export interface TriageVitals {
+  systolic: number | null;
+  diastolic: number | null;
+  pulse: number | null;
+  temp: number | null;
+  spo2: number | null;
+  weight: number | null;
+  height: number | null;
+  notes: string;
 }
