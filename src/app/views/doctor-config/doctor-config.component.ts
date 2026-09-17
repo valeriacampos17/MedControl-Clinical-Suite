@@ -33,17 +33,19 @@ import { DaySchedule } from '../../core/models/types';
           <div class="bg-white rounded-xl p-5 lg:p-6 shadow-sm border border-[#e6e8ea]">
             <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
               <div class="flex items-start gap-4">
-                <img class="w-20 h-20 rounded-2xl object-cover ring-2 ring-[#eceef0] shadow-sm shrink-0" [alt]="data.doctor.name" [src]="data.doctor.avatarUrl" />
+                <div class="w-20 h-20 rounded-2xl bg-[#006a61] text-white flex items-center justify-center text-[26px] font-bold ring-2 ring-[#eceef0] shadow-sm shrink-0">
+                  {{ data.getInitials(data.doctor.name) }}
+                </div>
                 <div class="flex flex-col">
                   <div class="flex items-center gap-2 flex-wrap">
                     <h2 class="text-[18px] font-bold text-[#191c1e] tracking-tight">{{ data.doctor.name }}</h2>
                     <app-badge variant="success">MINSAL / SIS Validadas</app-badge>
                   </div>
-                  <p class="text-[13px] text-[#45464d] mt-0.5">{{ data.doctor.specialty }} · {{ data.doctor.subspecialty }}</p>
+                  <p class="text-[13px] text-[#45464d] mt-0.5">{{ data.doctor.specialty }} · Equipo MedControl</p>
                   <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-[12px] text-[#45464d]">
-                    <span>Email: <strong class="text-[#191c1e]">{{ data.doctor.email }}</strong></span>
+                    <span>Jornada: <strong class="text-[#191c1e]">08:00 - 16:00</strong></span>
                     <span>•</span>
-                    <span>Tel: <strong class="text-[#191c1e]">{{ data.doctor.phone }}</strong></span>
+                    <span>Capacidad: <strong class="text-[#191c1e]">{{ totalWeeklyCapacity() }} pacientes/sem</strong></span>
                   </div>
                 </div>
               </div>
@@ -64,10 +66,8 @@ import { DaySchedule } from '../../core/models/types';
               <table class="w-full text-left text-[12px] border-collapse min-w-[700px]">
                 <thead>
                   <tr class="border-b border-[#eceef0] text-[#76777d] uppercase text-[11px] font-bold tracking-wider">
-                    <th class="py-2.5 px-3">Día / Jornada</th>
-                    <th class="py-2.5 px-3">Bloque Mañana</th>
-                    <th class="py-2.5 px-3">Pausa / Almuerzo</th>
-                    <th class="py-2.5 px-3">Bloque Tarde</th>
+                    <th class="py-2.5 px-3">Día</th>
+                    <th class="py-2.5 px-3">Horario</th>
                     <th class="py-2.5 px-3 text-right">Capacidad Diaria</th>
                   </tr>
                 </thead>
@@ -78,39 +78,15 @@ import { DaySchedule } from '../../core/models/types';
                         <div class="flex items-center gap-2.5">
                           <app-switch [checked]="day.enabled" (toggled)="toggleDay(idx)" size="sm" />
                           <span class="font-bold text-[13px] text-[#191c1e]">{{ day.day }}</span>
-                          @if (day.specialBadge) {
-                            <span class="px-1.5 py-0.2 rounded bg-[#f2f4f6] text-[#45464d] text-[10px] font-semibold border border-[#e0e3e5]">{{ day.specialBadge }}</span>
-                          }
                         </div>
                       </td>
                       <td class="py-3 px-3">
-                        @if (day.enabled && day.morningStart) {
+                        @if (day.enabled) {
                           <div class="flex items-center gap-1.5">
-                            <span class="font-semibold text-[#191c1e]">{{ day.morningStart }} - {{ day.morningEnd }}</span>
-                            <span class="text-[10px] text-[#76777d]">({{ day.morningPatients }} pac)</span>
+                            <span class="font-semibold text-[#191c1e]">{{ day.startTime }} - {{ day.endTime }}</span>
                           </div>
                         } @else {
-                          <span class="text-[#76777d] italic">Sin bloque</span>
-                        }
-                      </td>
-                      <td class="py-3 px-3">
-                        @if (day.enabled && day.breakStart) {
-                          <div class="flex items-center gap-1.5">
-                            <span class="text-[#45464d]">{{ day.breakStart }} - {{ day.breakEnd }}</span>
-                            <span class="text-[10px] text-[#76777d]">{{ day.breakNote }}</span>
-                          </div>
-                        } @else {
-                          <span class="text-[#76777d]">{{ day.breakNote || 'Sin pausa' }}</span>
-                        }
-                      </td>
-                      <td class="py-3 px-3">
-                        @if (day.enabled && day.afternoonStart) {
-                          <div class="flex items-center gap-1.5">
-                            <span class="font-semibold text-[#191c1e]">{{ day.afternoonStart }} - {{ day.afternoonEnd }}</span>
-                            <span class="text-[10px] text-[#76777d]">({{ day.afternoonPatients }} pac)</span>
-                          </div>
-                        } @else {
-                          <span class="text-[#76777d] italic">Sin bloque</span>
+                          <span class="text-[#76777d] italic">Sin jornada</span>
                         }
                       </td>
                       <td class="py-3 px-3 text-right">

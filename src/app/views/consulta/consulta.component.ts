@@ -30,11 +30,13 @@ import { ButtonComponent } from '../../shared/button/button.component';
 
         <div class="bg-white rounded-xl shadow-sm border border-[#e6e8ea] p-5 sm:p-6 mb-6">
           <div class="flex items-center gap-4">
-            <img class="w-14 h-14 rounded-xl object-cover ring-2 ring-[#eceef0] shadow-sm shrink-0" [src]="data.activePatient().avatarUrl" [alt]="data.activePatient().name" />
+            <div class="w-14 h-14 rounded-xl bg-[#006a61] text-white flex items-center justify-center text-[18px] font-bold ring-2 ring-[#eceef0] shadow-sm shrink-0">
+              {{ data.getInitials(data.activePatient().name) }}
+            </div>
             <div class="flex flex-col">
               <h1 class="text-[18px] font-bold text-[#191c1e]">{{ data.activePatient().name }}</h1>
               <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px] text-[#45464d]">
-                <span>RUT: {{ data.activePatient().rut }}</span>
+                <span>CI: {{ data.activePatient().ci }}</span>
                 <span>•</span>
                 <span>{{ data.activePatient().age }} años</span>
                 <span>•</span>
@@ -43,10 +45,10 @@ import { ButtonComponent } from '../../shared/button/button.component';
                 <span class="font-semibold text-[#191c1e]">{{ data.activePatient().bloodType }}</span>
               </div>
             </div>
-            @if (data.activePatient().severeAllergies.length > 0) {
+            @if (data.activePatient().allergies.length > 0) {
               <div class="ml-auto px-3 py-1.5 rounded-lg bg-[#ffdad6] border border-[#ba1a1a]/30 text-[#ba1a1a] text-[11px] font-semibold flex items-center gap-1.5 shrink-0">
                 <span class="material-symbols-outlined text-[14px]">warning</span>
-                ALERGIAS: {{ data.activePatient().severeAllergies.join(' · ') }}
+                ALERGIAS: {{ data.activePatient().allergies.join(' · ') }}
               </div>
             }
           </div>

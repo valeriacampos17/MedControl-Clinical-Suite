@@ -11,8 +11,7 @@ describe('MockDataService', () => {
 
   it('provee los datos del doctor activo', () => {
     const service = TestBed.inject(MockDataService);
-    expect(service.doctor.name).toBe('Dr. Carlos Mendoza Soto');
-    expect(service.doctor.activeToday).toBe(true);
+    expect(service.doctor.name).toBe('Dra. Noemí Aguirre');
   });
 
   it('expone citas programadas para hoy', () => {

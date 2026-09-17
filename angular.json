@@ -23,6 +23,13 @@
             "styles": [
               "src/styles.css"
             ],
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "src/assets",
+                "output": "assets"
+              }
+            ],
             "scripts": []
           },
           "configurations": {
@@ -78,5 +85,8 @@
         }
       }
     }
+  },
+  "cli": {
+    "analytics": "dc53ea6c-774d-4aee-b8c1-c179daf561ef"
   }
 }

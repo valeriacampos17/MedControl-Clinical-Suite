@@ -1,42 +1,44 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
-import { filter } from 'rxjs/operators';
+import { filter, map } from 'rxjs/operators';
 import { NavRoute } from '../models/types';
 
-const routes: NavRoute[] = [
-  'dashboard-de-citas',
-  'pacientes-y-historial-clinico',
-  'agenda-y-disponibilidad',
-  'recetas-y-examenes',
-  'notificaciones-y-alertas',
-  'configuracion-del-sistema',
-];
+const routeMap: Record<NavRoute, string> = {
+  'dashboard-de-citas': 'dashboard',
+  'pacientes-y-historial-clinico': 'pacientes',
+  'agenda-y-disponibilidad': 'agenda',
+  'recetas-y-examenes': 'recetas',
+  'notificaciones-y-alertas': 'alertas',
+  'configuracion-del-sistema': 'configuracion',
+};
+
+const pathToRoute: Record<string, NavRoute> = Object.fromEntries(
+  Object.entries(routeMap).map(([key, val]) => [val, key as NavRoute])
+);
 
 @Injectable({ providedIn: 'root' })
 export class NavigationService {
-  private readonly router = inject(Router);
+  private router = inject(Router);
 
   currentRoute = signal<NavRoute>('dashboard-de-citas');
   mobileMenuOpen = signal(false);
 
   constructor() {
     this.router.events
-      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-      .subscribe(() => {
-        const route = this.resolveRoute(this.router.url);
-        if (route) {
-          this.currentRoute.set(route);
-        }
-      });
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        map(e => {
+          const path = e.urlAfterRedirects.replace('/', '');
+          return pathToRoute[path] || 'dashboard-de-citas';
+        })
+      )
+      .subscribe(route => this.currentRoute.set(route));
   }
 
-  navigate(route: NavRoute): Promise<boolean> {
-    return this.router.navigate([route]);
-  }
-
-  private resolveRoute(url: string): NavRoute | null {
-    const path = url.split('?')[0].replace(/^\//, '').split('/')[0] as NavRoute;
-    return routes.includes(path) ? path : null;
+  navigate(route: NavRoute): void {
+    this.currentRoute.set(route);
+    const path = routeMap[route] || 'dashboard';
+    this.router.navigate([path]);
   }
 
   openMobileMenu(): void {

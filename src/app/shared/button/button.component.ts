@@ -8,6 +8,7 @@ import { Component, input } from '@angular/core';
       [type]="type()"
       [disabled]="disabled() || loading()"
       [class]="buttonClasses()"
+      [attr.title]="title() || null"
     >
       @if (loading()) {
         <span class="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
@@ -34,6 +35,7 @@ export class ButtonComponent {
   loading = input(false);
   disabled = input(false);
   type = input<'button' | 'submit' | 'reset'>('button');
+  title = input<string>('');
 
   buttonClasses(): string {
     const base = 'inline-flex items-center justify-center font-medium transition-all duration-150 rounded-lg select-none cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed';
