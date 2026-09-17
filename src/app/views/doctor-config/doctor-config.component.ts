@@ -76,7 +76,7 @@ import { DaySchedule } from '../../core/models/types';
                     <tr class="transition-colors" [class.opacity-60]="!day.enabled">
                       <td class="py-3 px-3">
                         <div class="flex items-center gap-2.5">
-                          <app-switch [checked]="day.enabled" (change)="toggleDay(idx)" size="sm" />
+                          <app-switch [checked]="day.enabled" (toggled)="toggleDay(idx)" size="sm" />
                           <span class="font-bold text-[13px] text-[#191c1e]">{{ day.day }}</span>
                         </div>
                       </td>

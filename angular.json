@@ -17,8 +17,18 @@
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "css",
+            "polyfills": [
+              "zone.js"
+            ],
             "styles": [
               "src/styles.css"
+            ],
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "src/assets",
+                "output": "assets"
+              }
             ],
             "scripts": []
           },
@@ -52,8 +62,31 @@
             }
           },
           "defaultConfiguration": "development"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "configurations": {
+            "production": {
+              "buildTarget": "medcontrol-clinical-suite:build:production"
+            },
+            "development": {
+              "buildTarget": "medcontrol-clinical-suite:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": [
+              "src"
+            ]
+          }
         }
       }
     }
+  },
+  "cli": {
+    "analytics": "dc53ea6c-774d-4aee-b8c1-c179daf561ef"
   }
 }

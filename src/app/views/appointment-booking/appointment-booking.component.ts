@@ -156,7 +156,7 @@ import { ToastComponent } from '../../shared/toast/toast.component';
         subtitle="Verifique los detalles antes de emitir la reserva electrónica"
         icon="event_available"
         [footerTemplate]="true"
-        (close)="showConfirmModal.set(false)"
+        (dismiss)="showConfirmModal.set(false)"
       >
         <div class="space-y-3 text-[13px]">
           <p class="text-[#45464d]">Se reservará un bloque de atención clínica para:</p>

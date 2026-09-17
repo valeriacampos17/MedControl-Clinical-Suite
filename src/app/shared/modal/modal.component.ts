@@ -1,4 +1,4 @@
-import { Component, input, output, effect, HostListener } from '@angular/core';
+import { Component, input, output, HostListener } from '@angular/core';
 
 @Component({
   selector: 'app-modal',
@@ -6,7 +6,7 @@ import { Component, input, output, effect, HostListener } from '@angular/core';
   template: `
     @if (isOpen()) {
       <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#191c1e]/40 backdrop-blur-sm animate-in fade-in duration-200">
-        <div class="fixed inset-0" (click)="close.emit()" aria-hidden="true"></div>
+        <div class="fixed inset-0" (click)="dismiss.emit()" aria-hidden="true"></div>
         <div [class]="'relative w-full ' + maxWidthClass() + ' bg-white rounded-2xl shadow-2xl border border-[#e6e8ea] overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 z-10 flex flex-col'">
           <div class="flex items-center justify-between p-5 border-b border-[#eceef0] bg-[#f7f9fb]/50">
             <div class="flex items-center gap-3">
@@ -24,7 +24,7 @@ import { Component, input, output, effect, HostListener } from '@angular/core';
             </div>
             <button
               type="button"
-              (click)="close.emit()"
+              (click)="dismiss.emit()"
               class="p-1.5 rounded-lg text-[#76777d] hover:text-[#191c1e] hover:bg-[#eceef0] transition-colors"
             >
               <span class="material-symbols-outlined text-[20px]">close</span>
@@ -49,7 +49,7 @@ export class ModalComponent {
   subtitle = input('');
   icon = input('');
   maxWidth = input<'sm' | 'md' | 'lg' | 'xl'>('md');
-  close = output<void>();
+  dismiss = output<void>();
   footerTemplate = input(false);
 
   maxWidthClass(): string {
@@ -65,7 +65,7 @@ export class ModalComponent {
   @HostListener('document:keydown.escape')
   onEscapeKey(): void {
     if (this.isOpen()) {
-      this.close.emit();
+      this.dismiss.emit();
     }
   }
 }

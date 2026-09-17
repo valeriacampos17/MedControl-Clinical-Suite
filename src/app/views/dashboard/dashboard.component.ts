@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -44,10 +45,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                   ? 'bg-[#006a61] text-white border-[#006a61] shadow-sm'
                   : 'bg-white text-[#45464d] border-[#e0e3e5] hover:border-[#006a61] hover:text-[#006a61]'"
               >
-                <span class="w-5 h-5 rounded-full bg-[#006a61]/15 text-[#006a61] flex items-center justify-center text-[10px] font-bold"
-                  [class]="data.selectedDoctorId() === doc.id ? 'bg-white/20 text-white' : ''">
-                  {{ data.getInitials(doc.name) }}
-                </span>
+              <img [src]="doc.avatarUrl" [alt]="doc.name" class="w-5 h-5 rounded-full object-cover ring-1 ring-current/20" />
                 <span>{{ doc.shortName }}</span>
                 @if (doc.activeToday) {
                   <span class="w-1.5 h-1.5 rounded-full bg-[#006a61]"></span>
@@ -65,7 +63,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                   @if (data.selectedDoctorId() === null) {
                     <span class="material-symbols-outlined text-[30px] sm:text-[36px]">group</span>
                   } @else {
-                    {{ data.getInitials(data.selectedDoctor().name) }}
+                    <img [src]="data.selectedDoctor().avatarUrl" [alt]="data.selectedDoctor().name" class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover ring-2 ring-[#eceef0]" />
                   }
                 </div>
                 <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-xs">
@@ -98,10 +96,10 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
               </div>
             </div>
             <div class="flex items-center flex-wrap gap-2.5 self-start lg:self-center">
-              <app-button variant="light" size="md" icon="emergency" (click)="handleDeclareEmergency()">
+              <app-button variant="light" size="md" icon="emergency" (click)="handleDeclareEmergency()" [disabled]="data.selectedDoctorId() === null" title="Activar protocolo de emergencia y notificar al equipo">
                 Declarar Urgencia
               </app-button>
-              <app-button variant="primary" size="md" icon="stethoscope" (click)="showConsultationDrawer.set(true)">
+              <app-button variant="primary" size="md" icon="stethoscope" (click)="handleOpenConsultation()" [disabled]="data.selectedDoctorId() === null" title="Ir a nueva consulta o continuar consulta activa">
                 Consulta en Curso
               </app-button>
             </div>
@@ -231,6 +229,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
 
                 @for (apt of data.selectedDateAppointments(); track apt.id) {
                   @let patient = data.getPatient(apt.patientId);
+                  @let doctor = data.doctors().find(d => d.id === apt.doctorId);
                   @if (apt.status === 'completed') {
                     <div class="flex flex-col md:flex-row md:items-center gap-3.5 p-4 rounded-xl bg-[#f2f4f6] hover:bg-[#e6e8ea]/70 transition-colors border border-[#e0e3e5]">
                       <div class="w-24 shrink-0 flex items-center md:flex-col md:items-start justify-between">
@@ -238,12 +237,17 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                         <span class="text-[11px] text-[#76777d]">{{ apt.durationMinutes }} min</span>
                       </div>
                       <div class="hidden md:flex w-6 h-6 rounded-full bg-white items-center justify-center shrink-0 shadow-xs z-10">
-                        <span class="material-symbols-outlined text-[#006a61] text-[16px]">check_circle</span>
+                        <span class="material-symbols-outlined text-[#006a61] text-[16px]" title="Cita completada">check_circle</span>
                       </div>
                       <div class="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
                         <div class="flex items-center gap-3 min-w-0">
-                          <div class="w-10 h-10 rounded-full bg-white border border-[#c6c6cd] flex items-center justify-center text-[13px] font-bold text-[#191c1e] shrink-0">
-                            {{ data.getInitials(patient?.name ?? '') }}
+                          <div class="relative shrink-0">
+                            <div class="w-10 h-10 rounded-full bg-white border border-[#c6c6cd] flex items-center justify-center text-[13px] font-bold text-[#191c1e]">
+                              {{ data.getInitials(patient?.name ?? '') }}
+                            </div>
+                            @if (data.selectedDoctorId() === null && doctor) {
+                              <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white object-cover shadow-sm" />
+                            }
                           </div>
                           <div class="min-w-0">
                             <div class="flex items-center gap-2">
@@ -276,13 +280,18 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                         </span>
                       </div>
                       <div class="hidden md:flex w-6 h-6 rounded-full bg-[#006a61] text-white items-center justify-center shrink-0 shadow-xs z-10 self-center">
-                        <span class="material-symbols-outlined text-[16px]">play_arrow</span>
+                        <span class="material-symbols-outlined text-[16px]" title="Consulta en curso">play_arrow</span>
                       </div>
                       <div class="flex-1 flex flex-col justify-between gap-3 min-w-0">
                         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                           <div class="flex items-center gap-3 min-w-0">
-                            <div class="w-12 h-12 rounded-xl bg-[#006a61] text-white flex items-center justify-center text-[14px] font-bold shrink-0 shadow-xs">
-                              {{ data.getInitials(patient?.name ?? '') }}
+                            <div class="relative shrink-0">
+                              <div class="w-12 h-12 rounded-xl bg-[#006a61] text-white flex items-center justify-center text-[14px] font-bold shadow-xs">
+                                {{ data.getInitials(patient?.name ?? '') }}
+                              </div>
+                              @if (data.selectedDoctorId() === null && doctor) {
+                                <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white object-cover shadow-sm" />
+                              }
                             </div>
                             <div class="min-w-0">
                               <div class="flex items-center gap-2 flex-wrap">
@@ -292,7 +301,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                               <p class="text-[12px] text-[#45464d] truncate">{{ apt.reason }}</p>
                             </div>
                           </div>
-                          <app-button variant="primary" size="sm" icon="clinical_notes" (click)="showConsultationDrawer.set(true)" class="shrink-0">
+                          <app-button variant="primary" size="sm" icon="clinical_notes" (click)="handleRegisterConsultation()" class="shrink-0" [disabled]="data.selectedDoctorId() === null" title="Registrar consulta y ver historial clínico">
                             Registrar Consulta / Historial
                           </app-button>
                         </div>
@@ -343,13 +352,18 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                         </span>
                       </div>
                       <div class="hidden md:flex w-6 h-6 rounded-full bg-[#f59e0b] text-white items-center justify-center shrink-0 shadow-xs z-10 self-center">
-                        <span class="material-symbols-outlined text-[16px]">pending</span>
+                        <span class="material-symbols-outlined text-[16px]" title="Triage completado">pending</span>
                       </div>
                       <div class="flex-1 flex flex-col justify-between gap-3 min-w-0">
                         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                           <div class="flex items-center gap-3 min-w-0">
-                            <div class="w-12 h-12 rounded-xl bg-[#fef3c7] border border-[#f59e0b]/30 flex items-center justify-center text-[14px] font-bold text-[#92400e] shrink-0">
-                              {{ data.getInitials(patient?.name ?? '') }}
+                            <div class="relative shrink-0">
+                              <div class="w-12 h-12 rounded-xl bg-[#fef3c7] border border-[#f59e0b]/30 flex items-center justify-center text-[14px] font-bold text-[#92400e] shadow-xs">
+                                {{ data.getInitials(patient?.name ?? '') }}
+                              </div>
+                              @if (data.selectedDoctorId() === null && doctor) {
+                                <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white object-cover shadow-sm" />
+                              }
                             </div>
                             <div class="min-w-0">
                               <div class="flex items-center gap-2 flex-wrap">
@@ -359,7 +373,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                               <p class="text-[12px] text-[#45464d] truncate">{{ apt.reason }}</p>
                             </div>
                           </div>
-                          <app-button variant="primary" size="sm" icon="stethoscope" (click)="handleStartConsultation(apt.patientId)" class="shrink-0">
+                          <app-button variant="primary" size="sm" icon="stethoscope" (click)="handleStartConsultation(apt.patientId)" class="shrink-0" title="Iniciar consulta médica con el paciente">
                             Iniciar Consulta
                           </app-button>
                         </div>
@@ -406,12 +420,17 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                         <span class="text-[11px] text-[#76777d]">{{ apt.durationMinutes }} min</span>
                       </div>
                       <div class="hidden md:flex w-6 h-6 rounded-full bg-[#fde68a] items-center justify-center shrink-0 shadow-xs z-10 text-[#92400e]">
-                        <span class="material-symbols-outlined text-[16px]">schedule</span>
+                        <span class="material-symbols-outlined text-[16px]" title="Cita pendiente">schedule</span>
                       </div>
                       <div class="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
                         <div class="flex items-center gap-3 min-w-0">
-                          <div class="w-10 h-10 rounded-full bg-[#f59e0b]/20 text-[#92400e] flex items-center justify-center text-[13px] font-bold shrink-0">
-                            {{ data.getInitials(patient?.name ?? '') }}
+                          <div class="relative shrink-0">
+                            <div class="w-10 h-10 rounded-full bg-[#f59e0b]/20 text-[#92400e] flex items-center justify-center text-[13px] font-bold">
+                              {{ data.getInitials(patient?.name ?? '') }}
+                            </div>
+                            @if (data.selectedDoctorId() === null && doctor) {
+                              <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white object-cover shadow-sm" />
+                            }
                           </div>
                           <div class="min-w-0">
                             <div class="flex items-center gap-2">
@@ -426,11 +445,11 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                             <span class="w-1.5 h-1.5 rounded-full bg-[#f59e0b] animate-pulse"></span>
                             Pendiente
                           </span>
-                          <app-button variant="outline" size="sm" icon="event_available" (click)="handleConfirmAppointment(apt.id, apt.patientId)" class="shrink-0">
+                          <app-button variant="outline" size="sm" icon="event_available" (click)="handleConfirmAppointment(apt.id, apt.patientId)" class="shrink-0" title="Confirmar asistencia del paciente">
                             Confirmar Asistencia
                           </app-button>
                           @if (data.selectedDate() >= todayStr()) {
-                            <app-button variant="ghost" size="sm" icon="update" (click)="openReschedule(apt)" class="shrink-0">
+                            <app-button variant="ghost" size="sm" icon="update" (click)="openReschedule(apt)" class="shrink-0" title="Reagendar esta cita a otra fecha u hora">
                               Reagendar
                             </app-button>
                           }
@@ -446,12 +465,17 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                         <span class="text-[11px] text-[#76777d]">{{ apt.relativeTime }}</span>
                       </div>
                       <div class="hidden md:flex w-6 h-6 rounded-full bg-[#f2f4f6] items-center justify-center shrink-0 shadow-xs z-10 text-[#006a61]">
-                        <span class="material-symbols-outlined text-[16px]">schedule</span>
+                        <span class="material-symbols-outlined text-[16px]" title="Cita confirmada">schedule</span>
                       </div>
                       <div class="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
                         <div class="flex items-center gap-3 min-w-0">
-                          <div class="w-10 h-10 rounded-full bg-[#131b2e] text-white flex items-center justify-center text-[13px] font-bold shrink-0">
-                            {{ data.getInitials(patient?.name ?? '') }}
+                          <div class="relative shrink-0">
+                            <div class="w-10 h-10 rounded-full bg-[#131b2e] text-white flex items-center justify-center text-[13px] font-bold">
+                              {{ data.getInitials(patient?.name ?? '') }}
+                            </div>
+                            @if (data.selectedDoctorId() === null && doctor) {
+                              <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white object-cover shadow-sm" />
+                            }
                           </div>
                           <div class="min-w-0">
                             <div class="flex items-center gap-2">
@@ -467,7 +491,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                             Confirmada
                           </span>
                           @if (data.selectedDate() >= todayStr()) {
-                            <app-button variant="ghost" size="sm" icon="update" (click)="openReschedule(apt)" class="shrink-0">
+                            <app-button variant="ghost" size="sm" icon="update" (click)="openReschedule(apt)" class="shrink-0" title="Reagendar esta cita a otra fecha u hora">
                               Reagendar
                             </app-button>
                           }
@@ -483,7 +507,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                         <span class="text-[11px] text-[#76777d]">{{ apt.durationMinutes }} min</span>
                       </div>
                       <div class="hidden md:flex w-6 h-6 rounded-full bg-[#e6e8ea] items-center justify-center shrink-0 shadow-xs z-10 text-[#76777d]">
-                        <span class="material-symbols-outlined text-[16px]">lock</span>
+                        <span class="material-symbols-outlined text-[16px]" title="Horario bloqueado">lock</span>
                       </div>
                       <div class="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div class="flex items-center gap-3">
@@ -506,12 +530,17 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                         <span class="text-[11px] text-[#76777d]">{{ apt.durationMinutes }} min</span>
                       </div>
                       <div class="hidden md:flex w-6 h-6 rounded-full bg-[#fde68a] items-center justify-center shrink-0 shadow-xs z-10 text-[#a16207]">
-                        <span class="material-symbols-outlined text-[16px]">person_off</span>
+                        <span class="material-symbols-outlined text-[16px]" title="Paciente no asistió">person_off</span>
                       </div>
                       <div class="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
                         <div class="flex items-center gap-3 min-w-0">
-                          <div class="w-10 h-10 rounded-full bg-[#fde68a] text-[#a16207] flex items-center justify-center text-[13px] font-bold shrink-0">
-                            {{ data.getInitials(patient?.name ?? '') }}
+                          <div class="relative shrink-0">
+                            <div class="w-10 h-10 rounded-full bg-[#fde68a] text-[#a16207] flex items-center justify-center text-[13px] font-bold">
+                              {{ data.getInitials(patient?.name ?? '') }}
+                            </div>
+                            @if (data.selectedDoctorId() === null && doctor) {
+                              <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white object-cover shadow-sm" />
+                            }
                           </div>
                           <div class="min-w-0">
                             <div class="flex items-center gap-2">
@@ -658,7 +687,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                   <p class="text-[12px] text-[#45464d]">Pacientes con cita pendiente de llegada</p>
                 </div>
               </div>
-              <button type="button" (click)="showCheckInModal.set(false)" class="p-1.5 rounded-lg text-[#76777d] hover:bg-[#f2f4f6]">
+              <button type="button" (click)="showCheckInModal.set(false)" class="p-1.5 rounded-lg text-[#76777d] hover:bg-[#f2f4f6]" title="Cerrar">
                 <span class="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
@@ -684,11 +713,11 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                   </div>
                   <div class="flex items-center gap-2">
                     @if (patient.status === 'pending' || patient.status === 'confirmed') {
-                      <button type="button" (click)="handleCheckIn(patient.id)" class="px-3 py-1.5 rounded-lg bg-[#006a61] text-white text-[12px] font-semibold hover:bg-[#005049] transition-colors">
+                      <button type="button" (click)="handleCheckIn(patient.id)" class="px-3 py-1.5 rounded-lg bg-[#006a61] text-white text-[12px] font-semibold hover:bg-[#005049] transition-colors" title="Marcar llegada del paciente y pasar a recepción">
                         Registrar Llegada
                       </button>
                     } @else if (patient.status === 'checked-in') {
-                      <button type="button" (click)="handleStartTriage(patient.id)" class="px-3 py-1.5 rounded-lg bg-[#f59e0b] text-white text-[12px] font-semibold hover:bg-[#d97706] transition-colors">
+                      <button type="button" (click)="handleStartTriage(patient.id)" class="px-3 py-1.5 rounded-lg bg-[#f59e0b] text-white text-[12px] font-semibold hover:bg-[#d97706] transition-colors" title="Iniciar evaluación de signos vitales (triage)">
                         Iniciar Triage
                       </button>
                     } @else if (patient.status === 'in-triage') {
@@ -723,7 +752,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                   <p class="text-[12px] text-[#45464d]">Captura de signos vitales</p>
                 </div>
               </div>
-              <button type="button" (click)="handleCancelTriage()" class="p-1.5 rounded-lg text-[#76777d] hover:bg-[#f2f4f6]">
+              <button type="button" (click)="handleCancelTriage()" class="p-1.5 rounded-lg text-[#76777d] hover:bg-[#f2f4f6]" title="Cerrar">
                 <span class="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
@@ -809,7 +838,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                   <p class="text-[12px] text-[#45464d]">{{ data.getPatient(rescheduleData()?.patientId ?? '')?.name }} · {{ formatTime(rescheduleData()?.currentTime ?? '') }}</p>
                 </div>
               </div>
-              <button type="button" (click)="closeReschedule()" class="p-1.5 rounded-lg text-[#76777d] hover:bg-[#f2f4f6]">
+              <button type="button" (click)="closeReschedule()" class="p-1.5 rounded-lg text-[#76777d] hover:bg-[#f2f4f6]" title="Cerrar">
                 <span class="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
@@ -874,6 +903,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
 })
 export class DashboardComponent {
   nav = inject(NavigationService);
+  private router = inject(Router);
   data = inject(MockDataService);
   toast = inject(ToastService);
 
@@ -892,6 +922,14 @@ export class DashboardComponent {
     height: null,
     notes: '',
   };
+
+  handleOpenConsultation(): void {
+    this.router.navigate(['nueva-consulta']);
+  }
+
+  handleRegisterConsultation(): void {
+    this.router.navigate(['nueva-consulta']);
+  }
 
   handleDeclareEmergency(): void {
     this.toast.show('Alerta de Urgencia Activada', 'Notificación transmitida a Triage y Secretaría Central.');

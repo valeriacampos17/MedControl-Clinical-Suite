@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @source "../app/**/*.ts";
 
+@source "./**/*.{ts,html,css}";
+
 @theme {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;

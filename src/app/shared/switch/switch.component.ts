@@ -36,11 +36,11 @@ export class SwitchComponent {
   description = input('');
   disabled = input(false);
   size = input<'sm' | 'md'>('md');
-  change = output<boolean>();
+  toggled = output<boolean>();
 
   toggle(): void {
     if (!this.disabled()) {
-      this.change.emit(!this.checked());
+      this.toggled.emit(!this.checked());
     }
   }
 

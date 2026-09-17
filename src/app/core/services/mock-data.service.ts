@@ -5,6 +5,7 @@ import {
   AppointmentItem,
   DaySchedule,
   AbsenceBlock,
+  Consultation,
   TriageVitals,
   WorkingDay,
 } from '../models/types';
@@ -15,6 +16,7 @@ export interface DoctorSummary {
   shortName: string;
   specialty: string;
   activeToday: boolean;
+  avatarUrl: string;
 }
 
 function todayStr(): string {
@@ -33,9 +35,9 @@ export class MockDataService {
   readonly userRole = signal<'admin' | 'doctor'>('admin');
 
   readonly doctors = signal<DoctorSummary[]>([
-    { id: 'doc-aguirre', name: 'Dra. Noemí Aguirre', shortName: 'Dra. Aguirre', specialty: 'Medicina General', activeToday: true },
-    { id: 'doc-mawad', name: 'Dr. Jorge Mawad', shortName: 'Dr. Mawad', specialty: 'Medicina General', activeToday: true },
-    { id: 'doc-munoz', name: 'Dra. Sandra Muñoz', shortName: 'Dra. Muñoz', specialty: 'Medicina General', activeToday: true },
+    { id: 'doc-aguirre', name: 'Dra. Noemí Aguirre', shortName: 'Dra. Aguirre', specialty: 'Medicina General', activeToday: true, avatarUrl: 'assets/images/doctors/doctor-aguirre.jpeg' },
+    { id: 'doc-mawad', name: 'Dr. Jorge Mawad', shortName: 'Dr. Mawad', specialty: 'Medicina General', activeToday: true, avatarUrl: 'assets/images/doctors/doctor-mawad.jpeg' },
+    { id: 'doc-munoz', name: 'Dra. Sandra Muñoz', shortName: 'Dra. Muñoz', specialty: 'Medicina General', activeToday: true, avatarUrl: 'assets/images/doctors/doctor-munoz.webp' },
   ]);
 
   readonly selectedDoctorId = signal<string | null>('doc-aguirre');
@@ -298,5 +300,38 @@ export class MockDataService {
           : apt
       )
     );
+  }
+
+  readonly activePatientId = signal<string>('MED-0001');
+
+  readonly activePatient = computed<Patient>(
+    () => this.patients().find((p) => p.id === this.activePatientId()) ?? this.patients()[0]
+  );
+
+  selectPatient(id: string): void {
+    this.activePatientId.set(id);
+  }
+
+  addPatient(patient: Patient): void {
+    this.patients.update((list) => [...list, patient]);
+    this.activePatientId.set(patient.id);
+  }
+
+  nextFileNumber(): string {
+    const max = this.patients().reduce(
+      (acc, p) => Math.max(acc, Number(p.id.replace('MED-', '')) || 0),
+      0
+    );
+    return (max + 1).toString();
+  }
+
+  readonly consultations = signal<Consultation[]>([]);
+
+  addConsultation(consultation: Consultation): void {
+    this.consultations.update((list) => [consultation, ...list]);
+  }
+
+  getConsultationsByPatient(patientId: string): Consultation[] {
+    return this.consultations().filter((c) => c.patientId === patientId);
   }
 }
