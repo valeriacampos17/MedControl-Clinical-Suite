@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { NavigationService } from '../../core/services/navigation.service';
+import { AuthService } from '../../core/services/auth.service';
 import { NavRoute } from '../../core/models/types';
 
 @Component({
@@ -126,17 +127,23 @@ import { NavRoute } from '../../core/models/types';
               (click)="showUserMenu.set(!showUserMenu())"
               class="flex items-center gap-2.5 pl-1 rounded-lg hover:bg-[#f2f4f6] p-1 transition-colors"
             >
-              <img
-                alt="Dr. Carlos Morales"
-                class="w-8 h-8 rounded-full object-cover ring-1 ring-[#c6c6cd]"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSHsgEjGZ0cxVdyPbRujNWgQPxPCQnVDFiXRZz5rqGvJmU0pMW8ZqlOnPCphAMLOp3Wrd4JhYRy9Uhwx2R2rdq2tU2QHDbOzP_0Lz8gWO-iy9ABJzF87tBTJOdZX3bwmamCTX71h9fGtRsPb6E2di0VCs4y6nuRguN8i-vD_7PbZe-YswWdPmEJt5aFYuLwAVV8LgiNMeIvQu54GsCKpW1z1xmq06CD0_itRMS7By_ZI2fp_TWLrsU"
-              />
+              @if (auth.currentUser()?.avatarUrl) {
+                <img
+                  [alt]="auth.currentUser()?.name ?? ''"
+                  class="w-8 h-8 rounded-full object-cover ring-1 ring-[#c6c6cd]"
+                  [src]="auth.currentUser()?.avatarUrl"
+                />
+              } @else {
+                <div class="w-8 h-8 rounded-full bg-[#006a61] text-white flex items-center justify-center text-[12px] font-bold ring-1 ring-[#c6c6cd]">
+                  {{ auth.getInitials(auth.currentUser()?.name ?? '') }}
+                </div>
+              }
               <div class="hidden lg:flex flex-col text-left">
                 <span class="text-[13px] font-bold text-[#191c1e] leading-tight">
-                  Dr. Carlos Morales
+                  {{ auth.currentUser()?.name }}
                 </span>
                 <span class="text-[11px] text-[#45464d] leading-none">
-                  Medicina Interna
+                  {{ auth.currentUser()?.role === 'admin' ? 'Administrativo' : 'Médico' }}
                 </span>
               </div>
               <span class="material-symbols-outlined text-[#76777d] text-[18px]">
@@ -147,17 +154,19 @@ import { NavRoute } from '../../core/models/types';
             @if (showUserMenu()) {
               <div class="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-2xl border border-[#eceef0] p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
                 <div class="p-2 border-b border-[#eceef0] mb-1">
-                  <p class="text-[13px] font-bold text-[#191c1e]">Dr. Carlos Morales</p>
-                  <p class="text-[11px] text-[#76777d]">c.morales@clinica.cl</p>
+                  <p class="text-[13px] font-bold text-[#191c1e]">{{ auth.currentUser()?.name }}</p>
+                  <p class="text-[11px] text-[#76777d]">{{ auth.currentUser()?.email }}</p>
                 </div>
-                <button
-                  type="button"
-                  (click)="onConfigClick()"
-                  class="w-full flex items-center gap-2 p-2 rounded-lg text-[13px] text-[#191c1e] hover:bg-[#f2f4f6]"
-                >
-                  <span class="material-symbols-outlined text-[18px]">settings</span>
-                  <span>Configuración de Perfil</span>
-                </button>
+                @if (auth.isAdmin()) {
+                  <button
+                    type="button"
+                    (click)="onConfigClick()"
+                    class="w-full flex items-center gap-2 p-2 rounded-lg text-[13px] text-[#191c1e] hover:bg-[#f2f4f6]"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">settings</span>
+                    <span>Configuración del Sistema</span>
+                  </button>
+                }
                 <button
                   type="button"
                   (click)="onAgendaClick()"
@@ -166,6 +175,16 @@ import { NavRoute } from '../../core/models/types';
                   <span class="material-symbols-outlined text-[18px]">calendar_today</span>
                   <span>Mi Agenda Clínica</span>
                 </button>
+                <div class="border-t border-[#eceef0] mt-1 pt-1">
+                  <button
+                    type="button"
+                    (click)="handleLogout()"
+                    class="w-full flex items-center gap-2 p-2 rounded-lg text-[13px] text-[#ba1a1a] hover:bg-[#ffdad6]"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">logout</span>
+                    <span>Cerrar Sesión</span>
+                  </button>
+                </div>
               </div>
             }
           </div>
@@ -176,6 +195,7 @@ import { NavRoute } from '../../core/models/types';
 })
 export class HeaderComponent {
   nav = inject(NavigationService);
+  auth = inject(AuthService);
 
   searchQuery = signal('');
   showNotifications = signal(false);
@@ -213,5 +233,10 @@ export class HeaderComponent {
   onAgendaClick(): void {
     this.showUserMenu.set(false);
     this.nav.navigate('agenda-y-disponibilidad');
+  }
+
+  handleLogout(): void {
+    this.showUserMenu.set(false);
+    this.auth.logout();
   }
 }
