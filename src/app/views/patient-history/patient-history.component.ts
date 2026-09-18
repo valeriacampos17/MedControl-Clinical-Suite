@@ -23,26 +23,31 @@ import { inputValue } from '../../core/utils/form.utils';
 
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-4 border-b border-[#eceef0]">
           <div class="flex items-center gap-2 text-[13px] text-[#45464d]">
-            <span (click)="nav.navigate('dashboard-de-citas')" class="hover:text-[#006a61] cursor-pointer">Pacientes</span>
-            <span class="material-symbols-outlined text-[16px] text-[#76777d]">chevron_right</span>
+            <span (click)="nav.navigate('dashboard-de-citas')" class="hover:text-[#006a61] cursor-pointer" title="Ir al panel de citas del día">Pacientes</span>
+            <span class="material-symbols-outlined text-[16px] text-[#76777d]" aria-hidden="true">chevron_right</span>
             <span class="font-semibold text-[#191c1e]">Ficha Clínica Electrónica</span>
-            <span class="px-2 py-0.5 rounded-md bg-[#e6e8ea] text-[11px] font-mono text-[#45464d]">HCE-{{ selectedPatient().id }}</span>
+            @if (selectedPatient()) {
+              <span class="px-2 py-0.5 rounded-md bg-[#e6e8ea] text-[11px] font-mono text-[#45464d]" title="Número de expediente clínico electrónico del paciente">HCE-{{ selectedPatient()?.id }}</span>
+            }
           </div>
           <div class="flex items-center gap-2.5 flex-wrap">
-            <app-button variant="light" size="md" icon="picture_as_pdf" (click)="handleDownloadPDF()">Descargar Expediente PDF</app-button>
-            <app-button variant="light" size="md" icon="prescriptions" (click)="handleEmitRecipe()">Emitir Receta</app-button>
-            <app-button variant="light" size="md" icon="event" (click)="nav.navigate('agenda-y-disponibilidad')">Agendar Control</app-button>
-            <app-button variant="primary" size="md" icon="add" (click)="handleNewConsulta()">Nueva Consulta</app-button>
+            @if (selectedPatient()) {
+              <app-button variant="light" size="md" icon="picture_as_pdf" (click)="handleDownloadPDF()" title="Generar y descargar el expediente clínico completo en formato PDF">Descargar Expediente PDF</app-button>
+              <app-button variant="light" size="md" icon="prescriptions" (click)="handleEmitRecipe()" title="Emitir una receta médica electrónica con firma digital">Emitir Receta</app-button>
+              <app-button variant="light" size="md" icon="event" (click)="nav.navigate('agenda-y-disponibilidad')" title="Agendar una nueva cita de control para este paciente">Agendar Control</app-button>
+              <app-button variant="primary" size="md" icon="add" (click)="handleNewConsulta()" title="Iniciar una nueva consulta médica para este paciente">Nueva Consulta</app-button>
+            }
           </div>
         </div>
 
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 mb-4 border-b border-[#eceef0]">
           <div class="relative flex-1 max-w-md">
             <div class="relative">
-              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#76777d] text-[18px] pointer-events-none">search</span>
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#76777d] text-[18px] pointer-events-none" aria-hidden="true">search</span>
               <input
                 type="text"
                 placeholder="Buscar paciente por nombre o RUT..."
+                title="Buscar un paciente por nombre o RUT para seleccionarlo en la ficha clínica"
                 class="w-full pl-9 pr-3 py-2 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61] transition-colors"
                 [value]="searchPatientTerm()"
                 (input)="onSearchPatient($event)"
@@ -56,7 +61,7 @@ import { inputValue } from '../../core/utils/form.utils';
                   <button
                     type="button"
                     class="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[#f2f4f6] transition-colors first:rounded-t-xl last:rounded-b-xl"
-                    [class]="data.activePatientId() === p.id ? 'bg-[#f2f4f6]' : ''"
+                    [class]="selectedPatient()?.id === p.id ? 'bg-[#f2f4f6]' : ''"
                     (mousedown)="handleSelectPatient(p.id)"
                   >
                     <div class="w-8 h-8 rounded-lg bg-[#006a61] text-white flex items-center justify-center text-[11px] font-bold ring-1 ring-[#eceef0] shrink-0">
@@ -66,7 +71,7 @@ import { inputValue } from '../../core/utils/form.utils';
                       <span class="text-[13px] font-semibold text-[#191c1e] truncate">{{ p.name }}</span>
                       <span class="text-[11px] text-[#76777d]">CI: {{ p.ci }} · {{ p.age }} años</span>
                     </div>
-                    @if (data.activePatientId() === p.id) {
+                    @if (selectedPatient()?.id === p.id) {
                       <span class="material-symbols-outlined text-[#006a61] text-[16px] ml-auto shrink-0">check</span>
                     }
                   </button>
@@ -79,40 +84,41 @@ import { inputValue } from '../../core/utils/form.utils';
               </div>
             }
           </div>
-          <app-button variant="primary" size="md" icon="person_add" (click)="handleOpenNewPatient()">
+          <app-button variant="primary" size="md" icon="person_add" (click)="handleOpenNewPatient()" title="Abrir el formulario para registrar un nuevo paciente en el sistema">
             Nuevo Paciente
           </app-button>
         </div>
 
+        @if (selectedPatient(); as patient) {
         <section class="bg-white rounded-xl shadow-sm border border-[#e6e8ea] p-5 sm:p-6 mb-6">
           <div class="flex flex-col lg:flex-row gap-6">
             <div class="flex items-start gap-4 shrink-0">
               <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#006a61] text-white flex items-center justify-center text-[28px] sm:text-[32px] font-bold ring-2 ring-[#eceef0] shadow-sm shrink-0">
-                {{ data.getInitials(selectedPatient().name) }}
+                {{ data.getInitials(patient.name) }}
               </div>
               <div class="flex flex-col">
                 <div class="flex flex-wrap items-center gap-2 mb-1">
-                  <h1 class="text-[20px] sm:text-[24px] font-bold text-[#191c1e] tracking-tight">{{ selectedPatient().name }}</h1>
-                  <app-badge variant="teal">{{ selectedPatient().insurance }}</app-badge>
-                  <span class="px-2.5 py-0.5 rounded-full bg-[#f2f4f6] text-[#45464d] text-[11px] font-semibold">Expediente {{ selectedPatient().id }}</span>
+                  <h1 class="text-[20px] sm:text-[24px] font-bold text-[#191c1e] tracking-tight">{{ patient.name }}</h1>
+                  <app-badge variant="teal">{{ patient.insurance }}</app-badge>
+                  <span class="px-2.5 py-0.5 rounded-full bg-[#f2f4f6] text-[#45464d] text-[11px] font-semibold">Expediente {{ patient.id }}</span>
                 </div>
                 <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-[#45464d]">
-                  <span>{{ selectedPatient().age }} años ({{ selectedPatient().birthDate }})</span>
+                  <span>{{ patient.age }} años ({{ patient.birthDate }})</span>
                   <span>•</span>
-                  <span>CI: {{ selectedPatient().ci }}</span>
+                  <span>CI: {{ patient.ci }}</span>
                   <span>•</span>
-                  <span>Grupo Sanguíneo: <strong class="text-[#191c1e]">{{ selectedPatient().bloodType }}</strong></span>
+                  <span>Grupo Sanguíneo: <strong class="text-[#191c1e]">{{ patient.bloodType }}</strong></span>
                 </div>
-                @if (selectedPatient().allergies.length) {
+                @if (patient.allergies.length) {
                   <div class="mt-3 p-2.5 rounded-lg bg-[#ffdad6] border border-[#ba1a1a]/30 flex items-center gap-2 text-[#ba1a1a] text-[12px] font-semibold">
                     <span class="material-symbols-outlined text-[18px] shrink-0">warning</span>
-                    <span>ALERGIAS: {{ selectedPatient().allergies.join(' · ') }}</span>
+                    <span>ALERGIAS: {{ patient.allergies.join(' · ') }}</span>
                   </div>
                 }
-                @if (selectedPatient().chronicConditions.length) {
+                @if (patient.chronicConditions.length) {
                   <div class="flex items-center gap-2 mt-2 flex-wrap">
                     <span class="text-[11px] font-bold text-[#76777d] uppercase tracking-wider">Condiciones Crónicas:</span>
-                    @for (cond of selectedPatient().chronicConditions; track cond) {
+                    @for (cond of patient.chronicConditions; track cond) {
                       <span class="px-2 py-0.5 rounded-md bg-[#fffbeb] text-[#92400e] text-[11px] font-semibold border border-[#fde68a]">{{ cond }}</span>
                     }
                   </div>
@@ -122,20 +128,20 @@ import { inputValue } from '../../core/utils/form.utils';
             <div class="2xl:ml-auto flex flex-col justify-between pt-4 2xl:pt-0 border-t 2xl:border-t-0 2xl:border-l border-[#eceef0] 2xl:pl-6 text-[12px] text-[#45464d] gap-2 min-w-[260px]">
               <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-[#006a61] text-[18px]">call</span>
-                <span class="text-[#191c1e] font-semibold">{{ selectedPatient().phone }}</span>
+                <span class="text-[#191c1e] font-semibold">{{ patient.phone }}</span>
                 <span class="px-1.5 py-0.2 rounded bg-[#86f2e4]/40 text-[#006f66] text-[10px] font-bold">WhatsApp Verificado</span>
               </div>
               <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-[#76777d] text-[18px]">mail</span>
-                <span>{{ selectedPatient().email }}</span>
+                <span>{{ patient.email }}</span>
               </div>
               <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-[#76777d] text-[18px]">home</span>
-                <span class="truncate">{{ selectedPatient().address }}</span>
+                <span class="truncate">{{ patient.address }}</span>
               </div>
               <div class="flex items-center gap-2 pt-1 border-t border-[#eceef0]">
                 <span class="material-symbols-outlined text-[#006a61] text-[18px]">assignment_turned_in</span>
-                <span class="text-[#006a61] font-semibold">Consentimiento Informado {{ selectedPatient().consentSigned ? 'Firmado' : 'Pendiente' }}</span>
+                <span class="text-[#006a61] font-semibold">Consentimiento Informado {{ patient.consentSigned ? 'Firmado' : 'Pendiente' }}</span>
               </div>
             </div>
           </div>
@@ -260,8 +266,8 @@ import { inputValue } from '../../core/utils/form.utils';
               </div>
               <div class="flex flex-col gap-2 mb-4">
                 <span class="text-[11px] font-bold text-[#ba1a1a] uppercase tracking-wider">Alergias Medicamentosas</span>
-                @if (selectedPatient().allergies.length) {
-                  @for (allergy of selectedPatient().allergies; track allergy) {
+                @if (patient.allergies.length) {
+                  @for (allergy of patient.allergies; track allergy) {
                     <div class="p-2.5 rounded-lg bg-[#ffdad6]/40 border border-[#ba1a1a]/20 flex flex-col gap-1">
                       <span class="text-[12px] font-bold text-[#ba1a1a]">{{ allergy }}</span>
                       <span class="text-[11px] text-[#45464d]">Reacción adversa registrada. Se recomienda precaución.</span>
@@ -307,6 +313,20 @@ import { inputValue } from '../../core/utils/form.utils';
             </div>
           </div>
         </div>
+        } @else {
+          <div class="bg-white rounded-xl shadow-sm border border-[#e6e8ea] p-10 sm:p-14 text-center flex flex-col items-center">
+            <div class="w-14 h-14 rounded-2xl bg-[#86f2e4]/30 text-[#006f66] flex items-center justify-center mb-4">
+              <span class="material-symbols-outlined text-[28px]">person_search</span>
+            </div>
+            <h2 class="text-[18px] font-bold text-[#191c1e]">Selecciona un paciente</h2>
+            <p class="text-[13px] text-[#45464d] mt-1.5 max-w-sm leading-relaxed">
+              Usa el buscador para localizar la ficha clínica electrónica de un paciente. También puedes registrar un paciente nuevo con el botón "Nuevo Paciente".
+            </p>
+            <app-button variant="primary" size="md" icon="person_add" class="!mt-6" (click)="handleOpenNewPatient()" title="Abrir el formulario para registrar un nuevo paciente">
+              Registrar Nuevo Paciente
+            </app-button>
+          </div>
+        }
       </div>
       <app-modal
         [isOpen]="showNewPatientModal()"
@@ -454,7 +474,7 @@ export class PatientHistoryComponent {
   data = inject(MockDataService);
   toast = inject(ToastService);
 
-  selectedPatient = signal<Patient>(this.data.getPatient('MED-0001')!);
+  selectedPatient = signal<Patient | null>(null);
 
   medications = signal([
     { name: 'Losartán Potásico 50 mg', dose: '1 comp cada 12 horas · Vía Oral', status: 'Activo', daysLeft: '62 días restantes' },
@@ -502,7 +522,10 @@ export class PatientHistoryComponent {
   }
 
   handleSelectPatient(id: string): void {
+    const patient = this.data.getPatient(id);
+    if (!patient) return;
     this.data.selectPatient(id);
+    this.selectedPatient.set(patient);
     this.searchPatientTerm.set('');
     this.showPatientDropdown.set(false);
   }
@@ -550,13 +573,14 @@ export class PatientHistoryComponent {
       consentSigned: false,
     };
     this.data.addPatient(patient);
+    this.selectedPatient.set(patient);
     this.closeNewPatientModal();
     this.newPatientForm.set({ name: '', rut: '', age: '', birthDate: '', phone: '', email: '', insurance: '', bloodType: '', allergies: '' });
     this.toast.show('Paciente Registrado', `${patient.name} fue agregado y seleccionado en la ficha.`);
   }
 
   handleDownloadPDF(): void {
-    this.toast.show('Generando Expediente PDF', `Expediente clínico completo de ${this.selectedPatient().name} descargado con éxito.`);
+    this.toast.show('Generando Expediente PDF', `Expediente clínico completo de ${this.selectedPatient()?.name} descargado con éxito.`);
   }
 
   handleEmitRecipe(): void {
@@ -564,6 +588,6 @@ export class PatientHistoryComponent {
   }
 
   handleNewConsulta(): void {
-    this.toast.show('Nueva Consulta Iniciada', `Cargando protocolo de atención para ${this.selectedPatient().name}.`);
+    this.toast.show('Nueva Consulta Iniciada', `Cargando protocolo de atención para ${this.selectedPatient()?.name}.`);
   }
 }
