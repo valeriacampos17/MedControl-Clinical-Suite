@@ -102,6 +102,9 @@ export class MockDataService {
     { id: 'apt-14', date: addDays(todayStr(), 6), time: '08:30 AM', durationMinutes: 30, patientId: 'MED-0010', doctorId: 'doc-munoz', reason: 'Primera Consulta - Dolor Torácico', status: 'pending' },
     { id: 'apt-15', date: addDays(todayStr(), 6), time: '10:45 AM', durationMinutes: 45, patientId: 'MED-0002', doctorId: 'doc-munoz', reason: 'Stress Test / Prueba de Esfuerzo', status: 'confirmed' },
     { id: 'apt-16', date: addDays(todayStr(), 7), time: '09:30 AM', durationMinutes: 30, patientId: 'MED-0009', doctorId: 'doc-aguirre', reason: 'Control Hipertensión Resistente', status: 'pending' },
+    { id: 'apt-17', date: todayStr(), time: '09:30 AM', durationMinutes: 30, patientId: 'MED-0011', doctorId: 'doc-mawad', reason: 'Chequeo General', status: 'confirmed' },
+    { id: 'apt-18', date: todayStr(), time: '10:00 AM', durationMinutes: 30, patientId: 'MED-0006', doctorId: 'doc-munoz', reason: 'Control Diabetes Mellitus Tipo 2', status: 'pending' },
+    { id: 'apt-19', date: todayStr(), time: '10:00 AM', durationMinutes: 30, patientId: 'MED-0008', doctorId: 'doc-munoz', reason: 'Primera Consulta - Palpitaciones', status: 'pending' },
     { id: 'apt-past-1', date: addDays(todayStr(), -1), time: '09:00 AM', durationMinutes: 30, patientId: 'MED-0011', doctorId: 'doc-aguirre', reason: 'Control Cardiología Rutinario', status: 'completed' },
     { id: 'apt-past-2', date: addDays(todayStr(), -1), time: '10:30 AM', durationMinutes: 30, patientId: 'MED-0012', doctorId: 'doc-mawad', reason: 'Evaluación de Palpitaciones', status: 'no-show' },
   ]);
