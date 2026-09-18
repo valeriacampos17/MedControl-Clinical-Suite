@@ -38,7 +38,7 @@ export class ButtonComponent {
   title = input<string>('');
 
   buttonClasses(): string {
-    const base = 'inline-flex items-center justify-center font-medium transition-all duration-150 rounded-lg select-none cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed';
+    const base = 'inline-flex items-center justify-center font-medium transition-all duration-150 rounded-lg select-none cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed';
 
     const sizes: Record<string, string> = {
       sm: 'h-8 px-2.5 text-[12px] gap-1.5 leading-none',

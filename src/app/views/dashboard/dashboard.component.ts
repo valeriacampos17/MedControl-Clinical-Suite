@@ -77,12 +77,9 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                     {{ data.selectedDoctor().name }}
                   </h1>
                   <app-badge variant="teal" [dot]="true" [pulse]="true">En Consultorio (Atendiendo Citas)</app-badge>
-                  <span class="px-2.5 py-0.5 rounded-full bg-[#e6e8ea] text-[#45464d] text-[11px] font-semibold">
-                    {{ data.selectedDoctor().specialty }}
-                  </span>
                 </div>
                 <p class="text-[13px] text-[#45464d] truncate">
-                  Especialista en {{ data.selectedDoctor().specialty }} | Equipo Médico MedControl
+                  {{ doctorRoleLabel() }}
                 </p>
                 <div class="flex flex-wrap items-center gap-4 mt-2 text-[#45464d] text-[12px]">
                   <span class="flex items-center gap-1">
@@ -909,6 +906,14 @@ export class DashboardComponent {
   auth = inject(AuthService);
   toast = inject(ToastService);
 
+  doctorRoleLabel = computed(() => {
+    if (this.data.selectedDoctorId() === null) {
+      return 'Equipo Médico MedControl';
+    }
+    const doctor = this.data.selectedDoctor();
+    return `Especialista en ${doctor.specialty} | Equipo Médico MedControl`;
+  });
+
   showConsultationDrawer = signal(true);
   emergencyLock = signal(true);
   vacationMode = signal(false);
@@ -935,14 +940,17 @@ export class DashboardComponent {
   }
 
   handleOpenConsultation(): void {
+    if (this.data.selectedDoctorId() === null) return;
     this.router.navigate(['nueva-consulta']);
   }
 
   handleRegisterConsultation(): void {
+    if (this.data.selectedDoctorId() === null) return;
     this.router.navigate(['nueva-consulta']);
   }
 
   handleDeclareEmergency(): void {
+    if (this.data.selectedDoctorId() === null) return;
     this.toast.show('Alerta de Urgencia Activada', 'Notificación transmitida a Triage y Secretaría Central.');
   }
 
@@ -952,6 +960,7 @@ export class DashboardComponent {
   }
 
   handleConfirmAppointment(aptId: string, patientId: string): void {
+    if (this.data.selectedDoctorId() === null) return;
     this.data.confirmAppointment(aptId);
     this.toast.show('Cita Confirmada', `${this.data.getPatient(patientId)?.name} confirmó su asistencia.`);
   }
@@ -975,6 +984,7 @@ export class DashboardComponent {
   }
 
   handleStartConsultation(patientId: string): void {
+    if (this.data.selectedDoctorId() === null) return;
     this.data.startConsultation(patientId);
     this.showConsultationDrawer.set(true);
     this.toast.show('Consulta Iniciada', `${this.data.getPatient(patientId)?.name} pasó a consulta médica.`);
@@ -999,6 +1009,7 @@ export class DashboardComponent {
   });
 
   openReschedule(apt: AppointmentItem): void {
+    if (this.data.selectedDoctorId() === null) return;
     this.rescheduleData.set({
       appointmentId: apt.id,
       patientId: apt.patientId,
