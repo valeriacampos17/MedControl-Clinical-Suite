@@ -4,12 +4,12 @@ import { filter, map } from 'rxjs/operators';
 import { NavRoute } from '../models/types';
 
 const routeMap: Record<NavRoute, string> = {
-  'dashboard-de-citas': 'dashboard',
-  'pacientes-y-historial-clinico': 'pacientes',
-  'agenda-y-disponibilidad': 'agenda',
-  'recetas-y-examenes': 'recetas',
-  'notificaciones-y-alertas': 'alertas',
-  'configuracion-del-sistema': 'configuracion',
+  'dashboard-de-citas': 'dashboard-de-citas',
+  'pacientes-y-historial-clinico': 'pacientes-y-historial-clinico',
+  'agenda-y-disponibilidad': 'agenda-y-disponibilidad',
+  'recetas-y-examenes': 'recetas-y-examenes',
+  'notificaciones-y-alertas': 'notificaciones-y-alertas',
+  'configuracion-del-sistema': 'configuracion-del-sistema',
   'login': 'login',
 };
 
@@ -38,7 +38,7 @@ export class NavigationService {
 
   navigate(route: NavRoute): void {
     this.currentRoute.set(route);
-    const path = routeMap[route] || 'dashboard';
+    const path = routeMap[route] || 'dashboard-de-citas';
     this.router.navigate([path]);
   }
 
