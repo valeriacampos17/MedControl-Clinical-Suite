@@ -77,12 +77,9 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                     {{ data.selectedDoctor().name }}
                   </h1>
                   <app-badge variant="teal" [dot]="true" [pulse]="true">En Consultorio (Atendiendo Citas)</app-badge>
-                  <span class="px-2.5 py-0.5 rounded-full bg-[#e6e8ea] text-[#45464d] text-[11px] font-semibold">
-                    {{ data.selectedDoctor().specialty }}
-                  </span>
                 </div>
                 <p class="text-[13px] text-[#45464d] truncate">
-                  Especialista en {{ data.selectedDoctor().specialty }} | Equipo Médico MedControl
+                  {{ doctorRoleLabel() }}
                 </p>
                 <div class="flex flex-wrap items-center gap-4 mt-2 text-[#45464d] text-[12px]">
                   <span class="flex items-center gap-1">
@@ -908,6 +905,14 @@ export class DashboardComponent {
   data = inject(MockDataService);
   auth = inject(AuthService);
   toast = inject(ToastService);
+
+  doctorRoleLabel = computed(() => {
+    if (this.data.selectedDoctorId() === null) {
+      return 'Equipo Médico MedControl';
+    }
+    const doctor = this.data.selectedDoctor();
+    return `Especialista en ${doctor.specialty} | Equipo Médico MedControl`;
+  });
 
   showConsultationDrawer = signal(true);
   emergencyLock = signal(true);
