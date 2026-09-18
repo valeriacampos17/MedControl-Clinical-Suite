@@ -940,14 +940,17 @@ export class DashboardComponent {
   }
 
   handleOpenConsultation(): void {
+    if (this.data.selectedDoctorId() === null) return;
     this.router.navigate(['nueva-consulta']);
   }
 
   handleRegisterConsultation(): void {
+    if (this.data.selectedDoctorId() === null) return;
     this.router.navigate(['nueva-consulta']);
   }
 
   handleDeclareEmergency(): void {
+    if (this.data.selectedDoctorId() === null) return;
     this.toast.show('Alerta de Urgencia Activada', 'Notificación transmitida a Triage y Secretaría Central.');
   }
 
@@ -957,6 +960,7 @@ export class DashboardComponent {
   }
 
   handleConfirmAppointment(aptId: string, patientId: string): void {
+    if (this.data.selectedDoctorId() === null) return;
     this.data.confirmAppointment(aptId);
     this.toast.show('Cita Confirmada', `${this.data.getPatient(patientId)?.name} confirmó su asistencia.`);
   }
@@ -980,6 +984,7 @@ export class DashboardComponent {
   }
 
   handleStartConsultation(patientId: string): void {
+    if (this.data.selectedDoctorId() === null) return;
     this.data.startConsultation(patientId);
     this.showConsultationDrawer.set(true);
     this.toast.show('Consulta Iniciada', `${this.data.getPatient(patientId)?.name} pasó a consulta médica.`);
@@ -1004,6 +1009,7 @@ export class DashboardComponent {
   });
 
   openReschedule(apt: AppointmentItem): void {
+    if (this.data.selectedDoctorId() === null) return;
     this.rescheduleData.set({
       appointmentId: apt.id,
       patientId: apt.patientId,
