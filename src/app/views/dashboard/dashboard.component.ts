@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
+import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ButtonComponent } from '../../shared/button/button.component';
 import { BadgeComponent } from '../../shared/badge/badge.component';
@@ -19,7 +20,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
         <div class="absolute -top-40 -left-20 w-96 h-96 rounded-full bg-[#86f2e4] opacity-20 blur-3xl pointer-events-none -z-10"></div>
         <div class="absolute top-80 right-0 w-80 h-80 rounded-full bg-[#acedff] opacity-20 blur-3xl pointer-events-none -z-10"></div>
 
-        @if (data.userRole() === 'admin') {
+        @if (auth.isAdmin()) {
           <div class="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
             <span class="text-[11px] font-bold text-[#76777d] uppercase tracking-wider shrink-0">Ver médico:</span>
             <button
@@ -905,6 +906,7 @@ export class DashboardComponent {
   nav = inject(NavigationService);
   private router = inject(Router);
   data = inject(MockDataService);
+  auth = inject(AuthService);
   toast = inject(ToastService);
 
   showConsultationDrawer = signal(true);
@@ -922,6 +924,15 @@ export class DashboardComponent {
     height: null,
     notes: '',
   };
+
+  constructor() {
+    if (this.auth.isDoctor()) {
+      const doctorId = this.auth.getDoctorId();
+      if (doctorId) {
+        this.data.selectedDoctorId.set(doctorId);
+      }
+    }
+  }
 
   handleOpenConsultation(): void {
     this.router.navigate(['nueva-consulta']);

@@ -10,6 +10,7 @@ const routeMap: Record<NavRoute, string> = {
   'recetas-y-examenes': 'recetas',
   'notificaciones-y-alertas': 'alertas',
   'configuracion-del-sistema': 'configuracion',
+  'login': 'login',
 };
 
 const pathToRoute: Record<string, NavRoute> = Object.fromEntries(

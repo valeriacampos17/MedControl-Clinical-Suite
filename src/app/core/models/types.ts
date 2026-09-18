@@ -4,7 +4,19 @@ export type NavRoute =
   | 'agenda-y-disponibilidad'
   | 'recetas-y-examenes'
   | 'notificaciones-y-alertas'
-  | 'configuracion-del-sistema';
+  | 'configuracion-del-sistema'
+  | 'login';
+
+export type UserRole = 'admin' | 'doctor';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  doctorId?: string;
+  avatarUrl?: string;
+}
 
 export interface Patient {
   id: string;
