@@ -347,7 +347,7 @@ Origen: shape `commonDiagnoses` en consulta.component.ts (CIE-10).
 8. **`birthDate` sin input** en modal de alta de paciente (queda `''` con texto de respaldo).
 9. **Booking no persiste citas**: `handleConfirmBooking()` solo hace toast; no hay `createAppointment()`.
 10. **`userRole` (mock-data.service.ts:35) sin uso**: el rol real viene de `AuthService.currentUser` — eliminar o sincronizar.
-11. **Historial clínico hardcodeado**: `patient-history` no consume `consultations` (aunque `getConsultationsByPatient()` existe).
+11. **Historial clínico dinámico [RESUELTO]**: `PatientHistoryComponent` ya consume dinámicamente `consultations` vía `getConsultationsByPatient()`, desplegando la línea de tiempo multicita completa con sus signos vitales de triaje, anamnesis, examen físico, CIE-10 y plan de tratamiento registrado en `nueva-consulta`.
 12. **`VitalSigns` vs `TriageVitals`**: names inconsistentes (`temperature` vs `temp`) entre las dos vistas de signos vitales — unificar a un solo esquema.
 13. **Métodos de service sin vistas**: `toggleWorkingDay`, `setWorkingDays`, `getBusinessDays`, `completeConsultation` están definidos pero no son invocados por componentes (API inerte).
 

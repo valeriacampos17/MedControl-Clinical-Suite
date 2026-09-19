@@ -4,37 +4,33 @@ import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Consultation } from '../../core/models/types';
 import { ButtonComponent } from '../../shared/button/button.component';
+import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-timeline/clinical-history-timeline.component';
 
 @Component({
   selector: 'app-consulta',
   standalone: true,
-  imports: [ButtonComponent],
+  imports: [ButtonComponent, ClinicalHistoryTimelineComponent],
   template: `
     <div class="flex flex-col w-full">
       <div class="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-6">
         <div class="absolute -top-40 -left-20 w-96 h-96 rounded-full bg-[#86f2e4] opacity-20 blur-3xl pointer-events-none -z-10"></div>
         <div class="absolute top-80 right-0 w-80 h-80 rounded-full bg-[#acedff] opacity-20 blur-3xl pointer-events-none -z-10"></div>
 
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-4 border-b border-[#eceef0]">
-          <div class="flex items-center gap-2 text-[13px] text-[#45464d]">
-            <span (click)="goBack()" class="hover:text-[#006a61] cursor-pointer">Pacientes</span>
-            <span class="material-symbols-outlined text-[16px] text-[#76777d]">chevron_right</span>
-            <span class="font-semibold text-[#191c1e]">Nueva Consulta</span>
-            <span class="px-2 py-0.5 rounded-md bg-[#86f2e4]/40 text-[11px] font-semibold text-[#006f66]">En curso</span>
-          </div>
+        <div class="flex items-center justify-between gap-2.5 flex-wrap mb-4 pb-4 border-b border-[#eceef0]">
           <div class="flex items-center gap-2.5 flex-wrap">
             <app-button variant="light" size="md" icon="arrow_back" (click)="goBack()">Cancelar</app-button>
             <app-button variant="primary" size="md" icon="save" (click)="saveConsultation()">Guardar Consulta</app-button>
           </div>
+          <app-button variant="ghost" size="md" icon="history_edu" (click)="scrollToHistory()">Ver Historial Previo & Triaje</app-button>
         </div>
 
         <div class="bg-white rounded-xl shadow-sm border border-[#e6e8ea] p-5 sm:p-6 mb-6">
-          <div class="flex items-center gap-4">
+          <div class="flex items-center gap-4 flex-wrap sm:flex-nowrap">
             <div class="w-14 h-14 rounded-xl bg-[#006a61] text-white flex items-center justify-center text-[18px] font-bold ring-2 ring-[#eceef0] shadow-sm shrink-0">
               {{ data.getInitials(data.activePatient().name) }}
             </div>
-            <div class="flex flex-col">
-              <h1 class="text-[18px] font-bold text-[#191c1e]">{{ data.activePatient().name }}</h1>
+            <div class="flex flex-col min-w-0">
+              <h1 class="text-[18px] font-bold text-[#191c1e] truncate">{{ data.activePatient().name }}</h1>
               <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px] text-[#45464d]">
                 <span>CI: {{ data.activePatient().ci }}</span>
                 <span>•</span>
@@ -46,7 +42,7 @@ import { ButtonComponent } from '../../shared/button/button.component';
               </div>
             </div>
             @if (data.activePatient().allergies.length > 0) {
-              <div class="ml-auto px-3 py-1.5 rounded-lg bg-[#ffdad6] border border-[#ba1a1a]/30 text-[#ba1a1a] text-[11px] font-semibold flex items-center gap-1.5 shrink-0">
+              <div class="sm:ml-auto px-3 py-1.5 rounded-lg bg-[#ffdad6] border border-[#ba1a1a]/30 text-[#ba1a1a] text-[11px] font-semibold flex items-center gap-1.5 shrink-0">
                 <span class="material-symbols-outlined text-[14px]">warning</span>
                 ALERGIAS: {{ data.activePatient().allergies.join(' · ') }}
               </div>
@@ -54,7 +50,7 @@ import { ButtonComponent } from '../../shared/button/button.component';
           </div>
         </div>
 
-        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start mb-8">
           <div class="xl:col-span-7 flex flex-col gap-6">
 
             <div class="bg-white rounded-xl p-5 sm:p-6 shadow-sm border border-[#e6e8ea]">
@@ -63,8 +59,8 @@ import { ButtonComponent } from '../../shared/button/button.component';
                   <span class="material-symbols-outlined text-[20px]">monitor_heart</span>
                 </span>
                 <div>
-                  <h3 class="text-[15px] font-bold text-[#191c1e]">Signos Vitales</h3>
-                  <p class="text-[12px] text-[#45464d]">Mediciones de la consulta actual</p>
+                  <h3 class="text-[15px] font-bold text-[#191c1e]">Signos Vitales (Triaje Actual)</h3>
+                  <p class="text-[12px] text-[#45464d]">Mediciones tomadas en la consulta/triaje de hoy</p>
                 </div>
               </div>
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -182,11 +178,11 @@ import { ButtonComponent } from '../../shared/button/button.component';
                 </span>
                 <div>
                   <h3 class="text-[15px] font-bold text-[#191c1e]">Plan de Tratamiento</h3>
-                  <p class="text-[12px] text-[#45464d]">Indicaciones, medicamentos, indicaciones</p>
+                  <p class="text-[12px] text-[#45464d]">Indicaciones, medicamentos, reposo</p>
                 </div>
               </div>
               <label class="flex flex-col gap-1.5">
-                <textarea rows="5" placeholder="Medicamentos, dosis, frecuencia, indicaciones generales, reposo..." class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61] resize-none" [value]="treatmentPlan()" (input)="treatmentPlan.set(($any($event.target)).value)"></textarea>
+                <textarea rows="5" placeholder="Medicamentos, dosis, frecuencia, indicaciones generales..." class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61] resize-none" [value]="treatmentPlan()" (input)="treatmentPlan.set(($any($event.target)).value)"></textarea>
               </label>
             </div>
 
@@ -206,6 +202,17 @@ import { ButtonComponent } from '../../shared/button/button.component';
             </div>
           </div>
         </div>
+
+        <section id="previous-clinical-history" class="mt-8 pt-6 border-t border-[#eceef0]">
+          <div class="mb-4">
+            <h2 class="text-[18px] font-bold text-[#191c1e] flex items-center gap-2">
+              <span class="material-symbols-outlined text-[#006a61]">history</span>
+              <span>Historial de Atenciones Anteriores & Triaje de {{ data.activePatient().name }}</span>
+            </h2>
+            <p class="text-[13px] text-[#45464d]">Consulta las visitas previas, triajes y diagnósticos registrados antes de guardar la nueva atención.</p>
+          </div>
+          <app-clinical-history-timeline [patientId]="data.activePatient().id" [showTitle]="false" />
+        </section>
       </div>
     </div>
   `,
@@ -215,7 +222,7 @@ export class ConsultaComponent {
   data = inject(MockDataService);
   private toast = inject(ToastService);
 
-  readonly vitals = signal({ systolic: 0, diastolic: 0, pulse: 0, temperature: 0, spo2: 0, weight: 0, height: 0 });
+  readonly vitals = signal({ systolic: 120, diastolic: 80, pulse: 72, temperature: 36.6, spo2: 98, weight: 70, height: 165 });
   readonly chiefComplaint = signal('');
   readonly historyOfPresentIllness = signal('');
   readonly physicalExam = signal('');
@@ -223,6 +230,28 @@ export class ConsultaComponent {
   readonly diagnosisDescription = signal('');
   readonly treatmentPlan = signal('');
   readonly notes = signal('');
+
+  constructor() {
+    const patientId = this.data.activePatient().id;
+    const apt = this.data.appointments().find(a => a.patientId === patientId && a.vitals);
+    if (apt?.vitals) {
+      const parts = apt.vitals.bp ? apt.vitals.bp.split('/') : ['120', '80'];
+      this.vitals.set({
+        systolic: Number(parts[0]) || 120,
+        diastolic: Number(parts[1]) || 80,
+        pulse: apt.vitals.pulse || 72,
+        temperature: apt.vitals.temp || 36.6,
+        spo2: apt.vitals.spo2 || 98,
+        weight: 72,
+        height: 165,
+      });
+    } else {
+      const prevConsults = this.data.getConsultationsByPatient(patientId);
+      if (prevConsults.length > 0 && prevConsults[0].vitals) {
+        this.vitals.set({ ...prevConsults[0].vitals });
+      }
+    }
+  }
 
   readonly bmi = computed(() => {
     const v = this.vitals();
@@ -270,6 +299,13 @@ export class ConsultaComponent {
     this.diagnosisDescription.set(dx.label);
   }
 
+  scrollToHistory(): void {
+    const el = document.getElementById('previous-clinical-history');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
   goBack(): void {
     this.router.navigate(['pacientes-y-historial-clinico']);
   }
@@ -281,25 +317,32 @@ export class ConsultaComponent {
       return;
     }
     const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const formattedDate = `${day}/${month}/${year}`;
+    const formattedTime = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+
     const consultation: Consultation = {
       id: 'CONS-' + Date.now(),
       patientId: this.data.activePatient().id,
       patientName: this.data.activePatient().name,
       doctorName: this.data.doctor.name,
-      date: now.toLocaleDateString('es-CL'),
-      time: now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+      date: formattedDate,
+      time: formattedTime,
       type: 'Control',
       chiefComplaint: complaint,
       historyOfPresentIllness: this.historyOfPresentIllness(),
       physicalExam: this.physicalExam(),
       vitals: this.vitals(),
-      diagnosisCode: this.diagnosisCode(),
-      diagnosisDescription: this.diagnosisDescription(),
+      diagnosisCode: this.diagnosisCode() || 'Z00.0',
+      diagnosisDescription: this.diagnosisDescription() || 'Examen de control general',
       treatmentPlan: this.treatmentPlan(),
       notes: this.notes(),
       status: 'completed',
     };
     this.data.addConsultation(consultation);
+    this.data.completeConsultation(this.data.activePatient().id);
     this.toast.show('Consulta Guardada', `Consulta de ${consultation.patientName} registrada exitosamente.`);
     this.goBack();
   }
