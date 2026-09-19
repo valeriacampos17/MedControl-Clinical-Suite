@@ -244,7 +244,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                               {{ data.getInitials(patient?.name ?? '') }}
                             </div>
                             @if (data.selectedDoctorId() === null && doctor) {
-                              <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white object-cover shadow-sm" />
+                              <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
                             }
                           </div>
                           <div class="min-w-0">
@@ -288,7 +288,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                                 {{ data.getInitials(patient?.name ?? '') }}
                               </div>
                               @if (data.selectedDoctorId() === null && doctor) {
-                                <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white object-cover shadow-sm" />
+                                <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
                               }
                             </div>
                             <div class="min-w-0">
@@ -360,7 +360,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                                 {{ data.getInitials(patient?.name ?? '') }}
                               </div>
                               @if (data.selectedDoctorId() === null && doctor) {
-                                <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white object-cover shadow-sm" />
+                                <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
                               }
                             </div>
                             <div class="min-w-0">
@@ -427,7 +427,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                               {{ data.getInitials(patient?.name ?? '') }}
                             </div>
                             @if (data.selectedDoctorId() === null && doctor) {
-                              <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white object-cover shadow-sm" />
+                              <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
                             }
                           </div>
                           <div class="min-w-0">
@@ -472,7 +472,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                               {{ data.getInitials(patient?.name ?? '') }}
                             </div>
                             @if (data.selectedDoctorId() === null && doctor) {
-                              <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white object-cover shadow-sm" />
+                              <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
                             }
                           </div>
                           <div class="min-w-0">
@@ -537,7 +537,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                               {{ data.getInitials(patient?.name ?? '') }}
                             </div>
                             @if (data.selectedDoctorId() === null && doctor) {
-                              <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white object-cover shadow-sm" />
+                              <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
                             }
                           </div>
                           <div class="min-w-0">
