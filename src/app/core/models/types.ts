@@ -5,6 +5,7 @@ export type NavRoute =
   | 'recetas-y-examenes'
   | 'notificaciones-y-alertas'
   | 'configuracion-del-sistema'
+  | 'mantenimiento-de-catalogos'
   | 'login';
 
 export type UserRole = 'admin' | 'doctor';
@@ -154,6 +155,7 @@ export interface ExamTemplate {
   category: ExamCategory;
   fasting?: boolean;
   preparation?: string;
+  active?: boolean;
 }
 
 export interface ExamOrderItem {
@@ -203,4 +205,102 @@ export interface Prescription {
   meds: PrescriptionMedication[];
   notes: string;
   status: PrescriptionStatus;
+}
+
+export type MedicationForm =
+  | 'tableta'
+  | 'cápsula'
+  | 'jarabe'
+  | 'suspensión'
+  | 'inyectable'
+  | 'inhalador'
+  | 'crema'
+  | 'supositorio'
+  | 'gotas'
+  | 'parche';
+
+export type MedicationRoute =
+  | 'oral'
+  | 'inhalatoria'
+  | 'inyectable'
+  | 'tópica'
+  | 'sublingual'
+  | 'rectal'
+  | 'oftálmica';
+
+export interface Medication {
+  id: string;
+  name: string;
+  presentation: string;
+  pharmaceuticalForm: MedicationForm;
+  route: MedicationRoute;
+  defaultFrequency: string;
+  requiresPrescription: boolean;
+  controlled: boolean;
+  active: boolean;
+}
+
+export interface Diagnosis {
+  id: string;
+  code: string;
+  description: string;
+  active: boolean;
+}
+
+export type TriageLevelCode = 'rojo' | 'naranja' | 'amarillo' | 'verde' | 'azul';
+
+export interface TriageLevel {
+  id: string;
+  code: TriageLevelCode;
+  name: string;
+  maxWaitMinutes: number;
+  description: string;
+  color: string;
+  active: boolean;
+  order: number;
+}
+
+export type TriageRuleField = 'spo2' | 'temp' | 'pulse' | 'systolic' | 'diastolic';
+
+export interface TriageAutoRule {
+  id: string;
+  levelCode: TriageLevelCode;
+  field: TriageRuleField;
+  min: number | null;
+  max: number | null;
+}
+
+export interface OrganizationSettings {
+  id: string;
+  name: string;
+  rut: string;
+  address: string;
+  phone: string;
+  email: string;
+  footerText: string;
+  signatureName: string;
+}
+
+export type AlertCategory = 'triage' | 'receta' | 'examen' | 'cita';
+export type AlertSeverity = 'critical' | 'warning' | 'info' | 'success';
+
+export interface AlertRule {
+  id: string;
+  name: string;
+  description: string;
+  category: AlertCategory;
+  severity: AlertSeverity;
+  icon: string;
+  actionLabel: string;
+  route?: NavRoute;
+  active: boolean;
+}
+
+export interface AppUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'doctor';
+  doctorId?: string;
+  active: boolean;
 }

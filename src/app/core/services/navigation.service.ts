@@ -13,6 +13,7 @@ const routeMap: Record<NavRoute, string> = {
   'recetas-y-examenes': 'recetas-y-examenes',
   'notificaciones-y-alertas': 'notificaciones-y-alertas',
   'configuracion-del-sistema': 'configuracion-del-sistema',
+  'mantenimiento-de-catalogos': 'mantenimiento-de-catalogos',
   'login': 'login',
 };
 
@@ -27,6 +28,7 @@ const defaultBreadcrumb: Record<NavRoute, BreadcrumbSegment[]> = {
   'recetas-y-examenes': [{ label: 'Recetas & Exámenes' }],
   'notificaciones-y-alertas': [{ label: 'Notificaciones & Alertas' }],
   'configuracion-del-sistema': [{ label: 'Configuración del Sistema' }],
+  'mantenimiento-de-catalogos': [{ label: 'Mantenimiento de Catálogos' }],
   'login': [{ label: 'Login' }],
 };
 

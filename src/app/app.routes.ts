@@ -30,6 +30,12 @@ export const routes: Routes = [
     loadComponent: () => import('./views/doctor-config/doctor-config.component').then(m => m.DoctorConfigComponent),
   },
   {
+    path: 'mantenimiento-de-catalogos',
+    canActivate: [authGuard],
+    data: { breadcrumb: [{ label: 'Mantenimiento de Catálogos' }] as BreadcrumbSegment[] },
+    loadComponent: () => import('./views/configuration/configuration.component').then(m => m.ConfigurationComponent),
+  },
+  {
     path: 'recetas-y-examenes',
     canActivate: [authGuard],
     data: { breadcrumb: [{ label: 'Recetas & Exámenes' }] as BreadcrumbSegment[] },
