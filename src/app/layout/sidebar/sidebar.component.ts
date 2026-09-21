@@ -71,6 +71,26 @@ import { NavRoute } from '../../core/models/types';
       </div>
 
       <div class="flex flex-col gap-1 border-t border-[#eceef0] pt-3">
+        <nav class="flex flex-col gap-1">
+          <button
+            type="button"
+            (click)="onItemClick('mantenimiento-de-catalogos')"
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-colors text-left"
+            [class]="nav.currentRoute() === 'mantenimiento-de-catalogos'
+              ? 'bg-[#131b2e] text-white font-semibold shadow-sm'
+              : 'text-[#45464d] hover:bg-[#f2f4f6] hover:text-[#191c1e]'"
+          >
+            <span
+              class="material-symbols-outlined text-[20px] shrink-0"
+              [class]="nav.currentRoute() === 'mantenimiento-de-catalogos'
+                ? 'text-[#86f2e4]'
+                : 'text-[#76777d]'"
+            >
+              database
+            </span>
+            <span>Mantenimiento de Catálogos</span>
+          </button>
+        </nav>
         @if (auth.isAdmin()) {
           <nav class="flex flex-col gap-1">
             <button

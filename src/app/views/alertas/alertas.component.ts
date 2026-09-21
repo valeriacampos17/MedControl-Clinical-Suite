@@ -1,5 +1,6 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { NavigationService } from '../../core/services/navigation.service';
+import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ButtonComponent } from '../../shared/button/button.component';
 import { BadgeComponent } from '../../shared/badge/badge.component';
@@ -17,7 +18,7 @@ import { NavRoute } from '../../core/models/types';
           <div>
             <div class="flex items-center gap-3">
               <h1 class="text-[20px] sm:text-[22px] font-bold text-[#191c1e] tracking-tight">Centro de Notificaciones & Alertas</h1>
-              <app-badge variant="error" size="sm">2 Críticas</app-badge>
+              <app-badge variant="error" size="sm">{{ criticalCount() }} Críticas</app-badge>
             </div>
             <p class="text-[13px] text-[#45464d] mt-1">Monitoreo en tiempo real de eventos clínicos, trazabilidad y pasarelas de comunicación</p>
           </div>
@@ -25,7 +26,7 @@ import { NavRoute } from '../../core/models/types';
         </div>
 
         <div class="flex flex-col gap-3">
-          @for (al of alerts; track al.id) {
+          @for (al of alerts(); track al.id) {
             <div
               class="p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4"
               [class]="al.level === 'critical'
@@ -69,8 +70,9 @@ import { NavRoute } from '../../core/models/types';
 export class AlertasComponent {
   nav = inject(NavigationService);
   toast = inject(ToastService);
+  data = inject(MockDataService);
 
-  alerts = [
+  readonly systemAlerts = [
     {
       id: 'al-1',
       title: 'Alergia Crítica Confirmada - Paciente Juan Pérez Morales',
@@ -102,6 +104,22 @@ export class AlertasComponent {
       route: 'dashboard-de-citas' as NavRoute,
     },
   ];
+
+  readonly alerts = computed(() => {
+    const rules = this.data.getActiveAlertRules().map((r) => ({
+      id: r.id,
+      title: r.name,
+      desc: r.description || 'Regla de alerta configurada en Mantenimiento de Catálogos.',
+      time: `Regla ${r.category} · ${r.severity}`,
+      level: r.severity,
+      icon: r.icon,
+      action: r.actionLabel,
+      route: 'mantenimiento-de-catalogos' as NavRoute,
+    }));
+    return [...rules, ...this.systemAlerts];
+  });
+
+  readonly criticalCount = computed(() => this.alerts().filter((a) => a.level === 'critical').length);
 
   handleMarkAllRead(): void {
     this.toast.show('Alertas Marcadas', 'Todas las alertas han sido marcadas como leídas.');

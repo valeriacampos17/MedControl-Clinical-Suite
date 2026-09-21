@@ -2,14 +2,21 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Consultation } from '../../core/models/types';
+import { Consultation, ExamOrder, ExamTemplate, ExamOrderItem, ExamCategory, Prescription, PrescriptionMedication } from '../../core/models/types';
 import { ButtonComponent } from '../../shared/button/button.component';
 import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-timeline/clinical-history-timeline.component';
+import { ToastComponent } from '../../shared/toast/toast.component';
+
+interface FormErrors {
+  chiefComplaint?: boolean;
+  diagnosisCode?: boolean;
+  diagnosisDescription?: boolean;
+}
 
 @Component({
   selector: 'app-consulta',
   standalone: true,
-  imports: [ButtonComponent, ClinicalHistoryTimelineComponent],
+  imports: [ButtonComponent, ClinicalHistoryTimelineComponent, ToastComponent],
   template: `
     <div class="flex flex-col w-full">
       <div class="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-6">
@@ -23,6 +30,16 @@ import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-
           </div>
           <app-button variant="ghost" size="md" icon="history_edu" (click)="scrollToHistory()">Ver Historial Previo & Triaje</app-button>
         </div>
+        <button
+          type="button"
+          class="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3.5 rounded-full bg-[#006a61] text-white font-bold text-[14px] shadow-lg shadow-[#006a61]/30 hover:bg-[#00564f] active:scale-95 transition-all"
+          (click)="saveConsultation()"
+          title="Guardar la consulta desde cualquier parte"
+        >
+          <span class="material-symbols-outlined text-[20px]">save</span>
+          <span>Guardar</span>
+        </button>
+        <app-toast />
 
         <div class="bg-white rounded-xl shadow-sm border border-[#e6e8ea] p-5 sm:p-6 mb-6">
           <div class="flex items-center gap-4 flex-wrap sm:flex-nowrap">
@@ -114,8 +131,11 @@ import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-
               </div>
               <div class="flex flex-col gap-4">
                 <label class="flex flex-col gap-1.5">
-                  <span class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Motivo de Consulta *</span>
-                  <textarea rows="2" placeholder="Ej: Control de presión arterial, cefalea desde hace 3 días..." class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61] resize-none" [value]="chiefComplaint()" (input)="chiefComplaint.set(($any($event.target)).value)"></textarea>
+                  <span class="text-[11px] font-bold uppercase tracking-wider" [class.text-[#ba1a1a]]="formErrors().chiefComplaint" [class.text-[#45464d]]="!formErrors().chiefComplaint">Motivo de Consulta *</span>
+                  <textarea id="chiefComplaint" rows="2" placeholder="Ej: Control de presión arterial, cefalea desde hace 3 días..." [class]="inputClasses('chiefComplaint')" [value]="chiefComplaint()" (input)="chiefComplaint.set(($any($event.target)).value); clearError('chiefComplaint')"></textarea>
+                  @if (formErrors().chiefComplaint) {
+                    <span class="text-[11px] font-semibold text-[#ba1a1a]">Este campo es obligatorio.</span>
+                  }
                 </label>
                 <label class="flex flex-col gap-1.5">
                   <span class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Enfermedad Actual</span>
@@ -138,6 +158,174 @@ import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-
                 <textarea rows="4" placeholder="Estado general, cabeza y cuello, tórax, abdomen, extremidades, neurológico..." class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61] resize-none" [value]="physicalExam()" (input)="physicalExam.set(($any($event.target)).value)"></textarea>
               </label>
             </div>
+
+            <div class="bg-white rounded-xl p-5 sm:p-6 shadow-sm border border-[#e6e8ea]">
+              <div class="flex items-center gap-3 mb-4">
+                <span class="w-8 h-8 rounded-lg bg-[#acedff]/30 text-[#1e3a5f] flex items-center justify-center shrink-0">
+                  <span class="material-symbols-outlined text-[20px]">biotech</span>
+                </span>
+                <div class="flex-1 min-w-0">
+                  <h3 class="text-[15px] font-bold text-[#191c1e]">Órdenes de Exámenes</h3>
+                  <p class="text-[12px] text-[#45464d]">Exámenes complementarios a solicitar al paciente</p>
+                </div>
+                @if (selectedExams().length > 0) {
+                  <span class="px-2 py-1 rounded-lg bg-[#006a61]/10 text-[#006a61] text-[11px] font-bold shrink-0">{{ selectedExams().length }} seleccionado{{ selectedExams().length > 1 ? 's' : '' }}</span>
+                }
+              </div>
+
+              <div class="flex flex-col gap-3">
+                <div class="relative">
+                  <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[16px] text-[#76777d]">search</span>
+                  <input type="text" placeholder="Buscar examen..." class="w-full pl-9 pr-3 py-2 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]" [value]="examSearch()" (input)="examSearch.set(($any($event.target)).value)" />
+                </div>
+
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  @for (cat of examCategories; track cat.id) {
+                    <button type="button" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all border flex items-center gap-1"
+                            [class]="examCategory() === cat.id ? 'bg-[#006a61] text-white border-[#006a61] shadow-xs' : 'bg-[#f2f4f6] border-[#e0e3e5] text-[#45464d] hover:bg-[#e6e8ea]'"
+                            (click)="setExamCategory(cat.id)">
+                      <span class="material-symbols-outlined text-[14px]">{{ cat.icon }}</span>
+                      {{ cat.label }}
+                    </button>
+                  }
+                </div>
+
+                <div class="border border-[#eceef0] rounded-xl overflow-hidden">
+                  <div class="max-h-52 overflow-y-auto divide-y divide-[#f2f4f6]">
+                    @for (exam of filteredExamCatalog(); track exam.id) {
+                      <div class="flex items-center justify-between gap-3 px-3 py-2 hover:bg-[#f8fafc]">
+                        <div class="flex flex-col min-w-0">
+                          <span class="text-[13px] font-semibold text-[#191c1e]">{{ exam.name }}</span>
+                          @if (exam.fasting || exam.preparation) {
+                            <span class="text-[11px] text-[#76777d]">{{ exam.fasting ? 'Ayunas · ' : '' }}{{ exam.preparation }}</span>
+                          }
+                        </div>
+                        <button type="button" class="shrink-0 w-7 h-7 rounded-lg bg-[#006a61]/10 text-[#006a61] flex items-center justify-center hover:bg-[#006a61] hover:text-white transition-colors"
+                                (click)="addExam(exam)"
+                                [class]="isExamSelected(exam.id) ? 'opacity-40 pointer-events-none bg-[#f2f4f6] text-[#76777d]' : ''">
+                          <span class="material-symbols-outlined text-[16px]">{{ isExamSelected(exam.id) ? 'check' : 'add' }}</span>
+                        </button>
+                      </div>
+                    } @empty {
+                      <p class="text-center text-[12px] text-[#76777d] py-6">Sin resultados para "{{ examSearch() }}"</p>
+                    }
+                  </div>
+                </div>
+
+                @if (selectedExams().length > 0) {
+                  <div class="flex flex-col gap-2">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Exámenes seleccionados</span>
+                      <button type="button" class="text-[11px] font-semibold text-[#ba1a1a] hover:underline" (click)="clearExams()">Limpiar todo</button>
+                    </div>
+                    @for (item of selectedExams(); track item.examId) {
+                      <div class="flex items-center justify-between gap-3 p-3 rounded-xl border border-[#006a61]/25 bg-[#006a61]/5">
+                        <div class="flex flex-col gap-1 min-w-0 flex-1">
+                          <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-[13px] font-bold text-[#191c1e]">{{ item.name }}</span>
+                            <span class="px-1.5 py-0.5 rounded bg-[#acedff]/40 text-[#004e5c] text-[10px] font-semibold uppercase">{{ categoryLabel(item.category) }}</span>
+                          </div>
+                          <div class="flex items-center gap-2 flex-wrap">
+                            <label class="flex items-center gap-1.5 cursor-pointer select-none">
+                              <input type="checkbox" class="accent-[#006a61]" [checked]="item.fasting" (change)="toggleFasting(item.examId)" />
+                              <span class="text-[11px] text-[#45464d]">Ayunas</span>
+                            </label>
+                            <input type="text" placeholder="Preparación / indicaciones" class="flex-1 min-w-[140px] px-2 py-1 rounded-lg border border-[#d7d9dc] bg-white text-[12px] text-[#191c1e] focus:outline-none focus:ring-1 focus:ring-[#006a61]" [value]="item.preparation" (input)="updatePreparation(item.examId, $event)" />
+                          </div>
+                        </div>
+                        <button type="button" class="shrink-0 w-7 h-7 rounded-lg bg-[#ffdad6]/60 text-[#ba1a1a] flex items-center justify-center hover:bg-[#ffdad6] transition-colors" (click)="removeExam(item.examId)">
+                          <span class="material-symbols-outlined text-[15px]">close</span>
+                        </button>
+                      </div>
+                    }
+                    <div class="flex flex-col sm:flex-row gap-2 mt-1">
+                      <label class="flex flex-col gap-1 sm:w-1/2">
+                        <span class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Prioridad</span>
+                        <select class="px-3 py-2 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]" [value]="examPriority()" (change)="examPriority.set(($any($event.target)).value)">
+                          <option value="rutina">Rutina</option>
+                          <option value="urgencia">Urgencia</option>
+                        </select>
+                      </label>
+                      <label class="flex flex-col gap-1 flex-1">
+                        <span class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Notas de la orden</span>
+                        <input type="text" placeholder="Ej: Repetir perfil lipídico en 3 meses..." class="px-3 py-2 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]" [value]="examNotes()" (input)="examNotes.set(($any($event.target)).value)" />
+                      </label>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="bg-white rounded-xl p-5 sm:p-6 shadow-sm border border-[#e6e8ea]">
+              <div class="flex items-center gap-3 mb-4">
+                <span class="w-8 h-8 rounded-lg bg-[#ecfdf5] text-[#065f46] flex items-center justify-center shrink-0">
+                  <span class="material-symbols-outlined text-[20px]">prescriptions</span>
+                </span>
+                <div class="flex-1 min-w-0">
+                  <h3 class="text-[15px] font-bold text-[#191c1e]">Recetas Médicas</h3>
+                  <p class="text-[12px] text-[#45464d]">Medicamentos a prescribir al paciente</p>
+                </div>
+                @if (recipeMeds().length > 0) {
+                  <span class="px-2 py-1 rounded-lg bg-[#065f46]/10 text-[#065f46] text-[11px] font-bold shrink-0">{{ recipeMeds().length }} medicamento{{ recipeMeds().length > 1 ? 's' : '' }}</span>
+                }
+              </div>
+
+              <div class="flex flex-col gap-2.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Listado de medicamentos</span>
+                  <button type="button" class="text-[11px] font-semibold text-[#065f46] hover:underline flex items-center gap-0.5" (click)="addMedicationRow()">
+                    <span class="material-symbols-outlined text-[14px]">add</span> Agregar
+                  </button>
+                </div>
+
+                @for (med of recipeMeds(); track med.id; let rIndex = $index) {
+                  <div class="p-3 rounded-xl border border-[#e0e3e5] bg-white flex flex-col gap-2">
+                    <div class="flex items-center gap-2">
+                      <span class="w-6 h-6 rounded-lg bg-[#065f46]/10 text-[#065f46] flex items-center justify-center text-[11px] font-bold shrink-0">{{ rIndex + 1 }}</span>
+                      <input
+                        type="text"
+                        list="consulta-medication-suggestions"
+                        placeholder="Nombre del medicamento *"
+                        class="flex-1 px-3 py-2 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#065f46]/30 focus:border-[#065f46]"
+                        [value]="med.name"
+                        (input)="updateMedicationRow(rIndex, 'name', $event)"
+                      />
+                      <button
+                        type="button"
+                        class="shrink-0 w-7 h-7 rounded-lg bg-[#ffdad6]/60 text-[#ba1a1a] flex items-center justify-center hover:bg-[#ffdad6] transition-colors"
+                        [disabled]="recipeMeds().length === 1"
+                        [class]="recipeMeds().length === 1 ? 'opacity-40 pointer-events-none' : ''"
+                        (click)="removeMedicationRow(rIndex)"
+                        title="Quitar medicamento"
+                      >
+                        <span class="material-symbols-outlined text-[15px]">close</span>
+                      </button>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <input type="text" placeholder="Dosis / Presentación" class="px-2.5 py-1.5 rounded-lg border border-[#d7d9dc] bg-white text-[12x] text-[#191c1e] focus:outline-none focus:ring-1 focus:ring-[#065f46]" [value]="med.dose" (input)="updateMedicationRow(rIndex, 'dose', $event)" />
+                      <input type="text" placeholder="Frecuencia (ej: cada 12 h)" class="px-2.5 py-1.5 rounded-lg border border-[#d7d9dc] bg-white text-[12px] text-[#191c1e] focus:outline-none focus:ring-1 focus:ring-[#065f46]" [value]="med.frequency" (input)="updateMedicationRow(rIndex, 'frequency', $event)" />
+                      <input type="text" placeholder="Duración (ej: 30 días)" class="px-2.5 py-1.5 rounded-lg border border-[#d7d9dc] bg-white text-[12px] text-[#191c1e] focus:outline-none focus:ring-1 focus:ring-[#065f46]" [value]="med.duration" (input)="updateMedicationRow(rIndex, 'duration', $event)" />
+                    </div>
+                  </div>
+                }
+
+                <datalist id="consulta-medication-suggestions">
+                  @for (m of medicationCatalog(); track m) {
+                    <option [value]="m"></option>
+                  }
+                </datalist>
+
+                @if (recipeMeds().length > 0) {
+                  <div class="flex items-center gap-2 mt-1">
+                    <label class="flex flex-col gap-1 flex-1">
+                      <span class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Indicaciones Generales</span>
+                      <input type="text" placeholder="Ej: Tomar con alimentos, evitar alcohol..." class="px-3 py-2 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#065f46]/30 focus:border-[#065f46]" [value]="recipeNotes()" (input)="recipeNotes.set(($any($event.target)).value)" />
+                    </label>
+                    <button type="button" class="self-end text-[11px] font-semibold text-[#ba1a1a] hover:underline" (click)="clearRecipeRows()">Limpiar</button>
+                  </div>
+                }
+              </div>
+            </div>
           </div>
 
           <div class="xl:col-span-5 flex flex-col gap-6">
@@ -154,15 +342,21 @@ import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-
               </div>
               <div class="flex flex-col gap-3">
                 <label class="flex flex-col gap-1.5">
-                  <span class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Código CIE-10</span>
-                  <input type="text" placeholder="Ej: I10" class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]" [value]="diagnosisCode()" (input)="diagnosisCode.set(($any($event.target)).value)" />
+                  <span class="text-[11px] font-bold uppercase tracking-wider" [class.text-[#ba1a1a]]="formErrors().diagnosisCode" [class.text-[#45464d]]="!formErrors().diagnosisCode">Código CIE-10</span>
+                  <input id="diagnosisCode" type="text" placeholder="Ej: I10" [class]="inputClasses('diagnosisCode')" [value]="diagnosisCode()" (input)="diagnosisCode.set(($any($event.target)).value); clearError('diagnosisCode')" />
+                  @if (formErrors().diagnosisCode) {
+                    <span class="text-[11px] font-semibold text-[#ba1a1a]">Ingrese el código de diagnóstico.</span>
+                  }
                 </label>
                 <label class="flex flex-col gap-1.5">
-                  <span class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Descripción del Diagnóstico</span>
-                  <input type="text" placeholder="Ej: Hipertensión arterial esencial" class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]" [value]="diagnosisDescription()" (input)="diagnosisDescription.set(($any($event.target)).value)" />
+                  <span class="text-[11px] font-bold uppercase tracking-wider" [class.text-[#ba1a1a]]="formErrors().diagnosisDescription" [class.text-[#45464d]]="!formErrors().diagnosisDescription">Descripción del Diagnóstico</span>
+                  <input id="diagnosisDescription" type="text" placeholder="Ej: Hipertensión arterial esencial" [class]="inputClasses('diagnosisDescription')" [value]="diagnosisDescription()" (input)="diagnosisDescription.set(($any($event.target)).value); clearError('diagnosisDescription')" />
+                  @if (formErrors().diagnosisDescription) {
+                    <span class="text-[11px] font-semibold text-[#ba1a1a]">Ingrese la descripción del diagnóstico.</span>
+                  }
                 </label>
                 <div class="flex flex-wrap gap-2">
-                  @for (dx of commonDiagnoses; track dx.code) {
+                  @for (dx of commonDiagnoses(); track dx.code) {
                     <button type="button" class="px-2.5 py-1 rounded-lg bg-[#f2f4f6] text-[#45464d] text-[11px] font-semibold border border-[#e0e3e5] hover:bg-[#e6e8ea] hover:text-[#191c1e] transition-colors" (click)="applyDiagnosis(dx)">
                       {{ dx.code }} — {{ dx.label }}
                     </button>
@@ -231,6 +425,45 @@ export class ConsultaComponent {
   readonly treatmentPlan = signal('');
   readonly notes = signal('');
 
+  readonly formErrors = signal<FormErrors>({});
+
+  readonly examSearch = signal('');
+  readonly examCategory = signal<'all' | ExamCategory>('all');
+  readonly examPriority = signal<'rutina' | 'urgencia'>('rutina');
+  readonly examNotes = signal('');
+  readonly selectedExams = signal<ExamOrderItem[]>([]);
+
+  readonly recipeMeds = signal<PrescriptionMedication[]>([
+    { id: 'med-init', name: '', dose: '', frequency: '', duration: '' },
+  ]);
+  readonly recipeNotes = signal('');
+  readonly medicationCatalog = computed(() => this.data.medicationCatalog());
+
+  readonly examCategories: { id: 'all' | ExamCategory; label: string; icon: string }[] = [
+    { id: 'all', label: 'Todos', icon: 'apps' },
+    { id: 'laboratorio', label: 'Laboratorio', icon: 'science' },
+    { id: 'imagen', label: 'Imágenes', icon: 'image_search' },
+    { id: 'funcional', label: 'Funcionales', icon: 'monitor_heart' },
+    { id: 'procedimiento', label: 'Procedimientos', icon: 'surgical' },
+  ];
+
+  readonly categoryLabels: Record<ExamCategory, string> = {
+    laboratorio: 'Laboratorio',
+    imagen: 'Imagen',
+    funcional: 'Funcional',
+    procedimiento: 'Procedimiento',
+  };
+
+  readonly filteredExamCatalog = computed(() => {
+    const term = this.examSearch().toLowerCase().trim();
+    const cat = this.examCategory();
+    return this.data.examCatalog().filter((exam) => {
+      const matchesCategory = cat === 'all' || exam.category === cat;
+      const matchesTerm = term === '' || exam.name.toLowerCase().includes(term);
+      return matchesCategory && matchesTerm;
+    });
+  });
+
   constructor() {
     const patientId = this.data.activePatient().id;
     const apt = this.data.appointments().find(a => a.patientId === patientId && a.vitals);
@@ -278,16 +511,13 @@ export class ConsultaComponent {
     return 'bg-[#ffdad6] text-[#ba1a1a]';
   });
 
-  readonly commonDiagnoses = [
-    { code: 'I10', label: 'Hipertensión esencial' },
-    { code: 'E11', label: 'Diabetes mellitus tipo 2' },
-    { code: 'E78', label: 'Dislipidemia' },
-    { code: 'J06', label: 'Infección aguda vías respiratorias' },
-    { code: 'M54', label: 'Dolor de espalda' },
-    { code: 'K21', label: 'ERGE' },
-    { code: 'F41', label: 'Trastorno de ansiedad' },
-    { code: 'N39', label: 'Infección urinaria' },
-  ];
+  readonly commonDiagnoses = computed(() =>
+    this.data
+      .getDiagnoses()
+      .filter((d) => d.active)
+      .slice(0, 8)
+      .map((d) => ({ code: d.code, label: d.description }))
+  );
 
   updateVital(field: string, event: Event): void {
     const value = Number((event.target as HTMLInputElement).value);
@@ -297,6 +527,85 @@ export class ConsultaComponent {
   applyDiagnosis(dx: { code: string; label: string }): void {
     this.diagnosisCode.set(dx.code);
     this.diagnosisDescription.set(dx.label);
+  }
+
+  clearError(field: keyof FormErrors): void {
+    this.formErrors.update((errs) => ({ ...errs, [field]: false }));
+  }
+
+  inputClasses(field: keyof FormErrors): string {
+    return this.formErrors()[field]
+      ? 'px-3.5 py-2.5 rounded-lg border border-[#ba1a1a] bg-[#fff5f5] text-[13px] text-[#191c1e] resize-none focus:outline-none focus:ring-2 focus:ring-[#ba1a1a]/30'
+      : 'px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] resize-none focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]';
+  }
+
+  setExamCategory(cat: 'all' | ExamCategory): void {
+    this.examCategory.set(cat);
+  }
+
+  addExam(exam: ExamTemplate): void {
+    if (this.isExamSelected(exam.id)) return;
+    this.selectedExams.update((items) => [
+      ...items,
+      {
+        examId: exam.id,
+        name: exam.name,
+        category: exam.category,
+        fasting: exam.fasting ?? false,
+        preparation: exam.preparation ?? '',
+      },
+    ]);
+  }
+
+  removeExam(examId: string): void {
+    this.selectedExams.update((items) => items.filter((item) => item.examId !== examId));
+  }
+
+  clearExams(): void {
+    this.selectedExams.set([]);
+  }
+
+  isExamSelected(examId: string): boolean {
+    return this.selectedExams().some((item) => item.examId === examId);
+  }
+
+  toggleFasting(examId: string): void {
+    this.selectedExams.update((items) =>
+      items.map((item) => item.examId === examId ? { ...item, fasting: !item.fasting } : item)
+    );
+  }
+
+  updatePreparation(examId: string, event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.selectedExams.update((items) =>
+      items.map((item) => item.examId === examId ? { ...item, preparation: value } : item)
+    );
+  }
+
+  categoryLabel(category: ExamCategory): string {
+    return this.categoryLabels[category] ?? category;
+  }
+
+  addMedicationRow(): void {
+    this.recipeMeds.update((meds) => [
+      ...meds,
+      { id: 'med-' + Date.now() + '-' + meds.length, name: '', dose: '', frequency: '', duration: '' },
+    ]);
+  }
+
+  removeMedicationRow(index: number): void {
+    if (this.recipeMeds().length <= 1) return;
+    this.recipeMeds.update((meds) => meds.filter((_, i) => i !== index));
+  }
+
+  updateMedicationRow(index: number, field: 'name' | 'dose' | 'frequency' | 'duration', event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.recipeMeds.update((meds) => meds.map((med, i) => (i === index ? { ...med, [field]: value } : med)));
+  }
+
+  clearRecipeRows(): void {
+    this.recipeMeds.set([{ id: 'med-init', name: '', dose: '', frequency: '', duration: '' }]);
+    this.recipeNotes.set('');
   }
 
   scrollToHistory(): void {
@@ -311,11 +620,24 @@ export class ConsultaComponent {
   }
 
   saveConsultation(): void {
-    const complaint = this.chiefComplaint().trim();
-    if (!complaint) {
-      this.toast.show('Faltan Datos', 'Ingrese el motivo de consulta para guardar.');
-      return;
-    }
+    try {
+      const complaint = this.chiefComplaint().trim();
+      const diagnosisCode = this.diagnosisCode().trim();
+      const diagnosisDescription = this.diagnosisDescription().trim();
+
+      this.formErrors.set({
+        chiefComplaint: !complaint,
+        diagnosisCode: !diagnosisCode,
+        diagnosisDescription: !diagnosisDescription,
+      });
+
+      if (!complaint || !diagnosisCode || !diagnosisDescription) {
+        const firstField = !complaint ? 'chiefComplaint' : !diagnosisCode ? 'diagnosisCode' : 'diagnosisDescription';
+        this.toast.show('Faltan Datos', 'Complete los campos resaltados en rojo antes de guardar.');
+        document.getElementById(firstField)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        (<HTMLInputElement | null>document.getElementById(firstField))?.focus();
+        return;
+      }
     const now = new Date();
     const day = String(now.getDate()).padStart(2, '0');
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -342,8 +664,49 @@ export class ConsultaComponent {
       status: 'completed',
     };
     this.data.addConsultation(consultation);
+
+    const selected = this.selectedExams();
+    if (selected.length > 0) {
+      const examOrder: ExamOrder = {
+        id: 'ORD-' + Date.now(),
+        consultationId: consultation.id,
+        patientId: consultation.patientId,
+        patientName: consultation.patientName,
+        doctorName: consultation.doctorName,
+        date: consultation.date,
+        time: consultation.time,
+        priority: this.examPriority(),
+        notes: this.examNotes(),
+        items: selected,
+        status: 'pending',
+      };
+      this.data.addExamOrder(examOrder);
+    }
+
+    const meds = this.recipeMeds().filter((m) => m.name.trim() !== '');
+    if (meds.length > 0) {
+      const prescription: Prescription = {
+        id: 'RX-' + Date.now(),
+        consultationId: consultation.id,
+        patientId: consultation.patientId,
+        patientName: consultation.patientName,
+        ci: this.data.activePatient().ci,
+        doctorName: consultation.doctorName,
+        date: consultation.date,
+        time: consultation.time,
+        meds: meds.map((m) => ({ ...m })),
+        notes: this.recipeNotes(),
+        status: 'Emitida Hoy',
+      };
+      this.data.addPrescription(prescription);
+    }
+
     this.data.completeConsultation(this.data.activePatient().id);
-    this.toast.show('Consulta Guardada', `Consulta de ${consultation.patientName} registrada exitosamente.`);
-    this.goBack();
+      this.toast.show('Consulta Guardada', `Consulta de ${consultation.patientName} registrada exitosamente.`);
+      this.goBack();
+    } catch (error) {
+      console.error('Error al guardar la consulta:', error);
+      this.toast.show('Error al Guardar', 'Ocurrió un error inesperado al registrar la consulta. Revise la consola del navegador.');
+    }
   }
 }

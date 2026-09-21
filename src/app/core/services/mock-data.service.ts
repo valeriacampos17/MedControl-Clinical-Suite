@@ -1,4 +1,4 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, WritableSignal } from '@angular/core';
 import {
   Patient,
   Doctor,
@@ -8,6 +8,16 @@ import {
   Consultation,
   TriageVitals,
   WorkingDay,
+  ExamTemplate,
+  ExamOrder,
+  Prescription,
+  Medication,
+  Diagnosis,
+  TriageLevel,
+  TriageAutoRule,
+  OrganizationSettings,
+  AlertRule,
+  AppUser,
 } from '../models/types';
 
 export interface DoctorSummary {
@@ -33,6 +43,24 @@ function addDays(dateStr: string, n: number): string {
 @Injectable({ providedIn: 'root' })
 export class MockDataService {
   readonly userRole = signal<'admin' | 'doctor'>('admin');
+
+  private storage<T>(key: string, seed: T): WritableSignal<T> {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) return signal<T>(JSON.parse(raw) as T);
+    } catch {
+      /* seed fallback */
+    }
+    return signal<T>(seed);
+  }
+
+  private persist(key: string, value: unknown): void {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      /* storage no disponible */
+    }
+  }
 
   readonly doctors = signal<DoctorSummary[]>([
     { id: 'doc-aguirre', name: 'Dra. Noemí Aguirre', shortName: 'Dra. Aguirre', specialty: 'Medicina General', activeToday: true, avatarUrl: 'assets/images/doctors/doctor-aguirre.jpeg' },
@@ -467,5 +495,324 @@ export class MockDataService {
 
   getConsultationsByPatient(patientId: string): Consultation[] {
     return this.consultations().filter((c) => c.patientId === patientId);
+  }
+
+  readonly examCatalog = this.storage<ExamTemplate[]>('medcontrol.exams', [
+    { id: 'EX-LAB-01', name: 'Hemograma completo', category: 'laboratorio', fasting: false, preparation: 'Sin ayunas requerido' },
+    { id: 'EX-LAB-02', name: 'Perfil lipídico (Colesterol Total, HDL, LDL, Triglicéridos)', category: 'laboratorio', fasting: true, preparation: 'Ayuno de 12 horas' },
+    { id: 'EX-LAB-03', name: 'Glicemia en ayunas', category: 'laboratorio', fasting: true, preparation: 'Ayuno de 8 horas' },
+    { id: 'EX-LAB-04', name: 'Hemoglobina Glicosilada (HbA1c)', category: 'laboratorio', fasting: false, preparation: 'Sin ayunas requerido' },
+    { id: 'EX-LAB-05', name: 'Creatinina y BUN (Función renal)', category: 'laboratorio', fasting: false, preparation: 'Sin ayunas requerido' },
+    { id: 'EX-LAB-06', name: 'Perfil hepático (TGO, TGP, Bilirrubinas, FA)', category: 'laboratorio', fasting: true, preparation: 'Ayuno de 8 horas' },
+    { id: 'EX-LAB-07', name: 'TSH y T4 libre', category: 'laboratorio', fasting: false, preparation: 'Sin ayunas requerido' },
+    { id: 'EX-LAB-08', name: 'Urocultivo con antibiograma', category: 'laboratorio', fasting: false, preparation: 'Recoger primera orina de la mañana' },
+    { id: 'EX-LAB-09', name: 'Electrolitos (Na, K, Cl, Ca)', category: 'laboratorio', fasting: false, preparation: 'Sin ayunas requerido' },
+    { id: 'EX-LAB-10', name: 'PCR y VSG', category: 'laboratorio', fasting: false, preparation: 'Sin ayunas requerido' },
+    { id: 'EX-IMG-01', name: 'Radiografía de tórax (AP y Lateral)', category: 'imagen', fasting: false, preparation: 'Retirar objetos metálicos de la zona' },
+    { id: 'EX-IMG-02', name: 'Ecocardiograma transtorácico (TTE)', category: 'imagen', fasting: false, preparation: 'Sin ayunas requerido' },
+    { id: 'EX-IMG-03', name: 'TAC cerebral simple', category: 'imagen', fasting: false, preparation: 'Retirar objetos metálicos' },
+    { id: 'EX-IMG-04', name: 'TAC de tórax con contraste', category: 'imagen', fasting: true, preparation: 'Ayuno de 4 horas y función renal previa' },
+    { id: 'EX-IMG-05', name: 'Ecografía abdominal total', category: 'imagen', fasting: true, preparation: 'Ayuno de 8 horas' },
+    { id: 'EX-IMG-06', name: 'Ecografía renal y vías urinarias', category: 'imagen', fasting: false, preparation: 'Llenado vesical (tomar 1L de agua 1h antes)' },
+    { id: 'EX-FUN-01', name: 'Electrocardiograma (ECG) de 12 derivaciones', category: 'funcional', fasting: false, preparation: 'Sin ayunas requerido' },
+    { id: 'EX-FUN-02', name: 'Holter de ritmo de 24 horas', category: 'funcional', fasting: false, preparation: 'Ducha previa sin cremas ni talco' },
+    { id: 'EX-FUN-03', name: 'Prueba de esfuerzo (Stress Test)', category: 'funcional', fasting: false, preparation: 'Ropa cómoda, evitar café 4h antes' },
+    { id: 'EX-FUN-04', name: 'Espirometría', category: 'funcional', fasting: false, preparation: 'Evitar broncodilatadores 6h antes' },
+    { id: 'EX-PROC-01', name: 'Endoscopía digestiva alta', category: 'procedimiento', fasting: true, preparation: 'Ayuno absoluto de 8 horas' },
+    { id: 'EX-PROC-02', name: 'Colonoscopía', category: 'procedimiento', fasting: true, preparation: 'Dieta líquida y evacuantes el día previo' },
+  ]);
+
+  getExams(): ExamTemplate[] {
+    return this.examCatalog();
+  }
+
+  addExam(exam: ExamTemplate): void {
+    this.examCatalog.update((list) => [...list, exam]);
+    this.persist('medcontrol.exams', this.examCatalog());
+  }
+
+  updateExam(exam: ExamTemplate): void {
+    this.examCatalog.update((list) => list.map((e) => (e.id === exam.id ? {...exam} : e)));
+    this.persist('medcontrol.exams', this.examCatalog());
+  }
+
+  deactivateExam(id: string): void {
+    this.examCatalog.update((list) => list.filter((e) => e.id !== id));
+    this.persist('medcontrol.exams', this.examCatalog());
+  }
+
+  readonly examOrders = signal<ExamOrder[]>([]);
+
+  addExamOrder(order: ExamOrder): void {
+    this.examOrders.update((list) => [order, ...list]);
+  }
+
+  getExamOrders(): ExamOrder[] {
+    return this.examOrders();
+  }
+
+  getExamOrdersByPatient(patientId: string): ExamOrder[] {
+    return this.examOrders().filter((order) => order.patientId === patientId);
+  }
+
+  getExamOrdersByConsultation(consultationId: string): ExamOrder[] {
+    return this.examOrders().filter((order) => order.consultationId === consultationId);
+  }
+
+  readonly medications = this.storage<Medication[]>('medcontrol.medications', [
+    { id: 'MED-001', name: 'Losartán Potásico', presentation: '50 mg', pharmaceuticalForm: 'tableta', route: 'oral', defaultFrequency: '1 tableta cada 24 h (en la mañana)', requiresPrescription: true, controlled: false, active: true },
+    { id: 'MED-002', name: 'Atorvastatina', presentation: '20 mg', pharmaceuticalForm: 'tableta', route: 'oral', defaultFrequency: '1 tableta cada 24 h (en la noche)', requiresPrescription: true, controlled: false, active: true },
+    { id: 'MED-003', name: 'Enalapril', presentation: '10 mg', pharmaceuticalForm: 'tableta', route: 'oral', defaultFrequency: '1 tableta cada 12 h', requiresPrescription: true, controlled: false, active: true },
+    { id: 'MED-004', name: 'Ácido Acetilsalicílico', presentation: '100 mg', pharmaceuticalForm: 'tableta', route: 'oral', defaultFrequency: '1 tableta al día', requiresPrescription: false, controlled: false, active: true },
+    { id: 'MED-005', name: 'Metformina', presentation: '850 mg', pharmaceuticalForm: 'tableta', route: 'oral', defaultFrequency: '1 tableta cada 12 h con alimentos', requiresPrescription: true, controlled: false, active: true },
+    { id: 'MED-006', name: 'Amlodipino', presentation: '5 mg', pharmaceuticalForm: 'tableta', route: 'oral', defaultFrequency: '1 tableta cada 24 h', requiresPrescription: true, controlled: false, active: true },
+    { id: 'MED-007', name: 'Bisoprolol', presentation: '2.5 mg', pharmaceuticalForm: 'tableta', route: 'oral', defaultFrequency: '1 tableta cada 24 h', requiresPrescription: true, controlled: false, active: true },
+    { id: 'MED-008', name: 'Omeprazol', presentation: '20 mg', pharmaceuticalForm: 'cápsula', route: 'oral', defaultFrequency: '1 cápsula en ayunas cada 24 h', requiresPrescription: false, controlled: false, active: true },
+    { id: 'MED-009', name: 'Ibuprofeno', presentation: '400 mg', pharmaceuticalForm: 'tableta', route: 'oral', defaultFrequency: '1 tableta cada 8 h con alimentos', requiresPrescription: false, controlled: false, active: true },
+    { id: 'MED-010', name: 'Paracetamol', presentation: '500 mg', pharmaceuticalForm: 'tableta', route: 'oral', defaultFrequency: '1 tableta cada 6-8 h si dolor o fiebre', requiresPrescription: false, controlled: false, active: true },
+    { id: 'MED-011', name: 'Levotiroxina', presentation: '100 mcg', pharmaceuticalForm: 'tableta', route: 'oral', defaultFrequency: '1 tableta en ayunas 30 min antes del desayuno', requiresPrescription: true, controlled: false, active: true },
+    { id: 'MED-012', name: 'Sertralina', presentation: '50 mg', pharmaceuticalForm: 'tableta', route: 'oral', defaultFrequency: '1 tableta cada 24 h', requiresPrescription: true, controlled: false, active: true },
+    { id: 'MED-013', name: 'Amoxicilina', presentation: '500 mg', pharmaceuticalForm: 'cápsula', route: 'oral', defaultFrequency: '1 cápsula cada 8 h por 7 días', requiresPrescription: true, controlled: false, active: true },
+    { id: 'MED-014', name: 'Azitromicina', presentation: '500 mg', pharmaceuticalForm: 'tableta', route: 'oral', defaultFrequency: '1 tableta cada 24 h por 3-5 días', requiresPrescription: true, controlled: false, active: true },
+    { id: 'MED-015', name: 'Clopidogrel', presentation: '75 mg', pharmaceuticalForm: 'tableta', route: 'oral', defaultFrequency: '1 tableta cada 24 h', requiresPrescription: true, controlled: false, active: true },
+    { id: 'MED-016', name: 'Furosemida', presentation: '40 mg', pharmaceuticalForm: 'tableta', route: 'oral', defaultFrequency: '1 tableta por la mañana', requiresPrescription: true, controlled: false, active: true },
+    { id: 'MED-017', name: 'Prednisona', presentation: '5 mg', pharmaceuticalForm: 'tableta', route: 'oral', defaultFrequency: 'Según esquema médico indicado', requiresPrescription: true, controlled: false, active: true },
+    { id: 'MED-018', name: 'Salbutamol', presentation: '100 mcg', pharmaceuticalForm: 'inhalador', route: 'inhalatoria', defaultFrequency: '2 inhalaciones cada 4-6 h según síntomas', requiresPrescription: true, controlled: false, active: true },
+  ]);
+
+  getMedications(): Medication[] {
+    return this.medications().filter((m) => m.active);
+  }
+
+  medicationLabel(m: Medication): string {
+    return [m.name, m.presentation].filter(Boolean).join(' ');
+  }
+
+  addMedication(med: Medication): void {
+    this.medications.update((list) => [...list, med]);
+    this.persist('medcontrol.medications', this.medications());
+  }
+
+  updateMedication(med: Medication): void {
+    this.medications.update((list) => list.map((m) => (m.id === med.id ? {...med} : m)));
+    this.persist('medcontrol.medications', this.medications());
+  }
+
+  deactivateMedication(id: string): void {
+    this.medications.update((list) => list.filter((m) => m.id !== id));
+    this.persist('medcontrol.medications', this.medications());
+  }
+
+  getNextMedicationId(): string {
+    return 'MED-' + Date.now().toString().slice(-6);
+  }
+
+  readonly medicationCatalog = computed(() => this.getMedications().map((m) => this.medicationLabel(m)));
+
+  readonly prescriptions = signal<Prescription[]>([]);
+
+  addPrescription(prescription: Prescription): void {
+    this.prescriptions.update((list) => [prescription, ...list]);
+  }
+
+  getPrescriptions(): Prescription[] {
+    return this.prescriptions();
+  }
+
+  getPrescriptionsByPatient(patientId: string): Prescription[] {
+    return this.prescriptions().filter((rx) => rx.patientId === patientId);
+  }
+
+  getPrescriptionsByConsultation(consultationId: string): Prescription[] {
+    return this.prescriptions().filter((rx) => rx.consultationId === consultationId);
+  }
+
+  readonly diagnoses = this.storage<Diagnosis[]>('medcontrol.diagnoses', [
+    { id: 'DG-001', code: 'I10', description: 'Hipertensión esencial (primaria)', active: true },
+    { id: 'DG-002', code: 'E11', description: 'Diabetes mellitus tipo 2', active: true },
+    { id: 'DG-003', code: 'E78', description: 'Dislipidemia', active: true },
+    { id: 'DG-004', code: 'J06', description: 'Infección aguda de vías respiratorias superiores', active: true },
+    { id: 'DG-005', code: 'M54', description: 'Dorsalgia (dolor de espalda)', active: true },
+    { id: 'DG-006', code: 'K21', description: 'Enfermedad por reflujo gastroesofágico', active: true },
+    { id: 'DG-007', code: 'F41', description: 'Trastorno de ansiedad', active: true },
+    { id: 'DG-008', code: 'N39', description: 'Infección de vías urinarias', active: true },
+    { id: 'DG-009', code: 'J45', description: 'Asma', active: true },
+    { id: 'DG-010', code: 'E66', description: 'Obesidad', active: true },
+    { id: 'DG-011', code: 'I48', description: 'Fibrilación y aleteo auricular', active: true },
+    { id: 'DG-012', code: 'D64', description: 'Anemia no especificada', active: true },
+    { id: 'DG-013', code: 'E03', description: 'Hipotrioidismo', active: true },
+    { id: 'DG-014', code: 'N18', description: 'Enfermedad renal crónica', active: true },
+    { id: 'DG-015', code: 'Z00.0', description: 'Examen médico general', active: true },
+  ]);
+
+  getDiagnoses(): Diagnosis[] {
+    return this.diagnoses().filter((d) => d.active);
+  }
+
+  addDiagnosis(dg: Diagnosis): void {
+    this.diagnoses.update((list) => [...list, dg]);
+    this.persist('medcontrol.diagnoses', this.diagnoses());
+  }
+
+  updateDiagnosis(dg: Diagnosis): void {
+    this.diagnoses.update((list) => list.map((d) => (d.id === dg.id ? {...dg} : d)));
+    this.persist('medcontrol.diagnoses', this.diagnoses());
+  }
+
+  deactivateDiagnosis(id: string): void {
+    this.diagnoses.update((list) => list.filter((d) => d.id !== id));
+    this.persist('medcontrol.diagnoses', this.diagnoses());
+  }
+
+  getNextDiagnosisId(): string {
+    return 'DG-' + Date.now().toString().slice(-6);
+  }
+
+  readonly triageLevels = this.storage<TriageLevel[]>('medcontrol.triageLevels', [
+    { id: 'TL-001', code: 'rojo', name: 'Reanimación / Emergencia Vital', maxWaitMinutes: 0, description: 'Requiere atención inmediata, riesgo vital presente.', color: '#d32f2f', active: true, order: 5 },
+    { id: 'TL-002', code: 'naranja', name: 'Urgencia / Emergencia', maxWaitMinutes: 10, description: 'Situación potencialmente grave, riesgo probable.', color: '#ed6c02', active: true, order: 4 },
+    { id: 'TL-003', code: 'amarillo', name: 'Urgencia menor / Observación', maxWaitMinutes: 60, description: 'Sin riesgo vital, requiere evaluación en corto plazo.', color: '#f9a825', active: true, order: 3 },
+    { id: 'TL-004', code: 'verde', name: 'Atención rutinaria', maxWaitMinutes: 120, description: 'Problema agudo no urgente o control programado.', color: '#2e7d32', active: true, order: 2 },
+    { id: 'TL-005', code: 'azul', name: 'Consulta sin urgencia', maxWaitMinutes: 240, description: 'Trámite o consulta no urgente.', color: '#1976d2', active: true, order: 1 },
+  ]);
+
+  readonly triageAutoRules = this.storage<TriageAutoRule[]>('medcontrol.triageRules', [
+    { id: 'TR-001', levelCode: 'rojo', field: 'spo2', min: null, max: 86 },
+    { id: 'TR-002', levelCode: 'rojo', field: 'systolic', min: null, max: 79 },
+    { id: 'TR-003', levelCode: 'naranja', field: 'spo2', min: 86, max: 92 },
+    { id: 'TR-004', levelCode: 'naranja', field: 'pulse', min: 130, max: null },
+    { id: 'TR-005', levelCode: 'naranja', field: 'temp', min: 39.5, max: null },
+    { id: 'TR-006', levelCode: 'amarillo', field: 'spo2', min: 92, max: 95 },
+    { id: 'TR-007', levelCode: 'amarillo', field: 'systolic', min: 140, max: null },
+    { id: 'TR-008', levelCode: 'amarillo', field: 'diastolic', min: 110, max: null },
+    { id: 'TR-009', levelCode: 'amarillo', field: 'pulse', min: 100, max: 130 },
+    { id: 'TR-010', levelCode: 'verde', field: 'pulse', min: 60, max: 100 },
+    { id: 'TR-011', levelCode: 'verde', field: 'spo2', min: 95, max: null },
+  ]);
+
+  getTriageLevels(): TriageLevel[] {
+    return this.triageLevels();
+  }
+
+  getTriageLevelByCode(code: string): TriageLevel | undefined {
+    return this.triageLevels().find((l) => l.code === code);
+  }
+
+  updateTriageLevel(level: TriageLevel): void {
+    this.triageLevels.update((list) => list.map((l) => (l.id === level.id ? {...level} : l)));
+    this.persist('medcontrol.triageLevels', this.triageLevels());
+  }
+
+  addTriageLevel(level: TriageLevel): void {
+    this.triageLevels.update((list) => [...list, level]);
+    this.persist('medcontrol.triageLevels', this.triageLevels());
+  }
+
+  getTriageRules(): TriageAutoRule[] {
+    return this.triageAutoRules();
+  }
+
+  addTriageRule(rule: TriageAutoRule): void {
+    this.triageAutoRules.update((list) => [...list, rule]);
+    this.persist('medcontrol.triageRules', this.triageAutoRules());
+  }
+
+  updateTriageRule(rule: TriageAutoRule): void {
+    this.triageAutoRules.update((list) => list.map((r) => (r.id === rule.id ? {...rule} : r)));
+    this.persist('medcontrol.triageRules', this.triageAutoRules());
+  }
+
+  removeTriageRule(id: string): void {
+    this.triageAutoRules.update((list) => list.filter((r) => r.id !== id));
+    this.persist('medcontrol.triageRules', this.triageAutoRules());
+  }
+
+  classifyTriage(vitals: TriageVitals): { level: TriageLevel; matched: TriageAutoRule[] } | null {
+    const active = new Set(this.triageLevels().filter((l) => l.active).map((l) => l.code));
+    const matches: { level: TriageLevel; rule: TriageAutoRule }[] = [];
+    for (const rule of this.triageAutoRules()) {
+      const level = this.getTriageLevelByCode(rule.levelCode);
+      if (!level || !active.has(rule.levelCode)) continue;
+      const value = vitals[rule.field];
+      if (value === null || value === undefined) continue;
+      const aboveMin = rule.min === null || value >= rule.min;
+      const belowMax = rule.max === null || value <= rule.max;
+      if (aboveMin && belowMax) matches.push({ level, rule });
+    }
+    if (matches.length === 0) return null;
+    const best = matches.sort((a, b) => b.level.order - a.level.order)[0];
+    return { level: best.level, matched: matches.map((m) => m.rule) };
+  }
+
+  readonly organization = this.storage<OrganizationSettings>('medcontrol.organization', {
+    id: 'ORG-001',
+    name: 'MedControl Sede Central',
+    rut: 'J-12345678-9',
+    address: 'Av. Libertador 1240, Caracas',
+    phone: '+58 212-5550000',
+    email: 'contacto@medcontrol.com',
+    footerText: 'Documento electrónico generado por MedControl Clinical Suite. La firma del prescriptor valida este documento conforme a la normativa MINSAL de firma avanzada.',
+    signatureName: 'Dra. Noemí Aguirre',
+  });
+
+  updateOrganization(org: OrganizationSettings): void {
+    this.organization.set({ ...org });
+    this.persist('medcontrol.organization', this.organization());
+  }
+
+  readonly alertRules = this.storage<AlertRule[]>('medcontrol.alertRules', [
+    { id: 'AR-001', name: 'Alergia Crítica en prescripción', description: 'Se detecta antecedente de alergia severa al intentar prescribir un medicamento contraindicado.', category: 'receta', severity: 'critical', icon: 'warning', actionLabel: 'Ver Ficha', route: 'pacientes-y-historial-clinico', active: true },
+    { id: 'AR-002', name: 'Triaje Naranja sin clasificar en 10 min', description: 'Paciente con nivel de triaje naranja que supera el tiempo máximo de espera sin atención médica.', category: 'triage', severity: 'warning', icon: 'monitor_heart', actionLabel: 'Ver Dashboard', route: 'dashboard-de-citas', active: true },
+    { id: 'AR-003', name: 'Recordatorios de turno enviados', description: 'Twilio SMS Gateway despachó recordatorios del bloque; se informa el porcentaje de confirmación.', category: 'cita', severity: 'success', icon: 'sms', actionLabel: 'Ver Detalle', route: 'dashboard-de-citas', active: true },
+    { id: 'AR-004', name: 'Resultado de laboratorio anormal', description: 'Un examen de laboratorio retorna un resultado fuera del rango de referencia configurado.', category: 'examen', severity: 'critical', icon: 'science', actionLabel: 'Ver Recetas & Exámenes', route: 'recetas-y-examenes', active: false },
+    { id: 'AR-005', name: 'Vencimiento próximo de receta', description: 'Una receta médica está próxima a vencer y el tratamiento no fue renovado.', category: 'receta', severity: 'info', icon: 'event_busy', actionLabel: 'Ver Recetas & Exámenes', route: 'recetas-y-examenes', active: false },
+  ]);
+
+  getAlertRules(): AlertRule[] {
+    return this.alertRules();
+  }
+
+  getActiveAlertRules(): AlertRule[] {
+    return this.alertRules().filter((r) => r.active);
+  }
+
+  addAlertRule(rule: AlertRule): void {
+    this.alertRules.update((list) => [...list, rule]);
+    this.persist('medcontrol.alertRules', this.alertRules());
+  }
+
+  updateAlertRule(rule: AlertRule): void {
+    this.alertRules.update((list) => list.map((r) => (r.id === rule.id ? {...rule} : r)));
+    this.persist('medcontrol.alertRules', this.alertRules());
+  }
+
+  deactivateAlertRule(id: string): void {
+    this.alertRules.update((list) => list.filter((r) => r.id !== id));
+    this.persist('medcontrol.alertRules', this.alertRules());
+  }
+
+  readonly catalogUsers = this.storage<AppUser[]>('medcontrol.users', [
+    { id: 'usr-001', name: 'Administradora Central', email: 'admin@medcontrol.com', role: 'admin', active: true },
+    { id: 'usr-002', name: 'Dra. Noemí Aguirre', email: 'aguirre@medcontrol.com', role: 'doctor', doctorId: 'doc-aguirre', active: true },
+    { id: 'usr-003', name: 'Dr. Jorge Mawad', email: 'mawad@medcontrol.com', role: 'doctor', doctorId: 'doc-mawad', active: true },
+    { id: 'usr-004', name: 'Dra. Sandra Muñoz', email: 'munoz@medcontrol.com', role: 'doctor', doctorId: 'doc-munoz', active: true },
+  ]);
+
+  getCatalogUsers(): AppUser[] {
+    return this.catalogUsers();
+  }
+
+  emailTaken(email: string, ignoreId?: string): boolean {
+    return this.catalogUsers().some((u) => u.email.toLowerCase() === email.toLowerCase() && u.id !== ignoreId);
+  }
+
+  addCatalogUser(user: AppUser): void {
+    this.catalogUsers.update((list) => [...list, user]);
+    this.persist('medcontrol.users', this.catalogUsers());
+  }
+
+  toggleCatalogUserActive(id: string): void {
+    this.catalogUsers.update((list) => list.map((u) => (u.id === id ? {...u, active: !u.active} : u)));
+    this.persist('medcontrol.users', this.catalogUsers());
   }
 }

@@ -756,60 +756,72 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
             </div>
             <div class="flex-1 overflow-y-auto p-5">
               <div class="grid grid-cols-2 gap-3 mb-4">
-                <div class="flex flex-col gap-1">
-                  <label class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Presión Sistólica</label>
-                  <div class="relative">
-                    <input type="number" placeholder="120" [(ngModel)]="vitalsForm.systolic" class="w-full h-10 px-3 pr-8 rounded-lg bg-[#f2f4f6] text-[14px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#006a61] border border-[#e0e3e5]" />
-                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#76777d]">mmHg</span>
+                  <div class="flex flex-col gap-1">
+                    <label class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Presión Sistólica</label>
+                    <div class="relative">
+                      <input type="number" placeholder="120" [ngModel]="vitalsForm().systolic" (ngModelChange)="updateVital('systolic', $event)" class="w-full h-10 px-3 pr-8 rounded-lg bg-[#f2f4f6] text-[14px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#006a61] border border-[#e0e3e5]" />
+                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#76777d]">mmHg</span>
+                    </div>
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <label class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Presión Diastólica</label>
+                    <div class="relative">
+                      <input type="number" placeholder="80" [ngModel]="vitalsForm().diastolic" (ngModelChange)="updateVital('diastolic', $event)" class="w-full h-10 px-3 pr-8 rounded-lg bg-[#f2f4f6] text-[14px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#006a61] border border-[#e0e3e5]" />
+                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#76777d]">mmHg</span>
+                    </div>
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <label class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Pulso</label>
+                    <div class="relative">
+                      <input type="number" placeholder="72" [ngModel]="vitalsForm().pulse" (ngModelChange)="updateVital('pulse', $event)" class="w-full h-10 px-3 pr-8 rounded-lg bg-[#f2f4f6] text-[14px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#006a61] border border-[#e0e3e5]" />
+                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#76777d]">bpm</span>
+                    </div>
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <label class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Temperatura</label>
+                    <div class="relative">
+                      <input type="number" step="0.1" placeholder="36.5" [ngModel]="vitalsForm().temp" (ngModelChange)="updateVital('temp', $event)" class="w-full h-10 px-3 pr-8 rounded-lg bg-[#f2f4f6] text-[14px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#006a61] border border-[#e0e3e5]" />
+                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#76777d]">°C</span>
+                    </div>
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <label class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">SpO2</label>
+                    <div class="relative">
+                      <input type="number" placeholder="99" [ngModel]="vitalsForm().spo2" (ngModelChange)="updateVital('spo2', $event)" class="w-full h-10 px-3 pr-8 rounded-lg bg-[#f2f4f6] text-[14px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#006a61] border border-[#e0e3e5]" />
+                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#76777d]">%</span>
+                    </div>
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <label class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Peso</label>
+                    <div class="relative">
+                      <input type="number" step="0.1" placeholder="78" [ngModel]="vitalsForm().weight" (ngModelChange)="updateVital('weight', $event)" class="w-full h-10 px-3 pr-8 rounded-lg bg-[#f2f4f6] text-[14px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#006a61] border border-[#e0e3e5]" />
+                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#76777d]">kg</span>
+                    </div>
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <label class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Altura</label>
+                    <div class="relative">
+                      <input type="number" placeholder="170" [ngModel]="vitalsForm().height" (ngModelChange)="updateVital('height', $event)" class="w-full h-10 px-3 pr-8 rounded-lg bg-[#f2f4f6] text-[14px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#006a61] border border-[#e0e3e5]" />
+                      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#76777d]">cm</span>
+                    </div>
                   </div>
                 </div>
-                <div class="flex flex-col gap-1">
-                  <label class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Presión Diastólica</label>
-                  <div class="relative">
-                    <input type="number" placeholder="80" [(ngModel)]="vitalsForm.diastolic" class="w-full h-10 px-3 pr-8 rounded-lg bg-[#f2f4f6] text-[14px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#006a61] border border-[#e0e3e5]" />
-                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#76777d]">mmHg</span>
+                @if (triageSuggestion(); as suggestion) {
+                  <div class="flex items-center justify-between gap-3 p-3 mb-4 rounded-xl border" [style.border-color]="suggestion.level.color" [style.background-color]="suggestion.level.color + '14'">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                      <span class="w-4 h-4 rounded-full shrink-0" [style.background-color]="suggestion.level.color"></span>
+                      <div class="min-w-0">
+                        <span class="block text-[13px] font-bold text-[#191c1e]">Sugerencia: {{ suggestion.level.name }}</span>
+                        <span class="block text-[11px] text-[#45464d] truncate">Atender en un máximo de {{ suggestion.level.maxWaitMinutes }} min</span>
+                      </div>
+                    </div>
+                    <span class="shrink-0 text-[11px] font-bold uppercase px-2 py-1 rounded-full text-white" [style.background-color]="suggestion.level.color">{{ suggestion.level.code }}</span>
                   </div>
+                }
+                <div class="flex flex-col gap-1 mb-4">
+                  <label class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Notas de Triage</label>
+                  <textarea placeholder="Observaciones, motivo de consulta, síntomas..." rows="3" [ngModel]="vitalsForm().notes" (ngModelChange)="updateVital('notes', $event)" class="w-full px-3 py-2 rounded-lg bg-[#f2f4f6] text-[13px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#006a61] border border-[#e0e3e5] resize-none"></textarea>
                 </div>
-                <div class="flex flex-col gap-1">
-                  <label class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Pulso</label>
-                  <div class="relative">
-                    <input type="number" placeholder="72" [(ngModel)]="vitalsForm.pulse" class="w-full h-10 px-3 pr-8 rounded-lg bg-[#f2f4f6] text-[14px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#006a61] border border-[#e0e3e5]" />
-                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#76777d]">bpm</span>
-                  </div>
-                </div>
-                <div class="flex flex-col gap-1">
-                  <label class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Temperatura</label>
-                  <div class="relative">
-                    <input type="number" step="0.1" placeholder="36.5" [(ngModel)]="vitalsForm.temp" class="w-full h-10 px-3 pr-8 rounded-lg bg-[#f2f4f6] text-[14px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#006a61] border border-[#e0e3e5]" />
-                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#76777d]">°C</span>
-                  </div>
-                </div>
-                <div class="flex flex-col gap-1">
-                  <label class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">SpO2</label>
-                  <div class="relative">
-                    <input type="number" placeholder="99" [(ngModel)]="vitalsForm.spo2" class="w-full h-10 px-3 pr-8 rounded-lg bg-[#f2f4f6] text-[14px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#006a61] border border-[#e0e3e5]" />
-                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#76777d]">%</span>
-                  </div>
-                </div>
-                <div class="flex flex-col gap-1">
-                  <label class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Peso</label>
-                  <div class="relative">
-                    <input type="number" step="0.1" placeholder="78" [(ngModel)]="vitalsForm.weight" class="w-full h-10 px-3 pr-8 rounded-lg bg-[#f2f4f6] text-[14px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#006a61] border border-[#e0e3e5]" />
-                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#76777d]">kg</span>
-                  </div>
-                </div>
-                <div class="flex flex-col gap-1">
-                  <label class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Altura</label>
-                  <div class="relative">
-                    <input type="number" placeholder="170" [(ngModel)]="vitalsForm.height" class="w-full h-10 px-3 pr-8 rounded-lg bg-[#f2f4f6] text-[14px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#006a61] border border-[#e0e3e5]" />
-                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[#76777d]">cm</span>
-                  </div>
-                </div>
-              </div>
-              <div class="flex flex-col gap-1 mb-4">
-                <label class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Notas de Triage</label>
-                <textarea placeholder="Observaciones, motivo de consulta, síntomas..." rows="3" [(ngModel)]="vitalsForm.notes" class="w-full px-3 py-2 rounded-lg bg-[#f2f4f6] text-[13px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-1 focus:ring-[#006a61] border border-[#e0e3e5] resize-none"></textarea>
-              </div>
             </div>
             <div class="flex items-center justify-end gap-3 p-5 border-t border-[#eceef0]">
               <button type="button" (click)="handleCancelTriage()" class="px-4 py-2 rounded-lg bg-[#f2f4f6] text-[#45464d] text-[13px] font-semibold hover:bg-[#e6e8ea] transition-colors">
@@ -919,7 +931,7 @@ export class DashboardComponent {
   vacationMode = signal(false);
   showCheckInModal = signal(false);
 
-  vitalsForm: TriageVitals = {
+  readonly vitalsForm = signal<TriageVitals>({
     systolic: null,
     diastolic: null,
     pulse: null,
@@ -928,7 +940,13 @@ export class DashboardComponent {
     weight: null,
     height: null,
     notes: '',
-  };
+  });
+
+  readonly triageSuggestion = computed(() => this.data.classifyTriage(this.vitalsForm()));
+
+  updateVital(field: keyof TriageVitals, value: number | string | null): void {
+    this.vitalsForm.update((v) => ({ ...v, [field]: value === '' ? null : (value as never) }));
+  }
 
   constructor() {
     if (this.auth.isDoctor()) {
@@ -968,13 +986,13 @@ export class DashboardComponent {
   handleStartTriage(patientId: string): void {
     this.data.startTriage(patientId);
     this.showCheckInModal.set(false);
-    this.vitalsForm = { systolic: null, diastolic: null, pulse: null, temp: null, spo2: null, weight: null, height: null, notes: '' };
+    this.vitalsForm.set({ systolic: null, diastolic: null, pulse: null, temp: null, spo2: null, weight: null, height: null, notes: '' });
   }
 
   handleCompleteTriage(): void {
     const apt = this.data.currentTriageAppointment();
     if (apt) {
-      this.data.completeTriage(apt.id, { ...this.vitalsForm });
+      this.data.completeTriage(apt.id, { ...this.vitalsForm() });
       this.toast.show('Triage Completado', `${this.data.getPatient(apt.patientId)?.name} listo para consulta médica.`);
     }
   }

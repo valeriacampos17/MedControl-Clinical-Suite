@@ -35,6 +35,9 @@ erDiagram
     appointments ||--o| consultations : "appointment_id"
     consultations ||--o{ prescriptions : "consultation_id"
     prescriptions ||--o{ prescription_medications : "prescription_id"
+    consultations ||--o{ exam_orders : "consultation_id"
+    exam_orders ||--o{ exam_order_items : "order_id"
+    exam_order_items }o--o| exam_templates : "exam_id"
     consultation_types ||--o{ appointments : "tipo de consulta"
     diagnosis_codes ||--o{ consultations : "diagnosis_code"
     alerts_notifications }o--o| patients : "patient_id (opcional)"
@@ -299,6 +302,50 @@ Origen: shape `commonDiagnoses` en consulta.component.ts (CIE-10).
 
 ---
 
+### 3.15 `exam_orders`
+
+Origen: `ExamOrder` (types.ts) + `MockDataService.examOrders`. Se crean al guardar una consulta con exámenes seleccionados en `nueva-consulta`.
+
+| Columna | Tipo | Restricciones | Descripción |
+|---|---|---|---|
+| id | TEXT | PK | `ORD-<timestamp>` |
+| consultation_id | TEXT | FK → consultations.id, NOT NULL | Origen de la orden |
+| patient_id | TEXT | FK → patients.id, NOT NULL | |
+| doctor_id | TEXT | FK → doctors.id, NULL | **Propuesto** (hoy es `doctorName` denormalizado) |
+| date | DATE | NOT NULL | Fecha de emisión |
+| time | TIME | NOT NULL | Hora de emisión |
+| priority | ENUM(`rutina`,`urgencia`) | NOT NULL | `ExamOrderPriority` |
+| notes | TEXT | NULL | Notas de la orden |
+| status | ENUM(`pending`,`in-progress`,`completed`) | NOT NULL | `ExamOrderStatus` |
+
+### 3.16 `exam_order_items`
+
+Origen: `ExamOrderItem[]` (types.ts) + `exam_orders.items` (JSONB en memoria, normalizado en BD).
+
+| Columna | Tipo | Restricciones | Descripción |
+|---|---|---|---|
+| id | BIGSERIAL | PK | |
+| order_id | TEXT | FK → exam_orders.id, NOT NULL | |
+| exam_id | TEXT | FK → exam_templates.id, NOT NULL | |
+| name | VARCHAR(200) | NOT NULL | Nombre denormalizado del examen |
+| category | ENUM(`laboratorio`,`imagen`,`funcional`,`procedimiento`) | NOT NULL | `ExamCategory` |
+| fasting | BOOLEAN | DEFAULT false | Requiere ayunas |
+| preparation | TEXT | NULL | Preparación / indicaciones |
+
+### 3.17 Catálogo `exam_templates`
+
+Origen: `MockDataService.examCatalog`.
+
+| Columna | Tipo | Restricciones | Descripción |
+|---|---|---|---|
+| id | TEXT | PK | `EX-LAB-01`, `EX-IMG-02`, ... |
+| name | VARCHAR(200) | NOT NULL | |
+| category | ENUM(`laboratorio`,`imagen`,`funcional`,`procedimiento`) | NOT NULL | |
+| fasting | BOOLEAN | DEFAULT false | Default configurado en el catálogo |
+| preparation | VARCHAR(300) | NULL | Default de preparación |
+
+---
+
 ## 4. Enumeraciones
 
 | Enum | Valores |
@@ -310,6 +357,9 @@ Origen: shape `commonDiagnoses` en consulta.component.ts (CIE-10).
 | `consultation type` | `primera`, `control`, `sobrecupo`, `examenes` |
 | `consultation status` | `draft`, `completed` |
 | `prescription status` | `Vigente en Farmacia`, `Emitida Hoy`, `Finalizada` |
+| `exam category` | `laboratorio`, `imagen`, `funcional`, `procedimiento` |
+| `exam order status` | `pending`, `in-progress`, `completed` |
+| `exam order priority` | `rutina`, `urgencia` |
 
 ---
 
@@ -327,6 +377,10 @@ Origen: shape `commonDiagnoses` en consulta.component.ts (CIE-10).
 | `rescheduleAppointment(aptId,date,time)` (:205) | `UPDATE appointments SET date=$2, time=$3 WHERE id=$1` |
 | `addPatient(p)` (:315) | `INSERT INTO patients(...)`; `nextFileNumber()` = `SELECT MAX(...)` + 1 |
 | `addConsultation(c)` (:330) | `INSERT INTO consultations(...)` |
+| `addExamOrder(o)` | `INSERT INTO exam_orders(...)`; `INSERT INTO exam_order_items(...)` (transacción) |
+| `getExamOrders()` | `SELECT * FROM exam_orders ORDER BY date DESC` |
+| `getExamOrdersByPatient(pid)` | `SELECT * FROM exam_orders WHERE patient_id=$1` |
+| `getExamOrdersByConsultation(cid)` | `SELECT * FROM exam_orders WHERE consultation_id=$1` |
 | `toggleWorkingDay(date)` (:181) | `INSERT`/`DELETE FROM working_days` |
 | `setWorkingDays(dates)` (:189) | TRANSACCIÓN: `DELETE` + `INSERT` masivos |
 | `getBusinessDays(from,count)` (:193) | `SELECT date FROM working_days WHERE date>=... ORDER BY date LIMIT n` |
