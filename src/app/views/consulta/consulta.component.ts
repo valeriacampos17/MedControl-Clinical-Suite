@@ -17,10 +17,7 @@ import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-
         <div class="absolute top-80 right-0 w-80 h-80 rounded-full bg-[#acedff] opacity-20 blur-3xl pointer-events-none -z-10"></div>
 
         <div class="flex items-center justify-between gap-2.5 flex-wrap mb-4 pb-4 border-b border-[#eceef0]">
-          <div class="flex items-center gap-2.5 flex-wrap">
-            <app-button variant="light" size="md" icon="arrow_back" (click)="goBack()">Cancelar</app-button>
-            <app-button variant="primary" size="md" icon="save" (click)="saveConsultation()">Guardar Consulta</app-button>
-          </div>
+          <app-button variant="light" size="md" icon="arrow_back" (click)="goBack()">Cancelar</app-button>
           <app-button variant="ghost" size="md" icon="history_edu" (click)="scrollToHistory()">Ver Historial Previo & Triaje</app-button>
         </div>
 
@@ -381,6 +378,14 @@ import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-
           </div>
           <app-clinical-history-timeline [patientId]="data.activePatient().id" [showTitle]="false" />
         </section>
+
+        <div class="mt-8 pt-6 border-t border-[#eceef0] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <p class="text-[12px] text-[#76777d] max-w-md">Revise los datos antes de guardar. Las recetas médicas y órdenes de exámenes se registrarán junto con la consulta.</p>
+          <div class="flex items-center gap-2.5">
+            <app-button variant="light" size="md" icon="arrow_back" (click)="goBack()">Cancelar</app-button>
+            <app-button variant="primary" size="md" icon="save" (click)="saveConsultation()">Guardar Consulta</app-button>
+          </div>
+        </div>
       </div>
     </div>
   `,
