@@ -17,9 +17,21 @@ import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-
         <div class="absolute top-80 right-0 w-80 h-80 rounded-full bg-[#acedff] opacity-20 blur-3xl pointer-events-none -z-10"></div>
 
         <div class="flex items-center justify-between gap-2.5 flex-wrap mb-4 pb-4 border-b border-[#eceef0]">
-          <app-button variant="light" size="md" icon="arrow_back" (click)="goBack()">Cancelar</app-button>
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <app-button variant="light" size="md" icon="arrow_back" (click)="goBack()">Cancelar</app-button>
+            <app-button variant="primary" size="md" icon="save" (click)="saveConsultation()">Guardar Consulta</app-button>
+          </div>
           <app-button variant="ghost" size="md" icon="history_edu" (click)="scrollToHistory()">Ver Historial Previo & Triaje</app-button>
         </div>
+        <button
+          type="button"
+          class="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3.5 rounded-full bg-[#006a61] text-white font-bold text-[14px] shadow-lg shadow-[#006a61]/30 hover:bg-[#00564f] active:scale-95 transition-all"
+          (click)="saveConsultation()"
+          title="Guardar la consulta desde cualquier parte"
+        >
+          <span class="material-symbols-outlined text-[20px]">save</span>
+          <span>Guardar</span>
+        </button>
 
         <div class="bg-white rounded-xl shadow-sm border border-[#e6e8ea] p-5 sm:p-6 mb-6">
           <div class="flex items-center gap-4 flex-wrap sm:flex-nowrap">
@@ -378,14 +390,6 @@ import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-
           </div>
           <app-clinical-history-timeline [patientId]="data.activePatient().id" [showTitle]="false" />
         </section>
-
-        <div class="mt-8 pt-6 border-t border-[#eceef0] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <p class="text-[12px] text-[#76777d] max-w-md">Revise los datos antes de guardar. Las recetas médicas y órdenes de exámenes se registrarán junto con la consulta.</p>
-          <div class="flex items-center gap-2.5">
-            <app-button variant="light" size="md" icon="arrow_back" (click)="goBack()">Cancelar</app-button>
-            <app-button variant="primary" size="md" icon="save" (click)="saveConsultation()">Guardar Consulta</app-button>
-          </div>
-        </div>
       </div>
     </div>
   `,
