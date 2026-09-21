@@ -145,3 +145,62 @@ export interface Consultation {
   notes: string;
   status: 'draft' | 'completed';
 }
+
+export type ExamCategory = 'laboratorio' | 'imagen' | 'funcional' | 'procedimiento';
+
+export interface ExamTemplate {
+  id: string;
+  name: string;
+  category: ExamCategory;
+  fasting?: boolean;
+  preparation?: string;
+}
+
+export interface ExamOrderItem {
+  examId: string;
+  name: string;
+  category: ExamCategory;
+  fasting: boolean;
+  preparation: string;
+}
+
+export type ExamOrderStatus = 'pending' | 'in-progress' | 'completed';
+export type ExamOrderPriority = 'rutina' | 'urgencia';
+
+export interface ExamOrder {
+  id: string;
+  consultationId: string;
+  patientId: string;
+  patientName: string;
+  doctorName: string;
+  date: string;
+  time: string;
+  priority: ExamOrderPriority;
+  notes: string;
+  items: ExamOrderItem[];
+  status: ExamOrderStatus;
+}
+
+export type PrescriptionStatus = 'Vigente en Farmacia' | 'Emitida Hoy' | 'Finalizada';
+
+export interface PrescriptionMedication {
+  id: string;
+  name: string;
+  dose: string;
+  frequency: string;
+  duration: string;
+}
+
+export interface Prescription {
+  id: string;
+  consultationId?: string;
+  patientId: string;
+  patientName: string;
+  ci: string;
+  doctorName: string;
+  date: string;
+  time: string;
+  meds: PrescriptionMedication[];
+  notes: string;
+  status: PrescriptionStatus;
+}

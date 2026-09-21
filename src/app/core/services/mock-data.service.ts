@@ -8,6 +8,9 @@ import {
   Consultation,
   TriageVitals,
   WorkingDay,
+  ExamTemplate,
+  ExamOrder,
+  Prescription,
 } from '../models/types';
 
 export interface DoctorSummary {
@@ -467,5 +470,87 @@ export class MockDataService {
 
   getConsultationsByPatient(patientId: string): Consultation[] {
     return this.consultations().filter((c) => c.patientId === patientId);
+  }
+
+  readonly examCatalog = signal<ExamTemplate[]>([
+    { id: 'EX-LAB-01', name: 'Hemograma completo', category: 'laboratorio', fasting: false, preparation: 'Sin ayunas requerido' },
+    { id: 'EX-LAB-02', name: 'Perfil lipídico (Colesterol Total, HDL, LDL, Triglicéridos)', category: 'laboratorio', fasting: true, preparation: 'Ayuno de 12 horas' },
+    { id: 'EX-LAB-03', name: 'Glicemia en ayunas', category: 'laboratorio', fasting: true, preparation: 'Ayuno de 8 horas' },
+    { id: 'EX-LAB-04', name: 'Hemoglobina Glicosilada (HbA1c)', category: 'laboratorio', fasting: false, preparation: 'Sin ayunas requerido' },
+    { id: 'EX-LAB-05', name: 'Creatinina y BUN (Función renal)', category: 'laboratorio', fasting: false, preparation: 'Sin ayunas requerido' },
+    { id: 'EX-LAB-06', name: 'Perfil hepático (TGO, TGP, Bilirrubinas, FA)', category: 'laboratorio', fasting: true, preparation: 'Ayuno de 8 horas' },
+    { id: 'EX-LAB-07', name: 'TSH y T4 libre', category: 'laboratorio', fasting: false, preparation: 'Sin ayunas requerido' },
+    { id: 'EX-LAB-08', name: 'Urocultivo con antibiograma', category: 'laboratorio', fasting: false, preparation: 'Recoger primera orina de la mañana' },
+    { id: 'EX-LAB-09', name: 'Electrolitos (Na, K, Cl, Ca)', category: 'laboratorio', fasting: false, preparation: 'Sin ayunas requerido' },
+    { id: 'EX-LAB-10', name: 'PCR y VSG', category: 'laboratorio', fasting: false, preparation: 'Sin ayunas requerido' },
+    { id: 'EX-IMG-01', name: 'Radiografía de tórax (AP y Lateral)', category: 'imagen', fasting: false, preparation: 'Retirar objetos metálicos de la zona' },
+    { id: 'EX-IMG-02', name: 'Ecocardiograma transtorácico (TTE)', category: 'imagen', fasting: false, preparation: 'Sin ayunas requerido' },
+    { id: 'EX-IMG-03', name: 'TAC cerebral simple', category: 'imagen', fasting: false, preparation: 'Retirar objetos metálicos' },
+    { id: 'EX-IMG-04', name: 'TAC de tórax con contraste', category: 'imagen', fasting: true, preparation: 'Ayuno de 4 horas y función renal previa' },
+    { id: 'EX-IMG-05', name: 'Ecografía abdominal total', category: 'imagen', fasting: true, preparation: 'Ayuno de 8 horas' },
+    { id: 'EX-IMG-06', name: 'Ecografía renal y vías urinarias', category: 'imagen', fasting: false, preparation: 'Llenado vesical (tomar 1L de agua 1h antes)' },
+    { id: 'EX-FUN-01', name: 'Electrocardiograma (ECG) de 12 derivaciones', category: 'funcional', fasting: false, preparation: 'Sin ayunas requerido' },
+    { id: 'EX-FUN-02', name: 'Holter de ritmo de 24 horas', category: 'funcional', fasting: false, preparation: 'Ducha previa sin cremas ni talco' },
+    { id: 'EX-FUN-03', name: 'Prueba de esfuerzo (Stress Test)', category: 'funcional', fasting: false, preparation: 'Ropa cómoda, evitar café 4h antes' },
+    { id: 'EX-FUN-04', name: 'Espirometría', category: 'funcional', fasting: false, preparation: 'Evitar broncodilatadores 6h antes' },
+    { id: 'EX-PROC-01', name: 'Endoscopía digestiva alta', category: 'procedimiento', fasting: true, preparation: 'Ayuno absoluto de 8 horas' },
+    { id: 'EX-PROC-02', name: 'Colonoscopía', category: 'procedimiento', fasting: true, preparation: 'Dieta líquida y evacuantes el día previo' },
+  ]);
+
+  readonly examOrders = signal<ExamOrder[]>([]);
+
+  addExamOrder(order: ExamOrder): void {
+    this.examOrders.update((list) => [order, ...list]);
+  }
+
+  getExamOrders(): ExamOrder[] {
+    return this.examOrders();
+  }
+
+  getExamOrdersByPatient(patientId: string): ExamOrder[] {
+    return this.examOrders().filter((order) => order.patientId === patientId);
+  }
+
+  getExamOrdersByConsultation(consultationId: string): ExamOrder[] {
+    return this.examOrders().filter((order) => order.consultationId === consultationId);
+  }
+
+  readonly medicationCatalog = signal<string[]>([
+    'Losartán Potásico 50 mg',
+    'Atorvastatina 20 mg',
+    'Enalapril 10 mg',
+    'Ácido Acetilsalicílico 100 mg',
+    'Metformina 850 mg',
+    'Amlodipino 5 mg',
+    'Bisoprolol 2.5 mg',
+    'Omeprazol 20 mg',
+    'Ibuprofeno 400 mg',
+    'Paracetamol 500 mg',
+    'Levotiroxina 100 mcg',
+    'Sertralina 50 mg',
+    'Amoxicilina 500 mg',
+    'Azitromicina 500 mg',
+    'Clopidogrel 75 mg',
+    'Furosemida 40 mg',
+    'Prednisona 5 mg',
+    'Salbutamol Inhalador 100 mcg',
+  ]);
+
+  readonly prescriptions = signal<Prescription[]>([]);
+
+  addPrescription(prescription: Prescription): void {
+    this.prescriptions.update((list) => [prescription, ...list]);
+  }
+
+  getPrescriptions(): Prescription[] {
+    return this.prescriptions();
+  }
+
+  getPrescriptionsByPatient(patientId: string): Prescription[] {
+    return this.prescriptions().filter((rx) => rx.patientId === patientId);
+  }
+
+  getPrescriptionsByConsultation(consultationId: string): Prescription[] {
+    return this.prescriptions().filter((rx) => rx.consultationId === consultationId);
   }
 }

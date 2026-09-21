@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Patient, NewPatientInput } from '../../core/models/types';
+import { Patient, NewPatientInput, Prescription, PrescriptionMedication } from '../../core/models/types';
 import { ButtonComponent } from '../../shared/button/button.component';
 import { BadgeComponent } from '../../shared/badge/badge.component';
 import { ModalComponent } from '../../shared/modal/modal.component';
@@ -32,7 +32,7 @@ import { inputValue } from '../../core/utils/form.utils';
         <div class="flex items-center gap-2.5 flex-wrap mb-4 pb-4 border-b border-[#eceef0]">
           @if (selectedPatient()) {
             <app-button variant="light" size="md" icon="picture_as_pdf" (click)="handleDownloadPDF()" title="Generar y descargar el expediente clínico completo en formato PDF">Descargar Expediente PDF</app-button>
-            <app-button variant="light" size="md" icon="prescriptions" (click)="handleEmitRecipe()" title="Emitir una receta médica electrónica con firma digital">Emitir Receta</app-button>
+            <app-button variant="light" size="md" icon="prescriptions" (click)="openRecipeModal()" title="Emitir una receta médica electrónica con firma digital">Emitir Receta</app-button>
             <app-button variant="light" size="md" icon="event" (click)="nav.navigate('agenda-y-disponibilidad')" title="Agendar una nueva cita de control para este paciente">Agendar Control</app-button>
             <app-button variant="primary" size="md" icon="add" (click)="handleNewConsulta()" title="Iniciar una nueva consulta médica para este paciente">Nueva Consulta</app-button>
           }
@@ -234,7 +234,7 @@ import { inputValue } from '../../core/utils/form.utils';
               <div class="h-full bg-[#006a61] rounded-full" style="width: 94%"></div>
             </div>
             <div class="mt-3 pt-2 border-t border-[#f2f4f6] flex items-center justify-between text-[11px] text-[#76777d]">
-              <span>3 de 3 fármacos activos</span>
+              <span>{{ activeMedCount() }} fármaco(s) registrado(s)</span>
               <span class="text-[#006a61] font-semibold">Farmacia OK</span>
             </div>
           </div>
@@ -282,22 +282,45 @@ import { inputValue } from '../../core/utils/form.utils';
                   </span>
                   <div>
                     <h3 class="text-[15px] font-bold text-[#191c1e]">Medicamentos Vigentes</h3>
-                    <p class="text-[12px] text-[#45464d]">3 prescripciones activas</p>
+                    <p class="text-[12px] text-[#45464d]">{{ patientPrescriptions().length }} prescripción(es) registrada(s)</p>
                   </div>
                 </div>
-                <app-badge variant="teal" size="sm">Adherencia 94%</app-badge>
+                <app-button variant="outline" size="sm" icon="prescriptions" (click)="openRecipeModal()" title="Emitir una nueva receta médica">Nueva Receta</app-button>
               </div>
               <div class="flex flex-col gap-3">
-                @for (med of medications(); track med.name) {
+                @if (patientPrescriptions().length === 0) {
+                  <div class="p-4 text-center rounded-lg bg-[#f8fafc] border border-[#e2e8f0] flex flex-col items-center gap-1">
+                    <span class="material-symbols-outlined text-[24px] text-[#76777d]">medication</span>
+                    <span class="text-[12px] text-[#76777d]">Sin recetas prescritas. Pulse "Nueva Receta" para emitir la primera.</span>
+                  </div>
+                }
+                @for (rx of patientPrescriptions(); track rx.id) {
                   <div class="p-3 rounded-lg bg-[#f2f4f6] border border-[#e0e3e5]">
-                    <div class="flex items-center justify-between">
-                      <span class="text-[13px] font-bold text-[#191c1e]">{{ med.name }}</span>
-                      <span class="w-2 h-2 rounded-full bg-[#006a61]"></span>
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                      <span class="text-[12px] font-bold text-[#006a61]">Receta #{{ rx.id }}</span>
+                      <app-badge [variant]="rx.status === 'Finalizada' ? 'neutral' : 'teal'" size="sm">{{ rx.status }}</app-badge>
                     </div>
-                    <p class="text-[12px] text-[#45464d] mt-1">{{ med.dose }}</p>
-                    <div class="flex items-center justify-between mt-2 pt-2 border-t border-[#e0e3e5] text-[11px]">
-                      <span class="text-[#006a61] font-semibold">{{ med.daysLeft }}</span>
-                      <span class="text-[#76777d]">Farmacia Central</span>
+                    <div class="flex flex-col gap-2 mt-2">
+                      @for (med of rx.meds; track med.id) {
+                        <div class="p-2 rounded-lg bg-white border border-[#e0e3e5]">
+                          <div class="flex items-center justify-between">
+                            <span class="text-[13px] font-bold text-[#191c1e]">{{ med.name }}</span>
+                            <span class="w-2 h-2 rounded-full bg-[#006a61]"></span>
+                          </div>
+                          <p class="text-[12px] text-[#45464d] mt-1">{{ med.dose }}</p>
+                          <div class="flex items-center justify-between mt-2 pt-2 border-t border-[#e0e3e5] text-[11px]">
+                            <span class="text-[#006a61] font-semibold">{{ med.frequency }}</span>
+                            <span class="text-[#76777d]">{{ med.duration }}</span>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                    @if (rx.notes) {
+                      <p class="text-[11px] text-[#76777d] mt-2 italic">"{{ rx.notes }}"</p>
+                    }
+                    <div class="mt-2 pt-2 border-t border-[#e0e3e5] text-[11px] text-[#76777d] flex items-center justify-between">
+                      <span>Emitida: {{ rx.date }} {{ rx.time }}</span>
+                      <span>{{ rx.doctorName }}</span>
                     </div>
                   </div>
                 }
@@ -478,6 +501,90 @@ import { inputValue } from '../../core/utils/form.utils';
           </app-button>
         </div>
       </app-modal>
+      <app-modal
+        [isOpen]="showRecipeModal()"
+        title="Emitir Receta Médica"
+        subtitle="Registre los medicamentos a prescribir al paciente"
+        icon="prescriptions"
+        [footerTemplate]="true"
+        (dismiss)="closeRecipeModal()"
+      >
+        <div class="flex flex-col gap-4">
+          @if (selectedPatient(); as patient) {
+            <div class="p-3 rounded-lg bg-[#f2f4f6] border border-[#e0e3e5] flex items-center gap-2 text-[12.5px]">
+              <span class="material-symbols-outlined text-[#006a61] text-[18px] shrink-0">person</span>
+              <span class="min-w-0">Prescribiendo a: <strong class="text-[#191c1e]">{{ patient.name }}</strong></span>
+              <span class="ml-auto px-2 py-0.5 rounded bg-white border border-[#e0e3e5] text-[10.5px] font-semibold text-[#45464d] whitespace-nowrap">CI: {{ patient.ci }}</span>
+            </div>
+          }
+
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-[#191c1e] uppercase tracking-wider">Medicamentos</span>
+            <app-button variant="outline" size="sm" icon="add" (click)="addMedicationRow()">Agregar Medicamento</app-button>
+          </div>
+
+          <div class="flex flex-col gap-3">
+            @for (med of recipeMeds(); track med.id; let mIndex = $index) {
+              <div class="p-3 rounded-xl border border-[#e0e3e5] bg-white flex flex-col gap-2.5">
+                <div class="flex items-center gap-2">
+                  <span class="w-6 h-6 rounded-lg bg-[#006a61]/10 text-[#006a61] flex items-center justify-center text-[11px] font-bold shrink-0">{{ mIndex + 1 }}</span>
+                  <input
+                    type="text"
+                    list="medication-suggestions"
+                    placeholder="Nombre del medicamento *"
+                    title="Busque o escriba el nombre del medicamento"
+                    class="flex-1 px-3 py-2 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                    [value]="med.name"
+                    (input)="updateMedicationField(mIndex, 'name', $event)"
+                  />
+                  <button
+                    type="button"
+                    class="shrink-0 w-7 h-7 rounded-lg bg-[#ffdad6]/60 text-[#ba1a1a] flex items-center justify-center hover:bg-[#ffdad6] transition-colors"
+                    [disabled]="recipeMeds().length === 1"
+                    [class]="recipeMeds().length === 1 ? 'opacity-40 pointer-events-none' : ''"
+                    (click)="removeMedicationRow(mIndex)"
+                    title="Quitar medicamento"
+                  >
+                    <span class="material-symbols-outlined text-[15px]">close</span>
+                  </button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <label class="flex flex-col">
+                    <span class="text-[10px] font-bold text-[#76777d] uppercase tracking-wider">Dosis / Presentación</span>
+                    <input type="text" placeholder="Ej: 50 mg en comprimidos" class="px-2.5 py-1.5 rounded-lg border border-[#d7d9dc] bg-white text-[12px] text-[#191c1e] focus:outline-none focus:ring-1 focus:ring-[#006a61]" [value]="med.dose" (input)="updateMedicationField(mIndex, 'dose', $event)" />
+                  </label>
+                  <label class="flex flex-col">
+                    <span class="text-[10px] font-bold text-[#76777d] uppercase tracking-wider">Frecuencia</span>
+                    <input type="text" placeholder="Ej: cada 12 horas" class="px-2.5 py-1.5 rounded-lg border border-[#d7d9dc] bg-white text-[12px] text-[#191c1e] focus:outline-none focus:ring-1 focus:ring-[#006a61]" [value]="med.frequency" (input)="updateMedicationField(mIndex, 'frequency', $event)" />
+                  </label>
+                  <label class="flex flex-col">
+                    <span class="text-[10px] font-bold text-[#76777d] uppercase tracking-wider">Duración</span>
+                    <input type="text" placeholder="Ej: 30 días / 90 días" class="px-2.5 py-1.5 rounded-lg border border-[#d7d9dc] bg-white text-[12px] text-[#191c1e] focus:outline-none focus:ring-1 focus:ring-[#006a61]" [value]="med.duration" (input)="updateMedicationField(mIndex, 'duration', $event)" />
+                  </label>
+                </div>
+              </div>
+            }
+            @empty {
+              <p class="text-center text-[12px] text-[#76777d] py-4">Sin medicamentos. Agregue al menos uno.</p>
+            }
+          </div>
+
+          <datalist id="medication-suggestions">
+            @for (med of medicationCatalog(); track med) {
+              <option [value]="med"></option>
+            }
+          </datalist>
+
+          <label class="flex flex-col gap-1.5">
+            <span class="text-[12px] font-bold text-[#191c1e]">Indicaciones Generales</span>
+            <textarea rows="2" placeholder="Ej: Tomar con alimentos, evitar alcohol..." class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61] resize-none" [value]="recipeNotes()" (input)="recipeNotes.set(($any($event.target)).value)"></textarea>
+          </label>
+        </div>
+        <div modal-footer>
+          <app-button variant="light" size="md" (click)="closeRecipeModal()">Cancelar</app-button>
+          <app-button variant="primary" size="md" icon="check" (click)="saveRecipe()">Guardar Receta</app-button>
+        </div>
+      </app-modal>
       <app-toast />
     </div>
   `,
@@ -490,13 +597,24 @@ export class PatientHistoryComponent {
 
   selectedPatient = signal<Patient | null>(null);
 
-  medications = signal([
-    { name: 'Losartán Potásico 50 mg', dose: '1 comp cada 12 horas · Vía Oral', status: 'Activo', daysLeft: '62 días restantes' },
-    { name: 'Atorvastatina 20 mg', dose: '1 comp cada noche · Vía Oral', status: 'Activo', daysLeft: '45 días restantes' },
-    { name: 'Ácido Acetilsalicílico 100 mg', dose: '1 comp con almuerzo · Vía Oral', status: 'Activo', daysLeft: '78 días restantes' },
-  ]);
+  readonly patientPrescriptions = computed(() => {
+    const patient = this.selectedPatient();
+    if (!patient) return [];
+    return this.data.getPrescriptionsByPatient(patient.id);
+  });
+
+  readonly activeMedCount = computed(() =>
+    this.patientPrescriptions().reduce((acc, rx) => acc + rx.meds.length, 0)
+  );
+
+  readonly medicationCatalog = computed(() => this.data.medicationCatalog());
 
   readonly showNewPatientModal = signal(false);
+  readonly showRecipeModal = signal(false);
+  readonly recipeMeds = signal<PrescriptionMedication[]>([
+    { id: 'med-' + Date.now(), name: '', dose: '', frequency: '', duration: '' },
+  ]);
+  readonly recipeNotes = signal('');
   readonly searchPatientTerm = signal('');
   readonly showPatientDropdown = signal(false);
 
@@ -618,8 +736,64 @@ export class PatientHistoryComponent {
     this.toast.show('Generando Expediente PDF', `Expediente clínico completo de ${this.selectedPatient()?.name} descargado con éxito.`);
   }
 
+  openRecipeModal(): void {
+    this.recipeMeds.set([{ id: 'med-' + Date.now(), name: '', dose: '', frequency: '', duration: '' }]);
+    this.recipeNotes.set('');
+    this.showRecipeModal.set(true);
+  }
+
+  closeRecipeModal(): void {
+    this.showRecipeModal.set(false);
+  }
+
+  addMedicationRow(): void {
+    this.recipeMeds.update((meds) => [
+      ...meds,
+      { id: 'med-' + Date.now() + '-' + meds.length, name: '', dose: '', frequency: '', duration: '' },
+    ]);
+  }
+
+  removeMedicationRow(index: number): void {
+    if (this.recipeMeds().length <= 1) return;
+    this.recipeMeds.update((meds) => meds.filter((_, i) => i !== index));
+  }
+
+  updateMedicationField(index: number, field: 'name' | 'dose' | 'frequency' | 'duration', event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.recipeMeds.update((meds) => meds.map((med, i) => (i === index ? { ...med, [field]: value } : med)));
+  }
+
+  saveRecipe(): void {
+    const patient = this.selectedPatient();
+    if (!patient) return;
+    const meds = this.recipeMeds().filter((m) => m.name.trim() !== '');
+    if (meds.length === 0) {
+      this.toast.show('Faltan Datos', 'Agregue al menos un medicamento con su nombre para emitir la receta.');
+      return;
+    }
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const prescription: Prescription = {
+      id: 'RX-' + Date.now(),
+      patientId: patient.id,
+      patientName: patient.name,
+      ci: patient.ci,
+      doctorName: this.data.doctor.name,
+      date: `${day}/${month}/${year}`,
+      time: now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+      meds: meds.map((m) => ({ ...m })),
+      notes: this.recipeNotes(),
+      status: 'Emitida Hoy',
+    };
+    this.data.addPrescription(prescription);
+    this.closeRecipeModal();
+    this.toast.show('Receta Emitida', `Receta ${prescription.id} registrada para ${prescription.patientName} con ${meds.length} medicamento${meds.length > 1 ? 's' : ''}.`);
+  }
+
   handleEmitRecipe(): void {
-    this.toast.show('Receta Médica Digital', 'Módulo de firma I-Med abierto. Código de autorización generado.');
+    this.openRecipeModal();
   }
 
   handleNewConsulta(): void {

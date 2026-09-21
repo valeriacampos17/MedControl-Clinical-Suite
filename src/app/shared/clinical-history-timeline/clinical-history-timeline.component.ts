@@ -1,7 +1,7 @@
 import { Component, Input, computed, inject, signal, OnChanges, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MockDataService } from '../../core/services/mock-data.service';
-import { Consultation } from '../../core/models/types';
+import { Consultation, ExamOrder, Prescription } from '../../core/models/types';
 import { BadgeComponent } from '../badge/badge.component';
 
 @Component({
@@ -267,6 +267,64 @@ import { BadgeComponent } from '../badge/badge.component';
                         </div>
                       }
 
+                      @if (getExamOrdersForConsultation(c.id).length > 0) {
+                        <div>
+                          <span class="text-[11px] font-bold text-[#1e3a5f] uppercase tracking-wider block mb-1">Exámenes Solicitados</span>
+                          <div class="flex flex-col gap-2">
+                            @for (order of getExamOrdersForConsultation(c.id); track order.id) {
+                              <div class="p-3 rounded-lg bg-[#acedff]/20 border border-[#acedff]/60">
+                                <div class="flex items-center gap-2 flex-wrap mb-1.5">
+                                  <span class="material-symbols-outlined text-[16px] text-[#004e5c]">biotech</span>
+                                  <span class="text-[12px] font-bold text-[#004e5c]">Orden #{{ order.id }}</span>
+                                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                        [class]="order.priority === 'urgencia' ? 'bg-[#ffdad6] text-[#ba1a1a]' : 'bg-[#fffbeb] text-[#92400e]'">
+                                    {{ order.priority === 'urgencia' ? 'Urgencia' : 'Rutina' }}
+                                  </span>
+                                </div>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                  @for (item of order.items; track item.examId) {
+                                    <span class="px-2 py-0.5 rounded bg-white text-[11px] font-semibold text-[#191c1e] border border-[#e0e3e5]">{{ item.name }}</span>
+                                  }
+                                </div>
+                                @if (order.notes) {
+                                  <p class="text-[11px] text-[#004e5c] mt-1.5 italic">"{{ order.notes }}"</p>
+                                }
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
+
+                      @if (getPrescriptionsForConsultation(c.id).length > 0) {
+                        <div>
+                          <span class="text-[11px] font-bold text-[#065f46] uppercase tracking-wider block mb-1">Recetas Asociadas</span>
+                          <div class="flex flex-col gap-2">
+                            @for (rx of getPrescriptionsForConsultation(c.id); track rx.id) {
+                              <div class="p-3 rounded-lg bg-[#ecfdf5] border border-[#86efac]/40">
+                                <div class="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+                                  <span class="flex items-center gap-2 text-[12px] font-bold text-[#065f46]">
+                                    <span class="material-symbols-outlined text-[16px]">prescriptions</span>
+                                    Receta #{{ rx.id }}
+                                  </span>
+                                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white border border-[#86efac]/60 text-[#065f46]">{{ rx.status }}</span>
+                                </div>
+                                <div class="flex flex-col gap-1.5">
+                                  @for (med of rx.meds; track med.id) {
+                                    <div class="bg-white p-2 rounded-lg border border-[#e0e3e5]">
+                                      <span class="text-[12px] font-bold text-[#191c1e] block">{{ med.name }}</span>
+                                      <span class="text-[11px] text-[#45464d]">{{ med.dose }} · {{ med.frequency }} · {{ med.duration }}</span>
+                                    </div>
+                                  }
+                                </div>
+                                @if (rx.notes) {
+                                  <p class="text-[11px] text-[#065f46] mt-1.5 italic">"{{ rx.notes }}"</p>
+                                }
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
+
                       <div class="pt-2 flex items-center justify-end">
                         <button
                           type="button"
@@ -449,5 +507,13 @@ export class ClinicalHistoryTimelineComponent implements OnChanges {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 50);
+  }
+
+  getExamOrdersForConsultation(consultationId: string): ExamOrder[] {
+    return this.data.getExamOrdersByConsultation(consultationId);
+  }
+
+  getPrescriptionsForConsultation(consultationId: string): Prescription[] {
+    return this.data.getPrescriptionsByConsultation(consultationId);
   }
 }
