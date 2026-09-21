@@ -328,6 +328,27 @@ export class RecetasComponent {
     return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  private brandHeader(subtitle: string): string {
+    const org = this.data.organization();
+    const initials = (org.name || 'MC')
+      .split(/\s+/)
+      .filter((w) => w.length > 0)
+      .slice(0, 2)
+      .map((w) => w[0].toUpperCase())
+      .join('');
+    const meta = [subtitle, org.rut, org.phone].filter((v) => v && v.trim()).join(' · ');
+    return `
+      <div class="brand">
+        <div class="logo">${this.esc(initials)}</div>
+        <div><h1>${this.esc(org.name)}</h1><p>${this.esc(meta)}</p></div>
+      </div>`;
+  }
+
+  private orgFooter(): string {
+    const ft = this.data.organization().footerText?.trim();
+    return ft ? `<p class="orgfoot">${this.esc(ft)}</p>` : '';
+  }
+
   private docShell(title: string, body: string): string {
     return `<!doctype html>
 <html lang="es">
@@ -355,10 +376,11 @@ export class RecetasComponent {
   .sign .line { border-top: 1px solid #191c1e; padding-top: 6px; font-size: 12px; font-weight: 700; }
   .sign .sub { font-size: 10px; color: #76777d; }
   .hint { text-align: center; font-size: 11px; color: #76777d; margin-top: 26px; }
-  @media print { .hint { display: none; } body { padding: 0; } }
+  .orgfoot { text-align: center; font-size: 10px; color: #76777d; margin-top: 6px; }
+  @media print { .hint, .orgfoot { display: none; } body { padding: 0; } }
 </style>
 </head>
-<body>${body}
+<body>${body}\n${this.orgFooter()}
 <p class="hint">Previsualización de documento &mdash; use Ctrl+P / la opción de imprimir del navegador para generar el PDF o papel.</p>
 </body>
 </html>`;
@@ -374,10 +396,7 @@ export class RecetasComponent {
       </tr>`).join('');
     return this.docShell('Receta ' + rx.id, `
     <div class="head">
-      <div class="brand">
-        <div class="logo">MC</div>
-        <div><h1>MedControl Clinical Suite</h1><p>Receta Electrónica · Firma Avanzada MINSAL</p></div>
-      </div>
+      ${this.brandHeader('Receta Electrónica · Firma Avanzada MINSAL')}
       <div class="type"><span class="badge">RECETA MÉDICA ELECTRÓNICA</span></div>
     </div>
     <div class="grid">
@@ -415,10 +434,7 @@ export class RecetasComponent {
       </tr>`).join('');
     return this.docShell('Orden ' + order.id, `
     <div class="head">
-      <div class="brand">
-        <div class="logo">MC</div>
-        <div><h1>MedControl Clinical Suite</h1><p>Órdenes de Exámenes Complementarios</p></div>
-      </div>
+      ${this.brandHeader('Órdenes de Exámenes Complementarios')}
       <div class="type"><span class="badge">ORDEN DE EXÁMENES</span></div>
     </div>
     <div class="grid">
