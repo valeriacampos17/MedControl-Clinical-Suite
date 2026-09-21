@@ -1,7 +1,13 @@
 # Compiled output
 dist
+server/dist
 tmp
 /out-tsc
+
+# Database (local data)
+server/data/*.db
+server/data/*.db-shm
+server/data/*.db-wal
 
 # Dependencies
 node_modules

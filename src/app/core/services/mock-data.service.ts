@@ -1,4 +1,5 @@
-import { Injectable, signal, computed, WritableSignal } from '@angular/core';
+import { Injectable, signal, computed, WritableSignal, inject } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import {
   Patient,
   Doctor,
@@ -19,6 +20,7 @@ import {
   AlertRule,
   AppUser,
 } from '../models/types';
+import { ApiService } from './api.service';
 
 export interface DoctorSummary {
   id: string;
@@ -42,7 +44,61 @@ function addDays(dateStr: string, n: number): string {
 
 @Injectable({ providedIn: 'root' })
 export class MockDataService {
+  private api = inject(ApiService);
+
   readonly userRole = signal<'admin' | 'doctor'>('admin');
+  readonly initialized = signal(false);
+
+  reset(): void {
+    this.initialized.set(false);
+  }
+
+  /** Hidrata todas las signals desde la API (una sola vez por sesión). */
+  async initialize(): Promise<void> {
+    if (this.initialized()) return;
+    const result = await Promise.allSettled([
+      firstValueFrom(this.api.get<{ patients: Patient[] }>('/patients')),
+      firstValueFrom(this.api.get<{ doctors: DoctorSummary[] }>('/doctors')),
+      firstValueFrom(this.api.get<{ appointments: AppointmentItem[] }>('/appointments')),
+      firstValueFrom(this.api.get<{ schedule: DaySchedule[] }>('/config/schedules')),
+      firstValueFrom(this.api.get<{ absences: AbsenceBlock[] }>('/config/absences')),
+      firstValueFrom(this.api.get<{ workingDays: WorkingDay[] }>('/config/working-days')),
+      firstValueFrom(this.api.get<{ organization: OrganizationSettings }>('/config/organization')),
+      firstValueFrom(this.api.get<{ alertRules: AlertRule[] }>('/config/alert-rules')),
+      firstValueFrom(this.api.get<{ users: AppUser[] }>('/config/users')),
+      firstValueFrom(this.api.get<{ exams: ExamTemplate[] }>('/catalogs/exams')),
+      firstValueFrom(this.api.get<{ medications: Medication[] }>('/catalogs/medications')),
+      firstValueFrom(this.api.get<{ diagnoses: Diagnosis[] }>('/catalogs/diagnoses')),
+      firstValueFrom(this.api.get<{ triageLevels: TriageLevel[] }>('/catalogs/triage/levels')),
+      firstValueFrom(this.api.get<{ triageRules: TriageAutoRule[] }>('/catalogs/triage/rules')),
+      firstValueFrom(this.api.get<{ consultations: Consultation[] }>('/consultations')),
+      firstValueFrom(this.api.get<{ prescriptions: Prescription[] }>('/records/prescriptions')),
+      firstValueFrom(this.api.get<{ examOrders: ExamOrder[] }>('/records/exam-orders')),
+    ]);
+    const [
+      patients, doctors, appointments, schedule, absences, workingDays,
+      organization, alertRules, catalogUsers, exams, medications,
+      diagnoses, triageLevels, triageRules, consultations, prescriptions, examOrders,
+    ] = result;
+    if (patients.status === 'fulfilled') this.patients.set(patients.value.patients);
+    if (doctors.status === 'fulfilled') this.doctors.set(doctors.value.doctors);
+    if (appointments.status === 'fulfilled') this.appointments.set(appointments.value.appointments);
+    if (schedule.status === 'fulfilled') this.schedule.set(schedule.value.schedule);
+    if (absences.status === 'fulfilled') this.absences.set(absences.value.absences);
+    if (workingDays.status === 'fulfilled') this.workingDays.set(workingDays.value.workingDays);
+    if (organization.status === 'fulfilled') this.organization.set(organization.value.organization);
+    if (alertRules.status === 'fulfilled') this.alertRules.set(alertRules.value.alertRules);
+    if (catalogUsers.status === 'fulfilled') this.catalogUsers.set(catalogUsers.value.users);
+    if (exams.status === 'fulfilled') this.examCatalog.set(exams.value.exams);
+    if (medications.status === 'fulfilled') this.medications.set(medications.value.medications);
+    if (diagnoses.status === 'fulfilled') this.diagnoses.set(diagnoses.value.diagnoses);
+    if (triageLevels.status === 'fulfilled') this.triageLevels.set(triageLevels.value.triageLevels);
+    if (triageRules.status === 'fulfilled') this.triageAutoRules.set(triageRules.value.triageRules);
+    if (consultations.status === 'fulfilled') this.consultations.set(consultations.value.consultations);
+    if (prescriptions.status === 'fulfilled') this.prescriptions.set(prescriptions.value.prescriptions);
+    if (examOrders.status === 'fulfilled') this.examOrders.set(examOrders.value.examOrders);
+    this.initialized.set(true);
+  }
 
   private storage<T>(key: string, seed: T): WritableSignal<T> {
     try {
@@ -210,15 +266,23 @@ export class MockDataService {
   }
 
   toggleWorkingDay(dateStr: string): void {
-    this.workingDays.update(days => {
-      const exists = days.some(d => d.date === dateStr);
-      if (exists) return days.filter(d => d.date !== dateStr);
-      return [...days, { date: dateStr }];
+    this.api.post<{ workingDays: WorkingDay[] }>('/config/working-days/toggle', { date: dateStr }).subscribe({
+      next: (r) => this.workingDays.set(r.workingDays),
+      error: () => {
+        this.workingDays.update(days => {
+          const exists = days.some(d => d.date === dateStr);
+          if (exists) return days.filter(d => d.date !== dateStr);
+          return [...days, { date: dateStr }];
+        });
+      },
     });
   }
 
   setWorkingDays(dates: WorkingDay[]): void {
     this.workingDays.set(dates);
+    this.api.put<{ workingDays: WorkingDay[] }>('/config/working-days', { days: dates.map(({ date, note }) => ({ date, note })) }).subscribe({
+      next: (r) => this.workingDays.set(r.workingDays),
+    });
   }
 
   getBusinessDays(fromDate: string, count: number): string[] {
@@ -237,6 +301,9 @@ export class MockDataService {
     this.appointments.update(apts =>
       apts.map(apt => apt.id === aptId ? { ...apt, date: newDate, time: newTime } : apt)
     );
+    this.api.patch<{ appointment: AppointmentItem }>(`/appointments/${aptId}/reschedule`, { date: newDate, time: newTime }).subscribe({
+      next: (r) => this.replaceAppointment(r.appointment),
+    });
   }
 
   readonly currentTriageAppointmentId = signal<string | null>(null);
@@ -266,15 +333,11 @@ export class MockDataService {
   );
 
   checkInPatient(aptId: string): void {
-    this.appointments.update(apts =>
-      apts.map(apt => apt.id === aptId ? { ...apt, status: 'checked-in' as const } : apt)
-    );
+    this.updateStatus(aptId, 'checked-in');
   }
 
   confirmAppointment(aptId: string): void {
-    this.appointments.update(apts =>
-      apts.map(apt => apt.id === aptId ? { ...apt, status: 'confirmed' as const } : apt)
-    );
+    this.updateStatus(aptId, 'confirmed');
   }
 
   startTriage(aptId: string): void {
@@ -282,6 +345,9 @@ export class MockDataService {
       apts.map(apt => apt.id === aptId ? { ...apt, status: 'in-triage' as const } : apt)
     );
     this.currentTriageAppointmentId.set(aptId);
+    this.api.patch<{ appointment: AppointmentItem }>(`/appointments/${aptId}/start-triage`, {}).subscribe({
+      next: (r) => this.replaceAppointment(r.appointment),
+    });
   }
 
   completeTriage(aptId: string, vitals: TriageVitals): void {
@@ -301,6 +367,18 @@ export class MockDataService {
       })
     );
     this.currentTriageAppointmentId.set(null);
+    this.api.patch<{ appointment: AppointmentItem }>(`/appointments/${aptId}/complete-triage`, {
+      systolic: vitals.systolic,
+      diastolic: vitals.diastolic,
+      pulse: vitals.pulse,
+      temp: vitals.temp,
+      spo2: vitals.spo2,
+      weight: vitals.weight ?? null,
+      height: vitals.height ?? null,
+      notes: vitals.notes ?? '',
+    }).subscribe({
+      next: (r) => this.replaceAppointment(r.appointment),
+    });
   }
 
   cancelTriage(): void {
@@ -311,26 +389,59 @@ export class MockDataService {
       );
     }
     this.currentTriageAppointmentId.set(null);
+    if (aptId) {
+      this.api.patch<{ appointment: AppointmentItem }>(`/appointments/${aptId}/cancel-triage`, {}).subscribe({
+        next: (r) => this.replaceAppointment(r.appointment),
+      });
+    }
+  }
+
+  private updateStatus(aptId: string, status: AppointmentItem['status']): void {
+    this.appointments.update(apts =>
+      apts.map(apt => apt.id === aptId ? { ...apt, status } : apt)
+    );
+    this.api.patch<{ appointment: AppointmentItem }>(`/appointments/${aptId}/status`, { status }).subscribe({
+      next: (r) => this.replaceAppointment(r.appointment),
+      error: () => this.appointments.update(apts => apts.map(apt => apt.id === aptId || apt.status === status ? apt : apt)),
+    });
+  }
+
+  private replaceAppointment(updated: AppointmentItem): void {
+    this.appointments.update(apts =>
+      apts.map(apt => apt.id === updated.id ? { ...updated } : apt)
+    );
   }
 
   startConsultation(patientId: string): void {
-    this.appointments.update(apts =>
-      apts.map(apt =>
+    const apts = this.appointments().filter(a => a.patientId === patientId && a.date === this.selectedDate());
+    this.appointments.update(aptsAll =>
+      aptsAll.map(apt =>
         apt.patientId === patientId && apt.date === this.selectedDate()
           ? { ...apt, status: 'in-progress' as const }
           : apt
       )
     );
+    for (const apt of apts) {
+      this.api.patch<{ appointment: AppointmentItem }>(`/appointments/${apt.id}/status`, { status: 'in-progress' }).subscribe({
+        next: (r) => this.replaceAppointment(r.appointment),
+      });
+    }
   }
 
   completeConsultation(patientId: string): void {
-    this.appointments.update(apts =>
-      apts.map(apt =>
+    const apts = this.appointments().filter(a => a.patientId === patientId && a.date === this.selectedDate());
+    this.appointments.update(aptsAll =>
+      aptsAll.map(apt =>
         apt.patientId === patientId && apt.date === this.selectedDate()
           ? { ...apt, status: 'completed' as const, vitals: undefined }
           : apt
       )
     );
+    for (const apt of apts) {
+      this.api.patch<{ appointment: AppointmentItem }>(`/appointments/${apt.id}/status`, { status: 'completed' }).subscribe({
+        next: (r) => this.replaceAppointment(r.appointment),
+      });
+    }
   }
 
   readonly activePatientId = signal<string>('MED-0001');
@@ -344,8 +455,29 @@ export class MockDataService {
   }
 
   addPatient(patient: Patient): void {
+    const targeting = { ...patient };
     this.patients.update((list) => [...list, patient]);
     this.activePatientId.set(patient.id);
+    this.api.post<{ patient: Patient }>('/patients', {
+      ci: targeting.ci,
+      name: targeting.name,
+      age: targeting.age ?? 0,
+      birthDate: targeting.birthDate,
+      phone: targeting.phone,
+      email: targeting.email,
+      address: targeting.address,
+      insurance: targeting.insurance,
+      bloodType: targeting.bloodType,
+      allergies: targeting.allergies ?? [],
+      chronicConditions: targeting.chronicConditions ?? [],
+      consentSigned: targeting.consentSigned ?? false,
+    }).subscribe({
+      next: (r) => {
+        this.patients.update((list) => [...list.filter((p) => p.id !== patient.id), r.patient]);
+        this.activePatientId.set(r.patient.id);
+      },
+      error: () => this.patients.update((list) => list.filter((p) => p.id !== patient.id)),
+    });
   }
 
   nextFileNumber(): string {
@@ -491,6 +623,27 @@ export class MockDataService {
 
   addConsultation(consultation: Consultation): void {
     this.consultations.update((list) => [consultation, ...list]);
+    this.api.post<{ consultation: { id: string } }>('/consultations', {
+      patientId: consultation.patientId,
+      date: consultation.date,
+      time: consultation.time,
+      type: consultation.type,
+      chiefComplaint: consultation.chiefComplaint,
+      historyOfPresentIllness: consultation.historyOfPresentIllness,
+      physicalExam: consultation.physicalExam,
+      vitals: consultation.vitals,
+      diagnosisCode: consultation.diagnosisCode,
+      diagnosisDescription: consultation.diagnosisDescription,
+      treatmentPlan: consultation.treatmentPlan,
+      notes: consultation.notes,
+      status: consultation.status,
+    }).subscribe({
+      next: () => {
+        this.api.get<{ consultations: Consultation[] }>(`/patients/${consultation.patientId}/consultations`).subscribe((r) => {
+          this.consultations.update((list) => [...r.consultations, ...list.filter((c) => !r.consultations.some((incoming) => incoming.id === c.id))]);
+        });
+      },
+    });
   }
 
   getConsultationsByPatient(patientId: string): Consultation[] {
@@ -528,23 +681,44 @@ export class MockDataService {
 
   addExam(exam: ExamTemplate): void {
     this.examCatalog.update((list) => [...list, exam]);
-    this.persist('medcontrol.exams', this.examCatalog());
+    this.api.post<{ exam: ExamTemplate }>('/catalogs/exams', { ...exam, active: true }).subscribe({
+      next: (r) => this.replaceExam(r.exam),
+    });
   }
 
   updateExam(exam: ExamTemplate): void {
     this.examCatalog.update((list) => list.map((e) => (e.id === exam.id ? {...exam} : e)));
-    this.persist('medcontrol.exams', this.examCatalog());
+    this.api.put<{ exam: ExamTemplate }>(`/catalogs/exams/${exam.id}`, { ...exam, active: true }).subscribe({
+      next: (r) => this.replaceExam(r.exam),
+    });
   }
 
   deactivateExam(id: string): void {
     this.examCatalog.update((list) => list.filter((e) => e.id !== id));
-    this.persist('medcontrol.exams', this.examCatalog());
+    this.api.delete<{ ok: boolean }>(`/catalogs/exams/${id}`).subscribe();
+  }
+
+  private replaceExam(exam: ExamTemplate): void {
+    this.examCatalog.update((list) => list.map((e) => (e.id === exam.id ? { ...exam } : e)));
   }
 
   readonly examOrders = signal<ExamOrder[]>([]);
 
   addExamOrder(order: ExamOrder): void {
     this.examOrders.update((list) => [order, ...list]);
+    this.api.post<{ examOrder: ExamOrder }>('/records/exam-orders', {
+      consultationId: order.consultationId,
+      patientId: order.patientId,
+      date: order.date,
+      time: order.time,
+      priority: order.priority,
+      notes: order.notes,
+      items: order.items,
+      status: order.status,
+    }).subscribe({
+      next: (r) => this.examOrders.update((list) => list.map((o) => (o.id === order.id ? r.examOrder : o))),
+      error: () => this.examOrders.update((list) => list.filter((o) => o.id !== order.id)),
+    });
   }
 
   getExamOrders(): ExamOrder[] {
@@ -590,17 +764,25 @@ export class MockDataService {
 
   addMedication(med: Medication): void {
     this.medications.update((list) => [...list, med]);
-    this.persist('medcontrol.medications', this.medications());
+    this.api.post<{ medication: Medication }>('/catalogs/medications', { ...med, id: undefined }).subscribe({
+      next: (r) => this.replaceMedication(r.medication),
+    });
   }
 
   updateMedication(med: Medication): void {
     this.medications.update((list) => list.map((m) => (m.id === med.id ? {...med} : m)));
-    this.persist('medcontrol.medications', this.medications());
+    this.api.put<{ medication: Medication }>(`/catalogs/medications/${med.id}`, { ...med }).subscribe({
+      next: (r) => this.replaceMedication(r.medication),
+    });
   }
 
   deactivateMedication(id: string): void {
     this.medications.update((list) => list.filter((m) => m.id !== id));
-    this.persist('medcontrol.medications', this.medications());
+    this.api.delete<{ ok: boolean }>(`/catalogs/medications/${id}`).subscribe();
+  }
+
+  private replaceMedication(med: Medication): void {
+    this.medications.update((list) => list.map((m) => (m.id === med.id ? { ...med } : m)));
   }
 
   getNextMedicationId(): string {
@@ -613,6 +795,19 @@ export class MockDataService {
 
   addPrescription(prescription: Prescription): void {
     this.prescriptions.update((list) => [prescription, ...list]);
+    this.api.post<{ prescription: Prescription }>('/records/prescriptions', {
+      patientId: prescription.patientId,
+      consultationId: prescription.consultationId,
+      date: prescription.date,
+      time: prescription.time,
+      meds: prescription.meds,
+      notes: prescription.notes,
+      status: prescription.status,
+      ci: prescription.ci,
+    }).subscribe({
+      next: (r) => this.prescriptions.update((list) => list.map((rx) => (rx.id === prescription.id ? r.prescription : rx))),
+      error: () => this.prescriptions.update((list) => list.filter((rx) => rx.id !== prescription.id)),
+    });
   }
 
   getPrescriptions(): Prescription[] {
@@ -651,17 +846,23 @@ export class MockDataService {
 
   addDiagnosis(dg: Diagnosis): void {
     this.diagnoses.update((list) => [...list, dg]);
-    this.persist('medcontrol.diagnoses', this.diagnoses());
+    this.api.post<{ diagnosis: Diagnosis }>('/catalogs/diagnoses', { code: dg.code, description: dg.description }).subscribe({
+      next: (r) => this.diagnoses.update((list) => list.map((d) => (d.code === dg.code ? { ...r.diagnosis } : d))),
+      error: () => this.diagnoses.update((list) => list.filter((d) => d.code !== dg.code)),
+    });
   }
 
   updateDiagnosis(dg: Diagnosis): void {
     this.diagnoses.update((list) => list.map((d) => (d.id === dg.id ? {...dg} : d)));
-    this.persist('medcontrol.diagnoses', this.diagnoses());
+    this.api.put<{ ok: boolean }>(`/catalogs/diagnoses/${encodeURIComponent(dg.code)}`, { description: dg.description }).subscribe();
   }
 
   deactivateDiagnosis(id: string): void {
+    const dg = this.diagnoses().find((d) => d.id === id);
     this.diagnoses.update((list) => list.filter((d) => d.id !== id));
-    this.persist('medcontrol.diagnoses', this.diagnoses());
+    if (dg) {
+      this.api.delete<{ ok: boolean }>(`/catalogs/diagnoses/${encodeURIComponent(dg.code)}`).subscribe();
+    }
   }
 
   getNextDiagnosisId(): string {
@@ -700,12 +901,17 @@ export class MockDataService {
 
   updateTriageLevel(level: TriageLevel): void {
     this.triageLevels.update((list) => list.map((l) => (l.id === level.id ? {...level} : l)));
-    this.persist('medcontrol.triageLevels', this.triageLevels());
+    this.api.put<{ triageLevel: TriageLevel }>(`/catalogs/triage/levels/${level.id}`, { ...level }).subscribe({
+      next: (r) => this.triageLevels.update((list) => list.map((l) => (l.id === r.triageLevel.id ? { ...r.triageLevel } : l))),
+    });
   }
 
   addTriageLevel(level: TriageLevel): void {
     this.triageLevels.update((list) => [...list, level]);
-    this.persist('medcontrol.triageLevels', this.triageLevels());
+    this.api.post<{ triageLevel: TriageLevel }>('/catalogs/triage/levels', { ...level }).subscribe({
+      next: (r) => this.triageLevels.update((list) => list.map((l) => (l.id === level.id ? { ...r.triageLevel } : l))),
+      error: () => this.triageLevels.update((list) => list.filter((l) => l.id !== level.id)),
+    });
   }
 
   getTriageRules(): TriageAutoRule[] {
@@ -714,17 +920,20 @@ export class MockDataService {
 
   addTriageRule(rule: TriageAutoRule): void {
     this.triageAutoRules.update((list) => [...list, rule]);
-    this.persist('medcontrol.triageRules', this.triageAutoRules());
+    this.api.post<{ triageRule: TriageAutoRule }>('/catalogs/triage/rules', { ...rule }).subscribe({
+      next: (r) => this.triageAutoRules.update((list) => list.map((x) => (x.id === rule.id ? { ...r.triageRule } : x))),
+      error: () => this.triageAutoRules.update((list) => list.filter((x) => x.id !== rule.id)),
+    });
   }
 
   updateTriageRule(rule: TriageAutoRule): void {
     this.triageAutoRules.update((list) => list.map((r) => (r.id === rule.id ? {...rule} : r)));
-    this.persist('medcontrol.triageRules', this.triageAutoRules());
+    this.api.put<{ ok: boolean }>(`/catalogs/triage/rules/${rule.id}`, { levelCode: rule.levelCode, field: rule.field, min: rule.min, max: rule.max }).subscribe();
   }
 
   removeTriageRule(id: string): void {
     this.triageAutoRules.update((list) => list.filter((r) => r.id !== id));
-    this.persist('medcontrol.triageRules', this.triageAutoRules());
+    this.api.delete<{ ok: boolean }>(`/catalogs/triage/rules/${id}`).subscribe();
   }
 
   classifyTriage(vitals: TriageVitals): { level: TriageLevel; matched: TriageAutoRule[] } | null {
@@ -757,7 +966,9 @@ export class MockDataService {
 
   updateOrganization(org: OrganizationSettings): void {
     this.organization.set({ ...org });
-    this.persist('medcontrol.organization', this.organization());
+    this.api.put<{ organization: OrganizationSettings }>('/config/organization', { organization: org }).subscribe({
+      next: (r) => this.organization.set({ ...r.organization }),
+    });
   }
 
   readonly alertRules = this.storage<AlertRule[]>('medcontrol.alertRules', [
@@ -778,17 +989,20 @@ export class MockDataService {
 
   addAlertRule(rule: AlertRule): void {
     this.alertRules.update((list) => [...list, rule]);
-    this.persist('medcontrol.alertRules', this.alertRules());
+    this.api.post<{ alertRule: AlertRule }>('/config/alert-rules', { ...rule }).subscribe({
+      next: (r) => this.alertRules.update((list) => list.map((x) => (x.id === rule.id ? { ...r.alertRule } : x))),
+      error: () => this.alertRules.update((list) => list.filter((x) => x.id !== rule.id)),
+    });
   }
 
   updateAlertRule(rule: AlertRule): void {
     this.alertRules.update((list) => list.map((r) => (r.id === rule.id ? {...rule} : r)));
-    this.persist('medcontrol.alertRules', this.alertRules());
+    this.api.put<{ ok: boolean }>(`/config/alert-rules/${rule.id}`, { ...rule }).subscribe();
   }
 
   deactivateAlertRule(id: string): void {
     this.alertRules.update((list) => list.filter((r) => r.id !== id));
-    this.persist('medcontrol.alertRules', this.alertRules());
+    this.api.delete<{ ok: boolean }>(`/config/alert-rules/${id}`).subscribe();
   }
 
   readonly catalogUsers = this.storage<AppUser[]>('medcontrol.users', [
@@ -808,11 +1022,17 @@ export class MockDataService {
 
   addCatalogUser(user: AppUser): void {
     this.catalogUsers.update((list) => [...list, user]);
-    this.persist('medcontrol.users', this.catalogUsers());
+    this.api.post<{ user: AppUser }>('/config/users', { ...user }).subscribe({
+      next: (r) => this.catalogUsers.update((list) => list.map((u) => (u.id === user.id ? { ...r.user } : u))),
+      error: () => this.catalogUsers.update((list) => list.filter((u) => u.id !== user.id)),
+    });
   }
 
   toggleCatalogUserActive(id: string): void {
     this.catalogUsers.update((list) => list.map((u) => (u.id === id ? {...u, active: !u.active} : u)));
-    this.persist('medcontrol.users', this.catalogUsers());
+    const user = this.catalogUsers().find((u) => u.id === id);
+    if (user) {
+      this.api.put<{ ok: boolean }>(`/config/users/${id}`, { ...user }).subscribe();
+    }
   }
 }

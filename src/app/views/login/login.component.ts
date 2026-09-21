@@ -125,23 +125,24 @@ export class LoginComponent {
   error = signal('');
 
   constructor() {
-    if (this.auth.isAuthenticated()) {
-      this.router.navigate(['/dashboard-de-citas']);
-    }
+    this.restore();
   }
 
-  handleLogin(): void {
+  private async restore(): Promise<void> {
+    const restored = await this.auth.restoreSession();
+    if (restored) this.router.navigate(['/dashboard-de-citas']);
+  }
+
+  async handleLogin(): Promise<void> {
     this.error.set('');
     this.loading.set(true);
 
-    setTimeout(() => {
-      const success = this.auth.login(this.email, this.password);
-      this.loading.set(false);
-      if (success) {
-        this.router.navigate(['/dashboard-de-citas']);
-      } else {
-        this.error.set('Correo o contraseña incorrectos');
-      }
-    }, 600);
+    const success = await this.auth.login(this.email, this.password);
+    this.loading.set(false);
+    if (success) {
+      this.router.navigate(['/dashboard-de-citas']);
+    } else {
+      this.error.set(this.auth.loginError() || 'Correo o contraseña incorrectos');
+    }
   }
 }
