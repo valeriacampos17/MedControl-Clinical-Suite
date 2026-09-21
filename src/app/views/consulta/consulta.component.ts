@@ -5,11 +5,18 @@ import { ToastService } from '../../core/services/toast.service';
 import { Consultation, ExamOrder, ExamTemplate, ExamOrderItem, ExamCategory, Prescription, PrescriptionMedication } from '../../core/models/types';
 import { ButtonComponent } from '../../shared/button/button.component';
 import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-timeline/clinical-history-timeline.component';
+import { ToastComponent } from '../../shared/toast/toast.component';
+
+interface FormErrors {
+  chiefComplaint?: boolean;
+  diagnosisCode?: boolean;
+  diagnosisDescription?: boolean;
+}
 
 @Component({
   selector: 'app-consulta',
   standalone: true,
-  imports: [ButtonComponent, ClinicalHistoryTimelineComponent],
+  imports: [ButtonComponent, ClinicalHistoryTimelineComponent, ToastComponent],
   template: `
     <div class="flex flex-col w-full">
       <div class="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-6">
@@ -32,6 +39,7 @@ import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-
           <span class="material-symbols-outlined text-[20px]">save</span>
           <span>Guardar</span>
         </button>
+        <app-toast />
 
         <div class="bg-white rounded-xl shadow-sm border border-[#e6e8ea] p-5 sm:p-6 mb-6">
           <div class="flex items-center gap-4 flex-wrap sm:flex-nowrap">
@@ -123,8 +131,11 @@ import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-
               </div>
               <div class="flex flex-col gap-4">
                 <label class="flex flex-col gap-1.5">
-                  <span class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Motivo de Consulta *</span>
-                  <textarea rows="2" placeholder="Ej: Control de presión arterial, cefalea desde hace 3 días..." class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61] resize-none" [value]="chiefComplaint()" (input)="chiefComplaint.set(($any($event.target)).value)"></textarea>
+                  <span class="text-[11px] font-bold uppercase tracking-wider" [class.text-[#ba1a1a]]="formErrors().chiefComplaint" [class.text-[#45464d]]="!formErrors().chiefComplaint">Motivo de Consulta *</span>
+                  <textarea id="chiefComplaint" rows="2" placeholder="Ej: Control de presión arterial, cefalea desde hace 3 días..." [class]="inputClasses('chiefComplaint')" [value]="chiefComplaint()" (input)="chiefComplaint.set(($any($event.target)).value); clearError('chiefComplaint')"></textarea>
+                  @if (formErrors().chiefComplaint) {
+                    <span class="text-[11px] font-semibold text-[#ba1a1a]">Este campo es obligatorio.</span>
+                  }
                 </label>
                 <label class="flex flex-col gap-1.5">
                   <span class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Enfermedad Actual</span>
@@ -331,15 +342,21 @@ import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-
               </div>
               <div class="flex flex-col gap-3">
                 <label class="flex flex-col gap-1.5">
-                  <span class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Código CIE-10</span>
-                  <input type="text" placeholder="Ej: I10" class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]" [value]="diagnosisCode()" (input)="diagnosisCode.set(($any($event.target)).value)" />
+                  <span class="text-[11px] font-bold uppercase tracking-wider" [class.text-[#ba1a1a]]="formErrors().diagnosisCode" [class.text-[#45464d]]="!formErrors().diagnosisCode">Código CIE-10</span>
+                  <input id="diagnosisCode" type="text" placeholder="Ej: I10" [class]="inputClasses('diagnosisCode')" [value]="diagnosisCode()" (input)="diagnosisCode.set(($any($event.target)).value); clearError('diagnosisCode')" />
+                  @if (formErrors().diagnosisCode) {
+                    <span class="text-[11px] font-semibold text-[#ba1a1a]">Ingrese el código de diagnóstico.</span>
+                  }
                 </label>
                 <label class="flex flex-col gap-1.5">
-                  <span class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Descripción del Diagnóstico</span>
-                  <input type="text" placeholder="Ej: Hipertensión arterial esencial" class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]" [value]="diagnosisDescription()" (input)="diagnosisDescription.set(($any($event.target)).value)" />
+                  <span class="text-[11px] font-bold uppercase tracking-wider" [class.text-[#ba1a1a]]="formErrors().diagnosisDescription" [class.text-[#45464d]]="!formErrors().diagnosisDescription">Descripción del Diagnóstico</span>
+                  <input id="diagnosisDescription" type="text" placeholder="Ej: Hipertensión arterial esencial" [class]="inputClasses('diagnosisDescription')" [value]="diagnosisDescription()" (input)="diagnosisDescription.set(($any($event.target)).value); clearError('diagnosisDescription')" />
+                  @if (formErrors().diagnosisDescription) {
+                    <span class="text-[11px] font-semibold text-[#ba1a1a]">Ingrese la descripción del diagnóstico.</span>
+                  }
                 </label>
                 <div class="flex flex-wrap gap-2">
-                  @for (dx of commonDiagnoses; track dx.code) {
+                  @for (dx of commonDiagnoses(); track dx.code) {
                     <button type="button" class="px-2.5 py-1 rounded-lg bg-[#f2f4f6] text-[#45464d] text-[11px] font-semibold border border-[#e0e3e5] hover:bg-[#e6e8ea] hover:text-[#191c1e] transition-colors" (click)="applyDiagnosis(dx)">
                       {{ dx.code }} — {{ dx.label }}
                     </button>
@@ -407,6 +424,8 @@ export class ConsultaComponent {
   readonly diagnosisDescription = signal('');
   readonly treatmentPlan = signal('');
   readonly notes = signal('');
+
+  readonly formErrors = signal<FormErrors>({});
 
   readonly examSearch = signal('');
   readonly examCategory = signal<'all' | ExamCategory>('all');
@@ -492,16 +511,13 @@ export class ConsultaComponent {
     return 'bg-[#ffdad6] text-[#ba1a1a]';
   });
 
-  readonly commonDiagnoses = [
-    { code: 'I10', label: 'Hipertensión esencial' },
-    { code: 'E11', label: 'Diabetes mellitus tipo 2' },
-    { code: 'E78', label: 'Dislipidemia' },
-    { code: 'J06', label: 'Infección aguda vías respiratorias' },
-    { code: 'M54', label: 'Dolor de espalda' },
-    { code: 'K21', label: 'ERGE' },
-    { code: 'F41', label: 'Trastorno de ansiedad' },
-    { code: 'N39', label: 'Infección urinaria' },
-  ];
+  readonly commonDiagnoses = computed(() =>
+    this.data
+      .getDiagnoses()
+      .filter((d) => d.active)
+      .slice(0, 8)
+      .map((d) => ({ code: d.code, label: d.description }))
+  );
 
   updateVital(field: string, event: Event): void {
     const value = Number((event.target as HTMLInputElement).value);
@@ -511,6 +527,16 @@ export class ConsultaComponent {
   applyDiagnosis(dx: { code: string; label: string }): void {
     this.diagnosisCode.set(dx.code);
     this.diagnosisDescription.set(dx.label);
+  }
+
+  clearError(field: keyof FormErrors): void {
+    this.formErrors.update((errs) => ({ ...errs, [field]: false }));
+  }
+
+  inputClasses(field: keyof FormErrors): string {
+    return this.formErrors()[field]
+      ? 'px-3.5 py-2.5 rounded-lg border border-[#ba1a1a] bg-[#fff5f5] text-[13px] text-[#191c1e] resize-none focus:outline-none focus:ring-2 focus:ring-[#ba1a1a]/30'
+      : 'px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] resize-none focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]';
   }
 
   setExamCategory(cat: 'all' | ExamCategory): void {
@@ -594,11 +620,24 @@ export class ConsultaComponent {
   }
 
   saveConsultation(): void {
-    const complaint = this.chiefComplaint().trim();
-    if (!complaint) {
-      this.toast.show('Faltan Datos', 'Ingrese el motivo de consulta para guardar.');
-      return;
-    }
+    try {
+      const complaint = this.chiefComplaint().trim();
+      const diagnosisCode = this.diagnosisCode().trim();
+      const diagnosisDescription = this.diagnosisDescription().trim();
+
+      this.formErrors.set({
+        chiefComplaint: !complaint,
+        diagnosisCode: !diagnosisCode,
+        diagnosisDescription: !diagnosisDescription,
+      });
+
+      if (!complaint || !diagnosisCode || !diagnosisDescription) {
+        const firstField = !complaint ? 'chiefComplaint' : !diagnosisCode ? 'diagnosisCode' : 'diagnosisDescription';
+        this.toast.show('Faltan Datos', 'Complete los campos resaltados en rojo antes de guardar.');
+        document.getElementById(firstField)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        (<HTMLInputElement | null>document.getElementById(firstField))?.focus();
+        return;
+      }
     const now = new Date();
     const day = String(now.getDate()).padStart(2, '0');
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -663,7 +702,11 @@ export class ConsultaComponent {
     }
 
     this.data.completeConsultation(this.data.activePatient().id);
-    this.toast.show('Consulta Guardada', `Consulta de ${consultation.patientName} registrada exitosamente.`);
-    this.goBack();
+      this.toast.show('Consulta Guardada', `Consulta de ${consultation.patientName} registrada exitosamente.`);
+      this.goBack();
+    } catch (error) {
+      console.error('Error al guardar la consulta:', error);
+      this.toast.show('Error al Guardar', 'Ocurrió un error inesperado al registrar la consulta. Revise la consola del navegador.');
+    }
   }
 }
