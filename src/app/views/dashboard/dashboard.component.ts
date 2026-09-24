@@ -76,7 +76,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                   <h1 class="text-[20px] sm:text-[22px] font-bold text-[#191c1e] tracking-tight truncate">
                     {{ data.selectedDoctor().name }}
                   </h1>
-                  <app-badge variant="teal" [dot]="true" [pulse]="true">En Consultorio (Atendiendo Citas)</app-badge>
+                  <app-badge [variant]="activeConsultation() ? 'teal' : 'neutral'" [dot]="true" [pulse]="activeConsultation()">{{ activeConsultation() ? 'En Consultorio (Atendiendo Citas)' : 'En Consultorio (Sin Citas Activas)' }}</app-badge>
                 </div>
                 <p class="text-[13px] text-[#45464d] truncate">
                   {{ doctorRoleLabel() }}
@@ -114,25 +114,25 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
             </div>
             <div class="mt-3 flex items-baseline justify-between">
               <div class="flex items-baseline">
-                <span class="text-[34px] font-extrabold text-[#191c1e] leading-none tracking-tight">12</span>
+                <span class="text-[34px] font-extrabold text-[#191c1e] leading-none tracking-tight">{{ dayStats().total }}</span>
                 <span class="text-[14px] font-semibold text-[#191c1e] ml-1">Total</span>
               </div>
               <div class="flex items-center gap-1 bg-[#f2f4f6] px-2 py-1 rounded-md border border-[#e0e3e5]">
                 <span class="w-2 h-2 rounded-full bg-[#006a61]"></span>
                 <span class="text-[12px] font-semibold text-[#191c1e]">
-                  <span class="hidden xl:inline">4 comp</span>
-                  <span class="xl:hidden">4</span>
+                  <span class="hidden xl:inline">{{ dayStats().completed }} comp</span>
+                  <span class="xl:hidden">{{ dayStats().completed }}</span>
                 </span>
               </div>
             </div>
             <div class="mt-3 pt-2 border-t border-[#f2f4f6] flex items-center justify-between text-[#45464d] text-[11px]">
-              <span class="text-[#006a61] font-semibold">1 en curso</span>
-              <span>7 pendientes</span>
+              <span class="text-[#006a61] font-semibold">{{ dayStats().inProgress }} en curso</span>
+              <span>{{ dayStats().pending }} pendientes</span>
             </div>
             <div class="w-full h-1.5 bg-[#e6e8ea] rounded-full overflow-hidden mt-2 flex">
-              <div class="h-full bg-[#006a61]" style="width: 33.3%"></div>
-              <div class="h-full bg-[#86f2e4]" style="width: 8.3%"></div>
-              <div class="h-full bg-[#eceef0]" style="width: 58.4%"></div>
+              <div class="h-full bg-[#006a61]" [style.width.%]="dayStats().pctCompleted"></div>
+              <div class="h-full bg-[#86f2e4]" [style.width.%]="dayStats().pctInProgress"></div>
+              <div class="h-full bg-[#eceef0]" [style.width.%]="dayStats().pctPending"></div>
             </div>
           </div>
 
@@ -163,20 +163,34 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                 <span class="material-symbols-outlined text-[20px]">timer</span>
               </span>
             </div>
-            <div class="mt-3 flex items-baseline justify-between">
-              <div class="flex items-baseline">
-                <span class="text-[34px] font-extrabold text-[#191c1e] leading-none tracking-tight">15</span>
-                <span class="text-[14px] font-semibold text-[#191c1e] ml-1">min</span>
+            @if (nextAppointment(); as next) {
+              <div class="mt-3 flex items-baseline justify-between">
+                <div class="flex items-baseline">
+                  <span class="text-[30px] sm:text-[34px] font-extrabold text-[#191c1e] leading-none tracking-tight whitespace-nowrap">{{ next.display }}</span>
+                </div>
+                <span class="text-[12px] text-[#76777d] font-semibold">{{ next.timeLabel }}</span>
               </div>
-              <span class="text-[12px] text-[#76777d] font-semibold">10:00 AM</span>
-            </div>
-            <div class="mt-3 pt-2 border-t border-[#f2f4f6] flex items-center justify-between text-[#45464d] text-[11px]">
-              <span class="truncate">Roberto Gómez (Cardiología)</span>
-              <span class="w-2 h-2 rounded-full bg-[#006a61] animate-ping"></span>
-            </div>
-            <div class="w-full bg-[#e6e8ea] h-1.5 rounded-full mt-2 overflow-hidden">
-              <div class="h-full bg-[#006a61] rounded-full" style="width: 75%"></div>
-            </div>
+              <div class="mt-3 pt-2 border-t border-[#f2f4f6] flex items-center justify-between text-[#45464d] text-[11px]">
+                <span class="truncate">{{ next.patient?.name }} · {{ next.apt.reason }}</span>
+                <span class="w-2 h-2 rounded-full bg-[#006a61] animate-ping shrink-0" [class]="next.minutes <= 5 ? '' : 'opacity-0'"></span>
+              </div>
+              <div class="w-full bg-[#e6e8ea] h-1.5 rounded-full mt-2 overflow-hidden">
+                <div class="h-full bg-[#006a61] rounded-full" [style.width.%]="next.minutes >= 180 ? 8 : ((180 - next.minutes) / 180) * 100"></div>
+              </div>
+            } @else {
+              <div class="mt-3 flex items-baseline justify-between">
+                <div class="flex items-baseline">
+                  <span class="text-[34px] font-extrabold text-[#c6c6cd] leading-none tracking-tight">—</span>
+                </div>
+                <span class="text-[12px] text-[#76777d] font-semibold">{{ dayStats().total === 0 ? 'Sin citas' : 'Jornada completa' }}</span>
+              </div>
+              <div class="mt-3 pt-2 border-t border-[#f2f4f6] flex items-center justify-between text-[#45464d] text-[11px]">
+                <span class="truncate">{{ dayStats().total === 0 ? 'No hay citas programadas en esta selección.' : 'Todas las citas de hoy ya finalizaron.' }}</span>
+              </div>
+              <div class="w-full bg-[#e6e8ea] h-1.5 rounded-full mt-2 overflow-hidden">
+                <div class="h-full bg-[#e6e8ea] rounded-full" style="width: 0%"></div>
+              </div>
+            }
           </div>
 
           <div class="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-[#e6e8ea] flex flex-col justify-between">
@@ -187,18 +201,18 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
               </span>
             </div>
             <div class="mt-3 flex items-baseline justify-between">
-              <span class="text-[34px] font-extrabold text-[#191c1e] leading-none tracking-tight">98%</span>
-              <div class="flex items-center text-[#006a61] font-bold text-[12px]">
-                <span class="material-symbols-outlined text-[16px]">trending_up</span>
-                <span>+2.4% sem</span>
+              <span class="text-[34px] font-extrabold text-[#191c1e] leading-none tracking-tight">{{ punctuality().pct }}%</span>
+              <div class="flex items-center text-[12px] font-bold" [class]="punctuality().optimal ? 'text-[#006a61]' : 'text-[#b45309]'">
+                <span class="material-symbols-outlined text-[16px]">{{ punctuality().optimal ? 'trending_up' : 'trending_down' }}</span>
+                <span>{{ dayStats().completed }} completadas</span>
               </div>
             </div>
             <div class="mt-3 pt-2 border-t border-[#f2f4f6] flex items-center justify-between text-[#45464d] text-[11px]">
-              <span>Desviación Promedio: 2.1m</span>
-              <span class="font-semibold text-[#006a61]">Óptimo</span>
+              <span>{{ dayStats().noShow }} sin asistir · {{ dayStats().total }} citas</span>
+              <span class="font-semibold" [class]="punctuality().optimal ? 'text-[#006a61]' : punctuality().pct >= 70 ? 'text-[#b45309]' : 'text-[#ba1a1a]'">{{ punctuality().label }}</span>
             </div>
             <div class="w-full bg-[#e6e8ea] h-1.5 rounded-full mt-2 overflow-hidden">
-              <div class="h-full bg-[#006a61] rounded-full" style="width: 98%"></div>
+              <div class="h-full rounded-full" [style.width.%]="punctuality().pct" [class]="punctuality().optimal ? 'bg-[#006a61]' : punctuality().pct >= 70 ? 'bg-[#f59e0b]' : 'bg-[#ba1a1a]'"></div>
             </div>
           </div>
         </section>
@@ -946,6 +960,59 @@ export class DashboardComponent {
 
   updateVital(field: keyof TriageVitals, value: number | string | null): void {
     this.vitalsForm.update((v) => ({ ...v, [field]: value === '' ? null : (value as never) }));
+  }
+
+  readonly dayStats = computed(() => {
+    const list = this.data.selectedDateAppointments();
+    const total = list.length;
+    const completed = list.filter((a) => a.status === 'completed').length;
+    const noShow = list.filter((a) => a.status === 'no-show').length;
+    const inProgress = list.filter((a) => a.status === 'in-progress').length;
+    const pending = list.filter((a) => ['pending', 'confirmed', 'checked-in', 'in-triage', 'triaged'].includes(a.status)).length;
+    const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0);
+    return { total, completed, noShow, inProgress, pending, pctCompleted: pct(completed), pctInProgress: pct(inProgress), pctPending: pct(pending) };
+  });
+
+  readonly activeConsultation = computed(() =>
+    this.data.selectedDateAppointments().some((a) => a.status === 'in-progress')
+  );
+
+  readonly nextAppointment = computed(() => {
+    const now = this.nowMinutes();
+    const upcoming = this.data
+      .selectedDateAppointments()
+      .filter((a) => ['pending', 'confirmed', 'checked-in'].includes(a.status))
+      .filter((a) => this.parseTimeMin(a.time) >= now)
+      .sort((a, b) => this.parseTimeMin(a.time) - this.parseTimeMin(b.time));
+    if (upcoming.length === 0) return null;
+    const apt = upcoming[0];
+    const minutes = this.parseTimeMin(apt.time) - now;
+    const patient = this.data.getPatient(apt.patientId);
+    const doctor = this.data.doctors().find((d) => d.id === apt.doctorId);
+    return { apt, minutes, patient, doctor, timeLabel: apt.time, display: minutes >= 60 ? `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')} min` : `${minutes} min` };
+  });
+
+  readonly punctuality = computed(() => {
+    const { completed, noShow } = this.dayStats();
+    const denominator = completed + noShow;
+    const pct = denominator > 0 ? Math.round((completed / denominator) * 100) : 100;
+    return { pct, optimal: pct >= 90, label: pct >= 90 ? 'Óptimo' : pct >= 70 ? 'Atención' : 'Crítico' };
+  });
+
+  private parseTimeMin(time: string): number {
+    const m = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!m) return 0;
+    let hours = parseInt(m[1], 10);
+    const minutes = parseInt(m[2], 10);
+    const meridiem = m[3].toUpperCase();
+    if (meridiem === 'PM' && hours !== 12) hours += 12;
+    if (meridiem === 'AM' && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  }
+
+  private nowMinutes(): number {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
   }
 
   constructor() {
