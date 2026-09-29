@@ -304,7 +304,7 @@ export function seed(): void {
   ];
   for (const r of triageRules) insertTriageRule.run(...r);
 
-  db.prepare(`INSERT INTO organization_settings (id, name, rut, address, phone, email, footer_text, signature_name) VALUES ('ORG-001', 'MedControl Sede Central', 'J-12345678-9', 'Av. Libertador 1240, Caracas', '+58 212-5550000', 'contacto@medcontrol.com', 'Documento electrónico generado por MedControl Clinical Suite. La firma del prescriptor valida este documento conforme a la normativa MINSAL de firma avanzada.', 'Dra. Noemí Aguirre')`).run();
+  db.prepare(`INSERT INTO organization_settings (id, name, rut, address, phone, email, slogan, footer_text, signature_name) VALUES ('ORG-001', 'Unimedic, C.A.', 'J-12345678-9', 'Av. Libertador 1240, Caracas', '+58 212-5550000', 'contacto@medcontrol.com', 'Centro médico docente y de rehabilitación', 'Documento electrónico generado por MedControl Clinical Suite. La firma del prescriptor valida este documento conforme a la normativa MINSAL de firma avanzada.', 'Dra. Noemí Aguirre')`).run();
 
   const insertAlertRule = db.prepare('INSERT INTO alert_rules (id, name, description, category, severity, icon, action_label, route, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
   const alertRules: Array<[string, string, string, string, string, string, string, string, number]> = [

@@ -313,7 +313,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                               <p class="text-[12px] text-[#45464d] truncate">{{ apt.reason }}</p>
                             </div>
                           </div>
-                          <app-button variant="primary" size="sm" icon="clinical_notes" (click)="handleRegisterConsultation()" class="shrink-0" [disabled]="data.selectedDoctorId() === null" title="Registrar consulta y ver historial clínico">
+                          <app-button variant="primary" size="sm" icon="clinical_notes" (click)="handleRegisterConsultation(apt.patientId)" class="shrink-0" [disabled]="data.selectedDoctorId() === null" title="Registrar consulta y ver historial clínico">
                             Registrar Consulta / Historial
                           </app-button>
                         </div>
@@ -360,7 +360,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                         <span class="text-[14px] font-bold text-[#b45309]">{{ apt.time }}</span>
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#fde68a]/50 text-[#92400e] text-[10px] font-bold uppercase tracking-wider">
                           <span class="w-1.5 h-1.5 rounded-full bg-[#f59e0b]"></span>
-                          Listo para Doctor
+Triage
                         </span>
                       </div>
                       <div class="hidden md:flex w-6 h-6 rounded-full bg-[#f59e0b] text-white items-center justify-center shrink-0 shadow-xs z-10 self-center">
@@ -385,7 +385,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                               <p class="text-[12px] text-[#45464d] truncate">{{ apt.reason }}</p>
                             </div>
                           </div>
-                          <app-button variant="primary" size="sm" icon="stethoscope" (click)="handleStartConsultation(apt.patientId)" class="shrink-0" title="Iniciar consulta médica con el paciente">
+                          <app-button variant="primary" size="sm" icon="stethoscope" (click)="handleStartConsultation(apt.patientId)" class="shrink-0" [disabled]="data.selectedDoctorId() === null" title="Iniciar consulta médica con el paciente">
                             Iniciar Consulta
                           </app-button>
                         </div>
@@ -589,7 +589,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
               </div>
               <div class="relative">
                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#76777d] text-[20px]">person_search</span>
-                <input type="search" placeholder="Ingresar DNI, RUT o Apellidos..." class="w-full h-10 pl-10 pr-4 rounded-lg bg-[#f2f4f6] text-[13px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#006a61] transition-all border border-[#e0e3e5]" />
+                <input type="search" placeholder="Ingresar CI o Nombre..." class="w-full h-10 pl-10 pr-4 rounded-lg bg-[#f2f4f6] text-[13px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#006a61] transition-all border border-[#e0e3e5]" />
               </div>
             </div>
 
@@ -711,9 +711,7 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                     ? 'border-[#86f2e4] bg-[#86f2e4]/10'
                     : patient.status === 'in-triage'
                       ? 'border-[#f59e0b] bg-[#fffbeb]'
-                      : patient.status === 'triaged'
-                        ? 'border-[#006a61] bg-[#86f2e4]/20'
-                        : 'border-[#e0e3e5] bg-white hover:border-[#006a61]'">
+                      : 'border-[#e0e3e5] bg-white hover:border-[#006a61]'">
                   <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-[#131b2e] text-white flex items-center justify-center text-[13px] font-bold shrink-0">
                       {{ data.getInitials(wp?.name ?? '') }}
@@ -734,8 +732,6 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                       </button>
                     } @else if (patient.status === 'in-triage') {
                       <span class="px-3 py-1.5 rounded-lg bg-[#fffbeb] text-[#92400e] text-[12px] font-semibold border border-[#fde68a]">En Triage...</span>
-                    } @else {
-                      <span class="px-3 py-1.5 rounded-lg bg-[#86f2e4]/30 text-[#006f66] text-[12px] font-semibold">Listo para Doctor</span>
                     }
                   </div>
                 </div>
@@ -940,7 +936,6 @@ export class DashboardComponent {
     return `Especialista en ${doctor.specialty} | Equipo Médico MedControl`;
   });
 
-  showConsultationDrawer = signal(true);
   emergencyLock = signal(true);
   vacationMode = signal(false);
   showCheckInModal = signal(false);
@@ -981,7 +976,7 @@ export class DashboardComponent {
     const now = this.nowMinutes();
     const upcoming = this.data
       .selectedDateAppointments()
-      .filter((a) => ['pending', 'confirmed', 'checked-in'].includes(a.status))
+      .filter((a) => ['pending', 'confirmed', 'checked-in', 'in-triage', 'triaged'].includes(a.status))
       .filter((a) => this.parseTimeMin(a.time) >= now)
       .sort((a, b) => this.parseTimeMin(a.time) - this.parseTimeMin(b.time));
     if (upcoming.length === 0) return null;
@@ -1021,6 +1016,8 @@ export class DashboardComponent {
       if (doctorId) {
         this.data.selectedDoctorId.set(doctorId);
       }
+    } else {
+      this.data.selectedDoctorId.set(null);
     }
   }
 
@@ -1029,8 +1026,9 @@ export class DashboardComponent {
     this.router.navigate(['nueva-consulta']);
   }
 
-  handleRegisterConsultation(): void {
+  handleRegisterConsultation(patientId: string): void {
     if (this.data.selectedDoctorId() === null) return;
+    this.data.selectPatient(patientId);
     this.router.navigate(['nueva-consulta']);
   }
 
@@ -1045,7 +1043,6 @@ export class DashboardComponent {
   }
 
   handleConfirmAppointment(aptId: string, patientId: string): void {
-    if (this.data.selectedDoctorId() === null) return;
     this.data.confirmAppointment(aptId);
     this.toast.show('Cita Confirmada', `${this.data.getPatient(patientId)?.name} confirmó su asistencia.`);
   }
@@ -1071,8 +1068,8 @@ export class DashboardComponent {
   handleStartConsultation(patientId: string): void {
     if (this.data.selectedDoctorId() === null) return;
     this.data.startConsultation(patientId);
-    this.showConsultationDrawer.set(true);
-    this.toast.show('Consulta Iniciada', `${this.data.getPatient(patientId)?.name} pasó a consulta médica.`);
+    this.data.selectPatient(patientId);
+    this.router.navigate(['nueva-consulta']);
   }
 
   rescheduleData = signal<RescheduleData | null>(null);
@@ -1094,7 +1091,6 @@ export class DashboardComponent {
   });
 
   openReschedule(apt: AppointmentItem): void {
-    if (this.data.selectedDoctorId() === null) return;
     this.rescheduleData.set({
       appointmentId: apt.id,
       patientId: apt.patientId,

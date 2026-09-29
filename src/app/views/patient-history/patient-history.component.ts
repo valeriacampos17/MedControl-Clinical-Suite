@@ -4,13 +4,13 @@ import { Router } from '@angular/router';
 import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Patient, NewPatientInput, Prescription, PrescriptionMedication } from '../../core/models/types';
+import { Patient, Prescription, PrescriptionMedication } from '../../core/models/types';
 import { ButtonComponent } from '../../shared/button/button.component';
 import { BadgeComponent } from '../../shared/badge/badge.component';
 import { ModalComponent } from '../../shared/modal/modal.component';
 import { ToastComponent } from '../../shared/toast/toast.component';
 import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-timeline/clinical-history-timeline.component';
-import { inputValue } from '../../core/utils/form.utils';
+import { NewPatientModalComponent } from '../../shared/new-patient-modal/new-patient-modal.component';
 
 @Component({
   selector: 'app-patient-history',
@@ -22,6 +22,7 @@ import { inputValue } from '../../core/utils/form.utils';
     ModalComponent,
     ToastComponent,
     ClinicalHistoryTimelineComponent,
+    NewPatientModalComponent,
   ],
   template: `
     <div class="flex flex-col w-full">
@@ -365,142 +366,11 @@ import { inputValue } from '../../core/utils/form.utils';
           </div>
         }
       </div>
-      <app-modal
+      <app-new-patient-modal
         [isOpen]="showNewPatientModal()"
-        title="Registrar Nuevo Paciente"
-        subtitle="Complete los datos del paciente. El resto de la ficha clínica se carga con datos de demostración."
-        icon="person_add"
-        [footerTemplate]="true"
+        (created)="handlePatientCreated($event)"
         (dismiss)="closeNewPatientModal()"
-      >
-        <form class="flex flex-col gap-4" (ngSubmit)="handleCreatePatient()" #newPatientFormElement="ngForm">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <label class="flex flex-col gap-1.5 sm:col-span-2">
-              <span class="text-[12px] font-bold text-[#191c1e]">Nombre Completo *</span>
-              <input
-                type="text"
-                name="name"
-                required
-                placeholder="Ej: Carlos Soto Riquelme"
-                class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
-                (input)="setField('name', $event)"
-                [value]="newPatientForm().name"
-              />
-            </label>
-
-            <label class="flex flex-col gap-1.5">
-              <span class="text-[12px] font-bold text-[#191c1e]">RUT *</span>
-              <input
-                type="text"
-                name="rut"
-                required
-                placeholder="Ej: 12.345.678-9"
-                class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
-                (input)="setField('rut', $event)"
-                [value]="newPatientForm().rut"
-              />
-            </label>
-
-            <label class="flex flex-col gap-1.5">
-              <span class="text-[12px] font-bold text-[#191c1e]">Edad (años)</span>
-              <input
-                type="number"
-                name="age"
-                min="0"
-                max="120"
-                placeholder="Ej: 45"
-                class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
-                (input)="setField('age', $event)"
-                [value]="newPatientForm().age"
-              />
-            </label>
-
-            <label class="flex flex-col gap-1.5">
-              <span class="text-[12px] font-bold text-[#191c1e]">Teléfono</span>
-              <input
-                type="tel"
-                name="phone"
-                placeholder="+56 9 ..."
-                class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
-                (input)="setField('phone', $event)"
-                [value]="newPatientForm().phone"
-              />
-            </label>
-
-            <label class="flex flex-col gap-1.5">
-              <span class="text-[12px] font-bold text-[#191c1e]">Email</span>
-              <input
-                type="email"
-                name="email"
-                placeholder="paciente@correo.cl"
-                class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
-                (input)="setField('email', $event)"
-                [value]="newPatientForm().email"
-              />
-            </label>
-
-            <label class="flex flex-col gap-1.5">
-              <span class="text-[12px] font-bold text-[#191c1e]">Previsión</span>
-              <input
-                type="text"
-                name="insurance"
-                placeholder="Ej: Isapre Colmena Golden"
-                class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
-                (input)="setField('insurance', $event)"
-                [value]="newPatientForm().insurance"
-              />
-            </label>
-
-            <label class="flex flex-col gap-1.5">
-              <span class="text-[12px] font-bold text-[#191c1e]">Grupo Sanguíneo</span>
-              <select
-                name="bloodType"
-                class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
-                (change)="setField('bloodType', $event)"
-                [value]="newPatientForm().bloodType"
-              >
-                <option value="">Seleccionar…</option>
-                <option value="O Rh(+)">O Rh(+)</option>
-                <option value="O Rh(-)">O Rh(-)</option>
-                <option value="A Rh(+)">A Rh(+)</option>
-                <option value="A Rh(-)">A Rh(-)</option>
-                <option value="B Rh(+)">B Rh(+)</option>
-                <option value="B Rh(-)">B Rh(-)</option>
-                <option value="AB Rh(+)">AB Rh(+)</option>
-                <option value="AB Rh(-)">AB Rh(-)</option>
-              </select>
-            </label>
-
-            <label class="flex flex-col gap-1.5 sm:col-span-2">
-              <span class="text-[12px] font-bold text-[#191c1e]">Alergias (separadas por coma)</span>
-              <input
-                type="text"
-                name="allergies"
-                placeholder="Ej: Penicilina, Ibuprofeno"
-                class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
-                (input)="setField('allergies', $event)"
-                [value]="newPatientForm().allergies"
-              />
-            </label>
-          </div>
-          <div class="flex gap-2 pt-1 text-[11.5px] text-[#76777d] leading-relaxed">
-            <span class="material-symbols-outlined text-[16px] shrink-0 mt-0.5">info</span>
-            <span>Los datos clínicos (consentimiento, condiciones crónicas y medicamentos) se precargan con la ficha de demostración hasta que se agregue información real.</span>
-          </div>
-        </form>
-        <div modal-footer>
-          <app-button variant="light" size="md" (click)="closeNewPatientModal()">Cancelar</app-button>
-          <app-button
-            variant="primary"
-            size="md"
-            type="submit"
-            icon="person_add"
-            (click)="handleCreatePatient()"
-          >
-            Registrar Paciente
-          </app-button>
-        </div>
-      </app-modal>
+      />
       <app-modal
         [isOpen]="showRecipeModal()"
         title="Emitir Receta Médica"
@@ -642,33 +512,6 @@ export class PatientHistoryComponent {
     );
   });
 
-  newPatientForm = signal({
-    name: '',
-    rut: '',
-    age: '',
-    birthDate: '',
-    phone: '',
-    email: '',
-    insurance: '',
-    bloodType: '',
-    allergies: '',
-  });
-
-  readonly avatarPreview = computed(() => {
-    const name = this.newPatientForm().name.trim();
-    if (!name) return '';
-    const parts = name.split(/\s+/).filter(Boolean);
-    const initials = parts.length >= 2
-      ? parts[0][0] + parts[parts.length - 1][0]
-      : (parts[0]![0] ?? '');
-    return initials.toUpperCase();
-  });
-
-  setField(field: keyof NewPatientInput, event: Event): void {
-    const value = inputValue(event);
-    this.newPatientForm.update((f) => ({ ...f, [field]: value }));
-  }
-
   handleSelectPatient(id: string): void {
     const patient = this.data.getPatient(id);
     if (!patient) return;
@@ -701,35 +544,15 @@ export class PatientHistoryComponent {
     this.showNewPatientModal.set(false);
   }
 
-  handleCreatePatient(): void {
-    const f = this.newPatientForm();
-    const name = f.name.trim();
-    if (!name) {
-      this.toast.show('Faltan Datos', 'Ingrese al menos el nombre completo del paciente.');
-      return;
-    }
-    const fileNumber = this.data.nextFileNumber();
-    const age = Number(f.age) || 0;
-    const patient: Patient = {
-      id: 'MED-' + fileNumber,
-      ci: f.rut.trim() || 'Registrado sin CI',
-      name,
-      age,
-      birthDate: f.birthDate.trim() || (age ? `Edad registrada: ${age} años` : 'Sin fecha registrada'),
-      phone: f.phone.trim() || '+58 000-0000000',
-      email: f.email.trim() || 'sin@email.com',
-      address: 'Sin dirección registrada',
-      insurance: f.insurance.trim() || 'Sin previsión',
-      bloodType: f.bloodType || 'Sin especificar',
-      allergies: f.allergies.split(',').map((a) => a.trim()).filter(Boolean),
-      chronicConditions: [],
-      consentSigned: false,
-    };
-    this.data.addPatient(patient);
+  handlePatientCreated(patient: Patient): void {
     this.selectedPatient.set(patient);
     this.closeNewPatientModal();
-    this.newPatientForm.set({ name: '', rut: '', age: '', birthDate: '', phone: '', email: '', insurance: '', bloodType: '', allergies: '' });
     this.toast.show('Paciente Registrado', `${patient.name} fue agregado y seleccionado en la ficha.`);
+    this.nav.setBreadcrumb([
+      { label: 'Pacientes', route: 'pacientes-y-historial-clinico' },
+      { label: 'Ficha Clínica Electrónica' },
+      { label: `HCE-${patient.id}` },
+    ]);
   }
 
   handleDownloadPDF(): void {

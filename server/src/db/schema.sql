@@ -233,6 +233,7 @@ CREATE TABLE IF NOT EXISTS organization_settings (
   address       TEXT,
   phone         TEXT,
   email         TEXT,
+  slogan        TEXT,
   footer_text   TEXT,
   signature_name TEXT
 );

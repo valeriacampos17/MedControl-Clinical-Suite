@@ -26,7 +26,7 @@ import { NavRoute } from '../../core/models/types';
             <img
               alt="MedControl Brand Logo"
               class="h-8 w-auto object-contain"
-              src="https://lh3.googleusercontent.com/aida/AEtjO1V82pwfuDLTk5-ehmXKHF892ZY_9YFqOHRFT6iLpeObTH2QZ_NHJTPzdxf_OS4xlUsvSN6oMowcQTI1BfBXq2Y7W21gTuFX-lxdEPIT-r3of9FRU9BprnBayQE2pXODaIAfeNHb-2T6ajlkh62f8pO51MMv46ew6r440Fqu2sJbisJ-8vEtk_Gca6Yc8ZCr1h6iQzmrz-y7dIR78MIbXDRjcUmjqIqnfTFgw4D7rcEm8Rn1jTP86ebNDhc"
+              src="assets/images/medcontrol-logo.svg"
             />
           </div>
         </div>

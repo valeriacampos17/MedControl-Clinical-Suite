@@ -277,6 +277,7 @@ export interface OrganizationSettings {
   address: string;
   phone: string;
   email: string;
+  slogan?: string;
   footerText: string;
   signatureName: string;
 }

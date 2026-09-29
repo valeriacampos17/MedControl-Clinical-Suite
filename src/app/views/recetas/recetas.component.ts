@@ -337,10 +337,11 @@ export class RecetasComponent {
       .map((w) => w[0].toUpperCase())
       .join('');
     const meta = [subtitle, org.rut, org.phone].filter((v) => v && v.trim()).join(' · ');
+    const slogan = org.slogan?.trim();
     return `
       <div class="brand">
         <div class="logo">${this.esc(initials)}</div>
-        <div><h1>${this.esc(org.name)}</h1><p>${this.esc(meta)}</p></div>
+        <div><h1>${this.esc(org.name)}</h1>${slogan ? `<p class="slogan">${this.esc(slogan)}</p>` : ''}<p>${this.esc(meta)}</p></div>
       </div>`;
   }
 
@@ -362,6 +363,7 @@ export class RecetasComponent {
   .brand { display: flex; align-items: center; gap: 10px; }
   .brand .logo { width: 42px; height: 42px; border-radius: 10px; background: #006a61; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; }
   .brand h1 { font-size: 16px; margin: 0; }
+  .brand .slogan { margin: 1px 0 0; font-size: 10px; font-weight: 600; color: #006a61; text-transform: uppercase; letter-spacing: .04em; }
   .brand p { margin: 0; font-size: 11px; color: #45464d; }
   .type .badge { display: inline-block; background: #86f2e4; color: #006f66; font-weight: 800; font-size: 11px; padding: 5px 12px; border-radius: 999px; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; margin: 16px 0; }

@@ -99,6 +99,7 @@ interface OrganizationRow {
   address: string | null;
   phone: string | null;
   email: string | null;
+  slogan: string | null;
   footer_text: string | null;
   signature_name: string | null;
 }
@@ -113,6 +114,7 @@ configRouter.get('/organization', (_req, res) => {
       address: row.address ?? '',
       phone: row.phone ?? '',
       email: row.email ?? '',
+      slogan: row.slogan ?? '',
       footerText: row.footer_text ?? '',
       signatureName: row.signature_name ?? '',
     },
@@ -127,6 +129,7 @@ configRouter.put('/organization', (req, res) => {
     address?: string;
     phone?: string;
     email?: string;
+    slogan?: string;
     footerText?: string;
     signatureName?: string;
   };
@@ -136,17 +139,18 @@ configRouter.put('/organization', (req, res) => {
   }
   const id = org.id ?? 'ORG-001';
   db.prepare(`
-    INSERT INTO organization_settings (id, name, rut, address, phone, email, footer_text, signature_name)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO organization_settings (id, name, rut, address, phone, email, slogan, footer_text, signature_name)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       rut = excluded.rut,
       address = excluded.address,
       phone = excluded.phone,
       email = excluded.email,
+      slogan = excluded.slogan,
       footer_text = excluded.footer_text,
       signature_name = excluded.signature_name
-  `).run(id, org.name, org.rut, org.address ?? '', org.phone ?? '', org.email ?? '', org.footerText ?? '', org.signatureName ?? '');
+  `).run(id, org.name, org.rut, org.address ?? '', org.phone ?? '', org.email ?? '', org.slogan ?? '', org.footerText ?? '', org.signatureName ?? '');
   const row = db.prepare('SELECT * FROM organization_settings WHERE id = ?').get(id) as OrganizationRow;
   res.json({
     organization: {
@@ -156,6 +160,7 @@ configRouter.put('/organization', (req, res) => {
       address: row.address ?? '',
       phone: row.phone ?? '',
       email: row.email ?? '',
+      slogan: row.slogan ?? '',
       footerText: row.footer_text ?? '',
       signatureName: row.signature_name ?? '',
     },
