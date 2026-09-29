@@ -28,6 +28,10 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
           </label>
         </div>
         <label class="flex flex-col gap-1.5">
+          <span class="text-[12px] font-bold text-[#191c1e]">Slogan / Etiqueta del Centro</span>
+          <input type="text" [value]="form().slogan ?? ''" (input)="onInput('slogan', $event)" class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]" placeholder="Ej: Centro médico docente y de rehabilitación" />
+        </label>
+        <label class="flex flex-col gap-1.5">
           <span class="text-[12px] font-bold text-[#191c1e]">Dirección</span>
           <input type="text" [value]="form().address" (input)="onInput('address', $event)" class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]" />
         </label>

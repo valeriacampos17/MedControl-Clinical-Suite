@@ -63,6 +63,32 @@ appointmentsRouter.get('/', (req, res) => {
   res.json({ appointments: rows.map(toAppointment) });
 });
 
+const appointmentSchema = z.object({
+  date: z.string().min(1),
+  time: z.string().min(1),
+  durationMinutes: z.number().int().positive(),
+  patientId: z.string().min(1),
+  doctorId: z.string().min(1),
+  reason: z.string().min(1),
+  consultationTypeId: z.enum(['primera', 'control', 'sobrecupo', 'examenes']).optional(),
+});
+
+appointmentsRouter.post('/', (req, res) => {
+  const parsed = appointmentSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues.map((i) => i.message).join('; ') });
+    return;
+  }
+  const data = parsed.data;
+  const id = 'APT-' + Date.now();
+  db.prepare(`
+    INSERT INTO appointments (id, date, time, duration_minutes, patient_id, doctor_id, reason, status, consultation_type_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+  `).run(id, data.date, data.time, data.durationMinutes, data.patientId, data.doctorId, data.reason, data.consultationTypeId ?? null);
+  const row = db.prepare('SELECT * FROM appointments WHERE id = ?').get(id) as AppointmentRow;
+  res.status(201).json({ appointment: toAppointment(row) });
+});
+
 appointmentsRouter.get('/:id', (req, res) => {
   const row = db.prepare('SELECT * FROM appointments WHERE id = ?').get(req.params.id) as AppointmentRow | undefined;
   if (!row) {

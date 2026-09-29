@@ -306,6 +306,34 @@ export class MockDataService {
     });
   }
 
+  createAppointment(payload: {
+    date: string;
+    time: string;
+    durationMinutes: number;
+    patientId: string;
+    doctorId: string;
+    reason: string;
+    consultationTypeId?: string;
+  }): void {
+    const optimistic: AppointmentItem = {
+      id: 'APT-' + Date.now(),
+      date: payload.date,
+      time: payload.time,
+      durationMinutes: payload.durationMinutes,
+      patientId: payload.patientId,
+      doctorId: payload.doctorId,
+      reason: payload.reason,
+      status: 'pending',
+    };
+    this.appointments.update(list => [...list, optimistic]);
+    this.api.post<{ appointment: AppointmentItem }>('/appointments', payload).subscribe({
+      next: (r) => {
+        this.appointments.update(list => [...list.filter(a => a.id !== optimistic.id), r.appointment]);
+      },
+      error: () => this.appointments.update(list => list.filter(a => a.id !== optimistic.id)),
+    });
+  }
+
   readonly currentTriageAppointmentId = signal<string | null>(null);
 
   readonly currentTriageAppointment = computed(() =>
@@ -314,7 +342,7 @@ export class MockDataService {
 
   readonly waitingAppointments = computed(() =>
     this.selectedDateAppointments().filter(a =>
-      ['pending', 'confirmed', 'checked-in', 'in-triage', 'triaged'].includes(a.status)
+      ['pending', 'confirmed', 'checked-in', 'in-triage'].includes(a.status)
     )
   );
 
@@ -955,11 +983,12 @@ export class MockDataService {
 
   readonly organization = this.storage<OrganizationSettings>('medcontrol.organization', {
     id: 'ORG-001',
-    name: 'MedControl Sede Central',
+    name: 'Unimedic, C.A.',
     rut: 'J-12345678-9',
     address: 'Av. Libertador 1240, Caracas',
     phone: '+58 212-5550000',
     email: 'contacto@medcontrol.com',
+    slogan: 'Centro médico docente y de rehabilitación',
     footerText: 'Documento electrónico generado por MedControl Clinical Suite. La firma del prescriptor valida este documento conforme a la normativa MINSAL de firma avanzada.',
     signatureName: 'Dra. Noemí Aguirre',
   });
