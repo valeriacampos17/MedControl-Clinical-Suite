@@ -18,6 +18,108 @@ export function isoDayOfWeek(dateStr: string): number {
 /** Tope de dias que se pueden recorrer al buscar dias habiles. */
 const MAX_SCAN_DAYS = 400;
 
+// ------------------------------------------------- dias que labora el medico --
+
+export interface DoctorWorkingDate {
+  date: string;
+  note: string | null;
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Dias marcados de un medico en un rango, para pintar el calendario. */
+export function getDoctorWorkingDates(doctorId: string, from?: string, to?: string): DoctorWorkingDate[] {
+  if (!doctorId) return [];
+  const clauses = ['doctor_id = ?'];
+  const params: unknown[] = [doctorId];
+  if (from && ISO_DATE.test(from)) {
+    clauses.push('date >= ?');
+    params.push(from);
+  }
+  if (to && ISO_DATE.test(to)) {
+    clauses.push('date <= ?');
+    params.push(to);
+  }
+  return db
+    .prepare(
+      `SELECT date, note FROM doctor_working_dates
+        WHERE ${clauses.join(' AND ')}
+        ORDER BY date`,
+    )
+    .all(...params) as DoctorWorkingDate[];
+}
+
+export function isDoctorWorkingDate(doctorId: string, date: string): boolean {
+  if (!doctorId) return false;
+  return !!db
+    .prepare('SELECT 1 FROM doctor_working_dates WHERE doctor_id = ? AND date = ?')
+    .get(doctorId, date);
+}
+
+export function markDoctorWorkingDate(doctorId: string, date: string, note: string | null = null): void {
+  if (!doctorId || !ISO_DATE.test(date)) return;
+  db.prepare(
+    `INSERT INTO doctor_working_dates (doctor_id, date, note) VALUES (?, ?, ?)
+     ON CONFLICT (doctor_id, date) DO UPDATE SET note = COALESCE(excluded.note, doctor_working_dates.note)`,
+  ).run(doctorId, date, note);
+}
+
+export function unmarkDoctorWorkingDate(doctorId: string, date: string): void {
+  if (!doctorId || !ISO_DATE.test(date)) return;
+  db.prepare('DELETE FROM doctor_working_dates WHERE doctor_id = ? AND date = ?').run(doctorId, date);
+}
+
+/** Reemplaza el conjunto completo de dias marcados de un medico. */
+export function setDoctorWorkingDates(doctorId: string, dates: DoctorWorkingDate[]): DoctorWorkingDate[] {
+  if (!doctorId) return [];
+  const valid = dates.filter(d => ISO_DATE.test(d.date));
+  const del = db.prepare('DELETE FROM doctor_working_dates WHERE doctor_id = ?');
+  const insert = db.prepare(
+    'INSERT OR REPLACE INTO doctor_working_dates (doctor_id, date, note) VALUES (?, ?, ?)',
+  );
+  db.transaction(() => {
+    del.run(doctorId);
+    for (const d of valid) insert.run(doctorId, d.date, d.note ?? null);
+  })();
+  return getDoctorWorkingDates(doctorId);
+}
+
+/**
+ * Marca los proximos dias que coincidan con la jornada habilitada del medico.
+ * Es la salida rapida: en vez de pinchar 40 dias uno por uno, se marca lo que
+ * el medico ya tiene como jornada semanal.
+ */
+export function markFromSchedule(doctorId: string, horizonDays: number = 60): number {
+  if (!doctorId) return 0;
+  ensureDaySchedule(doctorId);
+  const enabled = new Set(
+    (db
+      .prepare('SELECT day_of_week FROM day_schedules WHERE doctor_id = ? AND enabled = 1')
+      .all(doctorId) as Array<{ day_of_week: number }>).map(r => r.day_of_week),
+  );
+  if (enabled.size === 0) return 0;
+
+  const insert = db.prepare(
+    'INSERT OR IGNORE INTO doctor_working_dates (doctor_id, date, note) VALUES (?, ?, NULL)',
+  );
+  let marked = 0;
+  const today = new Date();
+  db.transaction(() => {
+    for (let i = 0; i < horizonDays; i++) {
+      const date = addDays(toDateStr(today), i);
+      if (!enabled.has(isoDayOfWeek(date))) continue;
+      marked += Number(insert.run(doctorId, date).changes);
+    }
+  })();
+  return marked;
+}
+
+function toDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// ---------------------------------------------------------------- jornadas --
+
 export interface DaySchedule {
   dayOfWeek: number;
   day: string;

@@ -279,8 +279,8 @@ function firstOfCurrentMonth(): Date {
               } @else if (!hasAnyBookableDay()) {
                 <div class="p-3.5 rounded-xl bg-[#fff7ed] border border-[#fed7aa]">
                   <span class="text-[12.5px] text-[#92400e]">
-                    Este médico no tiene días de atención habilitados. Actívalos en
-                    <strong>Configuración → Días a laborar</strong>.
+                    Este médico no tiene días marcados para laborar, así que no se puede agendar ninguna cita.
+                    Márquelos en <strong>Configuración del Sistema → Días a Laborar</strong>.
                   </span>
                 </div>
               } @else if (bookableDays().length === 0) {
@@ -699,6 +699,8 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
   shortBlocked(reason: string | null): string {
     switch (reason) {
       case 'ausencia': return 'ausencia';
+      case 'no-labora': return 'no labora';
+      case 'sin-horario': return 'sin horario';
       case 'jornada-cerrada': return 'no atiende';
       case 'sin-cupo': return 'sin cupo';
       case 'pasado': return 'pasado';

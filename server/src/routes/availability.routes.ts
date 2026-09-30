@@ -5,6 +5,13 @@ import {
   getOpenDates,
   normalizeTime,
 } from '../services/availability.js';
+import {
+  getDoctorWorkingDates,
+  markDoctorWorkingDate,
+  markFromSchedule,
+  setDoctorWorkingDates,
+  unmarkDoctorWorkingDate,
+} from '../services/schedule.js';
 
 export const availabilityRouter = Router();
 
@@ -44,6 +51,77 @@ availabilityRouter.get('/days', (req, res) => {
     return;
   }
   res.json({ doctorId, from, days: getBookableDays(doctorId, from ?? undefined, to ?? undefined) });
+});
+
+/**
+ * Dias que un medico tiene marcados para laborar. Un rango del 5 al 10 de
+ * octubre son seis filas aqui, una por dia: por eso el 12 se puede desmarcar
+ * y volver a marcar sin tocar los demas.
+ */
+availabilityRouter.get('/working-dates', (req, res) => {
+  const doctorId = req.query.doctorId ? String(req.query.doctorId) : null;
+  if (!doctorId) {
+    res.status(400).json({ error: 'El parametro doctorId es requerido' });
+    return;
+  }
+  const from = req.query.from ? String(req.query.from) : undefined;
+  const to = req.query.to ? String(req.query.to) : undefined;
+  res.json({ doctorId, dates: getDoctorWorkingDates(doctorId, from, to) });
+});
+
+/** Reemplaza el conjunto completo de dias marcados. */
+availabilityRouter.put('/working-dates', (req, res) => {
+  const doctorId = String(req.body?.doctorId ?? req.query.doctorId ?? '');
+  if (!doctorId) {
+    res.status(400).json({ error: 'El campo doctorId es requerido' });
+    return;
+  }
+  const days = Array.isArray(req.body?.dates) ? (req.body.dates as Array<{ date: string; note?: string }>) : [];
+  const invalid = days.find(d => !/^\d{4}-\d{2}-\d{2}$/.test(String(d?.date ?? '')));
+  if (invalid) {
+    res.status(400).json({ error: `Fecha invalida: ${String(invalid?.date)}` });
+    return;
+  }
+  res.json({ doctorId, dates: setDoctorWorkingDates(doctorId, days.map(d => ({ date: d.date, note: d.note ?? null }))) });
+});
+
+/** Marca de una vez los proximos dias que coincidan con la jornada semanal. */
+// Esta ruta literal va antes que '/working-dates/:date': Express resuelve en orden
+// de definicion y si no, el parametro dinamico se come 'mark-from-schedule'.
+availabilityRouter.post('/working-dates/mark-from-schedule', (req, res) => {
+  const doctorId = String(req.body?.doctorId ?? req.query.doctorId ?? '');
+  if (!doctorId) {
+    res.status(400).json({ error: 'El campo doctorId es requerido' });
+    return;
+  }
+  const horizon = Number(req.body?.days ?? 60);
+  if (!Number.isInteger(horizon) || horizon <= 0 || horizon > 365) {
+    res.status(400).json({ error: 'El campo days debe ser un entero entre 1 y 365' });
+    return;
+  }
+  const marked = markFromSchedule(doctorId, horizon);
+  res.json({ doctorId, marked, dates: getDoctorWorkingDates(doctorId) });
+});
+
+/** Marca o desmarca un dia. Es lo que usa el clic en el calendario. */
+availabilityRouter.post('/working-dates/:date', (req, res) => {
+  const doctorId = String(req.body?.doctorId ?? req.query.doctorId ?? '');
+  const date = req.params.date;
+  if (!doctorId) {
+    res.status(400).json({ error: 'El campo doctorId es requerido' });
+    return;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    res.status(400).json({ error: `Fecha invalida: ${date}` });
+    return;
+  }
+  const marked = req.body?.marked;
+  if (marked === false) {
+    unmarkDoctorWorkingDate(doctorId, date);
+  } else {
+    markDoctorWorkingDate(doctorId, date, req.body?.note ?? null);
+  }
+  res.json({ doctorId, date, marked: marked !== false });
 });
 
 /** Fechas en las que la clinica atiende, para el Dashboard. */

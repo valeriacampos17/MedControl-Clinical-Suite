@@ -116,6 +116,61 @@ db.transaction(() => {
 })();
 console.log(`   dias nuevos abiertos: ${opened} (de ${toOpen.size} habiles en el horizonte)`);
 
+// 2b. Dias que labora cada medico.
+//
+// `working_days` era una lista global de fechas con horizonte fijo, y ya se
+// acababa sola. La disponibilidad ahora se apoya en `doctor_working_dates`:
+// los dias concretos que cada medico marco. Este paso siembra esa tabla desde
+// `working_days` para que un despliegue no deje a nadie sin agenda; a partir
+// de aqui los dias se administran desde la pantalla de Configuracion.
+step('Dias que labora cada medico');
+db.exec(`
+  CREATE TABLE IF NOT EXISTS doctor_working_dates (
+    doctor_id TEXT NOT NULL REFERENCES doctors(id),
+    date      TEXT NOT NULL,
+    note      TEXT,
+    PRIMARY KEY (doctor_id, date)
+  );
+  CREATE INDEX IF NOT EXISTS idx_doctor_working_dates_date
+    ON doctor_working_dates(date);
+`);
+
+const openDates = (db.prepare('SELECT date FROM working_days').all() as Array<{ date: string }>).map(
+  r => r.date,
+);
+const insertWorkingDate = db.prepare(
+  'INSERT OR IGNORE INTO doctor_working_dates (doctor_id, date, note) VALUES (?, ?, ?)',
+);
+let seeded = 0;
+db.transaction(() => {
+  for (const { id } of doctors) {
+    for (const date of openDates) {
+      seeded += insertWorkingDate.run(id, date, 'Migrado desde working_days').changes;
+    }
+  }
+})();
+console.log(`   dias marcados sembrados: ${seeded} (${doctors.length} medicos x ${openDates.length} fechas abiertas)`);
+const perDoctor = db
+  .prepare(
+    'SELECT doctor_id, COUNT(*) AS n, MIN(date) AS desde, MAX(date) AS hasta FROM doctor_working_dates GROUP BY doctor_id ORDER BY doctor_id',
+  )
+  .all() as Array<{ doctor_id: string; n: number; desde: string; hasta: string }>;
+for (const p of perDoctor) {
+  console.log(`   ${p.doctor_id}: ${p.n} dias marcados, ${p.desde} a ${p.hasta}`);
+}
+const hasta = (db
+  .prepare('SELECT MAX(date) AS d FROM doctor_working_dates')
+  .get() as { d: string }).d;
+const diasParaCubrir = Math.round(
+  (Date.parse(`${hasta}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000,
+);
+if (diasParaCubrir >= 0) {
+  console.log(
+    `   la agenda llega hasta ${hasta}: en ${diasParaCubrir} dias habra que marcar mas dias ` +
+      `desde Configuracion, o usar "Marcar segun la jornada"`,
+  );
+}
+
 // 3. Reporte final.
 step('Resultado');
 const total = db.prepare('SELECT COUNT(*) AS n FROM working_days').get() as { n: number };

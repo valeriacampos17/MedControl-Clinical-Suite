@@ -57,32 +57,87 @@ import { DaySchedule } from '../../core/models/types';
               <span class="w-8 h-8 rounded-lg bg-[#f2f4f6] flex items-center justify-center text-[#006a61]">
                 <span class="material-symbols-outlined text-[20px]">calendar_month</span>
               </span>
-              <div>
+              <div class="flex-1">
                 <h3 class="text-[16px] font-bold text-[#191c1e]">Días a Laborar</h3>
-                <p class="text-[12px] text-[#45464d]">Estos días son los que aparecen en el calendario de reservas del médico</p>
+                <p class="text-[12px] text-[#45464d]">
+                  Marque las fechas en las que este médico atiende. Solo esas fechas se pueden agendar.
+                </p>
               </div>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              @for (day of scheduleDays(); track day.dayOfWeek) {
+              <div class="flex items-center gap-2">
                 <button
                   type="button"
-                  (click)="toggleDayByDayOfWeek(day.dayOfWeek)"
-                  [class.bg-[#006a61]]="day.enabled"
-                  [class.text-white]="day.enabled"
-                  [class.border-[#006a61]]="day.enabled"
-                  [class.bg-[#f7f9fb]]="!day.enabled"
-                  [class.text-[#76777d]]="!day.enabled"
-                  [class.border-[#e0e3e5]]="!day.enabled"
-                  class="px-4 py-2 rounded-lg border text-[13px] font-bold transition-colors"
+                  (click)="markFromSchedule()"
+                  [disabled]="markingSchedule()"
+                  class="px-3 py-1.5 rounded-lg text-[12px] font-bold bg-[#f2f4f6] text-[#191c1e] border border-[#e0e3e5] hover:bg-[#e8eaec] disabled:opacity-50"
                 >
-                  {{ day.day }}
-                  <span class="ml-1 font-normal opacity-80">{{ day.enabled ? 'Sí' : 'No' }}</span>
+                  {{ markingSchedule() ? 'Marcando…' : 'Marcar según la jornada' }}
+                </button>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-1.5">
+                <button type="button" (click)="shiftMarkingMonth(-1)" class="p-1.5 rounded-lg hover:bg-[#f2f4f6]">
+                  <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+                </button>
+                <span class="text-[13px] font-bold text-[#191c1e]">{{ markingMonthLabel() }}</span>
+                <button type="button" (click)="shiftMarkingMonth(1)" class="p-1.5 rounded-lg hover:bg-[#f2f4f6]">
+                  <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+                </button>
+              </div>
+              <span class="text-[12px] text-[#45464d]">
+                <strong class="text-[#006a61]">{{ markedCount() }}</strong> días marcados
+                @if (rangeAnchor() && rangeHint()) {
+                  <span class="ml-2 text-[#92400e]">{{ rangeHint() }}</span>
+                }
+              </span>
+            </div>
+
+            <div class="grid grid-cols-7 gap-1 mb-1">
+              @for (d of weekLabels; track d) {
+                <span class="text-center text-[11px] font-bold text-[#76777d] uppercase">{{ d }}</span>
+              }
+            </div>
+            <div class="grid grid-cols-7 gap-1">
+              @for (blank of [].constructor(markingLead()); track $index) {
+                <span class="aspect-square"></span>
+              }
+              @for (cell of markingCells(); track cell.date) {
+                <button
+                  type="button"
+                  (click)="onMarkingDayClick(cell.date)"
+                  [disabled]="cell.past"
+                  [class.bg-[#006a61]]="cell.marked"
+                  [class.text-white]="cell.marked"
+                  [class.bg-[#f7f9fb]]="!cell.marked"
+                  [class.text-[#76777d]]="!cell.marked"
+                  [class.opacity-40]="cell.past"
+                  [class.cursor-not-allowed]="cell.past"
+                  [class.ring-2]="isInRange(cell.date)"
+                  [class.ring-[#006a61]/40]="isInRange(cell.date)"
+                  class="aspect-square rounded-lg text-[12px] font-bold transition-colors hover:ring-2 hover:ring-[#006a61]/30"
+                  [title]="cell.date + (cell.marked ? ' — marcado' : ' — sin marcar')"
+                >
+                  {{ cell.dayNumber }}
                 </button>
               }
             </div>
-            @if (!anyDayEnabled()) {
+
+            <p class="mt-3 text-[11px] text-[#76777d]">
+              Clic en un día para marcarlo o desmarcarlo. Clic en uno y después en otro marca todo el rango.
+            </p>
+            @if (markedWithoutHours().length > 0) {
               <p class="mt-3 p-2.5 rounded-lg bg-[#fff7ed] border border-[#fed7aa] text-[12px] text-[#92400e]">
-                Con los siete días apagados este médico no tendrá ningún día disponible para reservar.
+                Marcó {{ markedWithoutHours().length }} día(s) sin horario configurado para ese día de la semana:
+                <strong>{{ markedWithoutHours() }}</strong>.
+                Se pueden marcar, pero no se podrán agendar citas hasta que les ponga hora de inicio y fin en
+                "Jornadas Semanales" más abajo.
+              </p>
+            }
+            @if (markedCount() === 0) {
+              <p class="mt-3 p-2.5 rounded-lg bg-[#fff7ed] border border-[#fed7aa] text-[12px] text-[#92400e]">
+                Este médico no tiene ningún día marcado, así que no se podrá agendar ninguna cita.
+                Marque fechas o use "Marcar según la jornada".
               </p>
             }
           </div>
@@ -234,6 +289,7 @@ export class DoctorConfigComponent implements OnInit {
         this.toast.show('No se pudo cargar la jornada', 'Revise la conexión e intente de nuevo.');
       },
     });
+    this.loadMarkedDates();
   }
 
   toggleDay(dayIndex: number): void {
@@ -252,6 +308,181 @@ export class DoctorConfigComponent implements OnInit {
   }
 
   readonly anyDayEnabled = computed(() => this.scheduleDays().some(day => day.enabled));
+
+  // ---- dias a laborar (fechas marcadas) ----
+
+  markedDates = signal<Set<string>>(new Set());
+  markingMonth = signal<Date>(new Date());
+  /** Primer clic de un rango. El segundo clic cierra el rango. */
+  rangeAnchor = signal<string | null>(null);
+  markingSchedule = signal(false);
+  readonly weekLabels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+  readonly markedCount = computed(() => this.markedDates().size);
+
+  readonly markingMonthLabel = computed(() => {
+    const m = this.markingMonth();
+    const names = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+    ];
+    return `${names[m.getMonth()]} ${m.getFullYear()}`;
+  });
+
+  readonly markingLead = computed(() => {
+    const first = new Date(this.markingMonth().getFullYear(), this.markingMonth().getMonth(), 1);
+    return (first.getDay() + 6) % 7;
+  });
+
+  readonly markingCells = computed(() => {
+    const month = this.markingMonth();
+    const lead = this.markingLead();
+    const start = new Date(month.getFullYear(), month.getMonth(), 1 - lead);
+    const marked = this.markedDates();
+    const today = todayStr();
+    const cells: Array<{ date: string; dayNumber: number; marked: boolean; past: boolean }> = [];
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+      const date = toDateStr(d);
+      cells.push({ date, dayNumber: d.getDate(), marked: marked.has(date), past: date < today });
+    }
+    return cells;
+  });
+
+  readonly rangeHint = computed(() => {
+    const anchor = this.rangeAnchor();
+    if (!anchor) return '';
+    return `Rango iniciado en ${anchor}. Elija el día final.`;
+  });
+
+  isInRange(date: string): boolean {
+    const anchor = this.rangeAnchor();
+    if (!anchor) return false;
+    return date > anchor;
+  }
+
+  /**
+   * Dias marcados cuyo dia de la semana no tiene horario. Marcarlos es valido,
+   * pero sin horas no se pueden agendar citas, asi que se avisa antes de que
+   * el medico descubra eso en la pantalla de reserva.
+   */
+  readonly markedWithoutHours = computed(() => {
+    const enabled = new Set(this.scheduleDays().filter(d => d.enabled).map(d => d.dayOfWeek));
+    const labels: string[] = [];
+    for (const cell of this.markingCells()) {
+      if (!cell.marked) continue;
+      if (enabled.has(isoDayOfWeekOf(cell.date))) continue;
+      labels.push(`${cell.dayNumber}/${cell.date.slice(5, 7)}`);
+    }
+    return labels;
+  });
+
+  shiftMarkingMonth(delta: number): void {
+    const m = this.markingMonth();
+    this.markingMonth.set(new Date(m.getFullYear(), m.getMonth() + delta, 1));
+    this.rangeAnchor.set(null);
+    this.loadMarkedDates();
+  }
+
+  private loadMarkedDates(): void {
+    const month = this.markingMonth();
+    const lastDay = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+    this.data
+      .getDoctorWorkingDates(this.data.doctor.id, toDateStr(month), toDateStr(new Date(month.getFullYear(), month.getMonth(), lastDay)))
+      .subscribe({
+        next: dates => this.markedDates.set(new Set(dates.map(d => d.date))),
+        error: () => this.toast.show('No se pudieron cargar los días marcados', 'Intente de nuevo.'),
+      });
+  }
+
+  /**
+   * Un clic marca o desmarca. Dos clics seguidos, en dias distintos, marcan
+   * todo el rango intermedio: es la forma rapida de decir "del 5 al 10".
+   */
+  onMarkingDayClick(date: string): void {
+    const doctorId = this.data.doctor.id;
+    if (date < todayStr()) return;
+
+    const anchor = this.rangeAnchor();
+    if (anchor && anchor !== date) {
+      const [from, to] = anchor < date ? [anchor, date] : [date, anchor];
+      this.rangeAnchor.set(null);
+      this.applyRange(doctorId, from, to);
+      return;
+    }
+
+    if (anchor === date) {
+      this.rangeAnchor.set(null);
+      return;
+    }
+
+    const marked = this.markedDates().has(date);
+    // Optimista: el calendario responde al instante y se revierte si el backend
+    // dice que no.
+    this.markedDates.update(s => {
+      const next = new Set(s);
+      if (marked) next.delete(date);
+      else next.add(date);
+      return next;
+    });
+    this.data.toggleDoctorWorkingDate(doctorId, date, !marked).subscribe({
+      error: () => {
+        this.markedDates.update(s => {
+          const next = new Set(s);
+          if (marked) next.add(date);
+          else next.delete(date);
+          return next;
+        });
+        this.toast.show('No se pudo cambiar el día', 'Intente de nuevo.');
+      },
+    });
+  }
+
+  private applyRange(doctorId: string, from: string, to: string): void {
+    const dates: Array<{ date: string }> = [];
+    const cursor = new Date(`${from}T00:00:00`);
+    const end = new Date(`${to}T00:00:00`);
+    while (cursor <= end) {
+      dates.push({ date: toDateStr(cursor) });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    const datesInRange = new Set(dates.map(d => d.date));
+    this.markedDates.update(s => {
+      const next = new Set(s);
+      for (const d of datesInRange) next.add(d);
+      return next;
+    });
+    this.data.setDoctorWorkingDates(doctorId, [...this.markedDates()].map(date => ({ date, note: null }))).subscribe({
+      error: () => {
+        this.loadMarkedDates();
+        this.toast.show('No se pudo marcar el rango', 'Intente de nuevo.');
+      },
+    });
+    this.toast.show(
+      `${dates.length} días marcados`,
+      `Del ${from} al ${to} el médico atenderá en esas fechas.`,
+    );
+  }
+
+  markFromSchedule(): void {
+    this.markingSchedule.set(true);
+    // 90 dias, no 60: con 60 el horizonte no avanzaria mas alla de donde
+    // quedo la siembra y el boton pareceria no hacer nada.
+    this.data.markFromSchedule(this.data.doctor.id, 90).subscribe({
+      next: r => {
+        this.markingSchedule.set(false);
+        this.loadMarkedDates();
+        this.toast.show(
+          r.marked > 0 ? `${r.marked} días marcados` : 'No había días nuevos que marcar',
+          'Se usaron los días de la semana que el médico tiene habilitados.',
+        );
+      },
+      error: () => {
+        this.markingSchedule.set(false);
+        this.toast.show('No se pudieron marcar los días', 'Intente de nuevo.');
+      },
+    });
+  }
 
   onTimeChange(dayIndex: number, field: 'startTime' | 'endTime', event: Event): void {
     const value = (event.target as HTMLInputElement).value;
@@ -295,4 +526,18 @@ export class DoctorConfigComponent implements OnInit {
       },
     });
   }
+}
+
+function todayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function toDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** 1 = lunes ... 7 = domingo, igual que day_of_week en la base. */
+function isoDayOfWeekOf(dateStr: string): number {
+  return ((new Date(`${dateStr}T00:00:00`).getDay() + 6) % 7) + 1;
 }

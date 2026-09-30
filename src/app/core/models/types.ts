@@ -97,9 +97,17 @@ export interface ConsultationType {
 
 export type BlockedReason =
   | 'pasado'
+  | 'no-labora'
   | 'ausencia'
   | 'jornada-cerrada'
+  | 'sin-horario'
   | 'sin-cupo';
+
+/** Dia concreto que un medico marco para laborar. */
+export interface WorkingDateItem {
+  date: string;
+  note: string | null;
+}
 
 /** Dia abierto que se puede (o no) reservar para un medico. */
 export interface BookableDay {

@@ -23,6 +23,7 @@ import {
   BookableDay,
   AvailableSlots,
   ConsultationType,
+  WorkingDateItem,
 } from '../models/types';
 import { ApiService } from './api.service';
 
@@ -401,10 +402,43 @@ export class MockDataService {
   }
 
   /** Dias que se pueden reservar para un medico, con el motivo si no se puede. */
+  /** Dias que el medico tiene marcados para laborar. Un rango son varias filas. */
+  getDoctorWorkingDates(doctorId: string, from?: string, to?: string): Observable<WorkingDateItem[]> {
+    const params = new URLSearchParams({ doctorId });
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    return this.api
+      .get<{ dates: WorkingDateItem[] }>(`/availability/working-dates?${params.toString()}`)
+      .pipe(map(r => r.dates));
+  }
+
+  /** Marca o desmarca un dia. Es lo que dispara el clic en el calendario. */
+  toggleDoctorWorkingDate(doctorId: string, date: string, marked: boolean): Observable<{ marked: boolean }> {
+    return this.api.post<{ marked: boolean }>(
+      `/availability/working-dates/${date}`,
+      { doctorId, marked },
+    );
+  }
+
+  /** Reemplaza el conjunto completo de dias marcados. */
+  setDoctorWorkingDates(doctorId: string, dates: WorkingDateItem[]): Observable<WorkingDateItem[]> {
+    return this.api
+      .put<{ dates: WorkingDateItem[] }>('/availability/working-dates', { doctorId, dates })
+      .pipe(map(r => r.dates));
+  }
+
+  /** Marca de una vez los proximos dias que coincidan con la jornada semanal. */
+  markFromSchedule(doctorId: string, days = 60): Observable<{ marked: number; dates: WorkingDateItem[] }> {
+    return this.api.post<{ marked: number; dates: WorkingDateItem[] }>(
+      '/availability/working-dates/mark-from-schedule',
+      { doctorId, days },
+    );
+  }
+
   /**
-   * Dias reservables de un medico en un rango. La jornada del medico es la
-   * fuente de verdad, asi que el calendario pide el mes que esta viendo en vez
-   * de una ventana fija que se quedaria corta.
+   * Dias reservables de un medico en un rango. Los dias que el medico marco
+   * son los que aparecen, asi que el calendario pide el mes que esta viendo en
+   * vez de una ventana fija que se quedaria corta.
    */
   getBookableDays(doctorId: string, from?: string, to?: string): Observable<BookableDay[]> {
     const params = new URLSearchParams({ doctorId });
