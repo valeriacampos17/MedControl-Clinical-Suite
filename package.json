@@ -15,8 +15,7 @@
     "dev": "tsx watch server/src/index.ts",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "lint": "ng lint",
-    "deploy:hosting": "npm run build:front && firebase deploy --only hosting"
+    "lint": "ng lint"
   },
   "dependencies": {
     "@angular/animations": "^22.0.0",
