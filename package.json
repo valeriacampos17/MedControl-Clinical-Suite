@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": "^22.22.3 || ^24.15.0 || >=26.0.0"
   },
   "scripts": {
     "ng": "ng",
-    "start": "node server/dist/index.js",
+    "start": "node --env-file-if-exists=.env server/dist/index.js",
     "start:front": "ng serve --port=3000 --host=0.0.0.0",
     "build": "npm run build:server && npm run build:front",
     "build:front": "ng build",
@@ -15,7 +15,8 @@
     "dev": "tsx watch server/src/index.ts",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "lint": "ng lint"
+    "lint": "ng lint",
+    "deploy:hosting": "npm run build:front && firebase deploy --only hosting"
   },
   "dependencies": {
     "@angular/animations": "^22.0.0",
@@ -27,9 +28,9 @@
     "@angular/platform-browser-dynamic": "^22.0.0",
     "@angular/router": "^22.0.0",
     "bcryptjs": "^3.0.2",
-    "better-sqlite3": "^12.2.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "libsql": "^0.5.29",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zod": "^3.24.4"
@@ -40,7 +41,6 @@
     "@angular/compiler-cli": "^22.0.0",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.1.14",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.15.0",

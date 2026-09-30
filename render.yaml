@@ -8,8 +8,16 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
-        value: 22.14.0
+        # El Angular CLI 22.1.8 exige ^22.22.3 || ^24.15.0 || >=26.0.0.
+        # Este era 22.14.0 y hacia fallar `ng build` en el deploy.
+        value: 24.21.0
       - key: JWT_SECRET
         generateValue: true
       - key: DB_PATH
         value: /tmp/medcontrol.db
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: "*"
