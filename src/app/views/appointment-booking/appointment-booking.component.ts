@@ -2,7 +2,7 @@ import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular
 import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Patient } from '../../core/models/types';
+import { BookableDay, ConsultationType, Patient } from '../../core/models/types';
 import { ButtonComponent } from '../../shared/button/button.component';
 import { BadgeComponent } from '../../shared/badge/badge.component';
 import { ModalComponent } from '../../shared/modal/modal.component';
@@ -15,6 +15,28 @@ interface DoctorOption {
   shortName: string;
   specialty: string;
   avatarUrl?: string;
+}
+
+type DayPickerVariant = 'cards' | 'calendar' | 'select';
+
+const MONTHS = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+const WEEK_HEADERS = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'];
+
+function todayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function toDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function firstOfCurrentMonth(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
 }
 
 @Component({
@@ -33,7 +55,7 @@ interface DoctorOption {
               <h1 class="text-[20px] sm:text-[22px] font-bold text-[#191c1e] tracking-tight">Programación de Turno Clínico</h1>
               <app-badge variant="teal" size="sm">Modo Admisión / Asistente Clínico</app-badge>
             </div>
-            <p class="text-[13px] text-[#45464d] mt-1">Agendamiento en tiempo real con validación biomédica y bono electrónico integrado</p>
+            <p class="text-[13px] text-[#45464d] mt-1">Los horarios salen de los días abiertos y de la jornada de cada médico</p>
           </div>
         </div>
 
@@ -43,7 +65,7 @@ interface DoctorOption {
               <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#eceef0]">
                 <div class="flex items-center gap-2.5">
                   <span class="w-7 h-7 rounded-full bg-[#006a61] text-white flex items-center justify-center text-[13px] font-bold">1</span>
-                  <h2 class="text-[15px] font-bold text-[#191c1e]">Búsqueda & Identificación del Paciente</h2>
+                  <h2 class="text-[15px] font-bold text-[#191c1e]">Búsqueda &amp; Identificación del Paciente</h2>
                 </div>
                 <app-badge variant="success" size="sm">Completado</app-badge>
               </div>
@@ -127,7 +149,7 @@ interface DoctorOption {
               <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#eceef0]">
                 <div class="flex items-center gap-2.5">
                   <span class="w-7 h-7 rounded-full bg-[#006a61] text-white flex items-center justify-center text-[13px] font-bold">2</span>
-                  <h2 class="text-[15px] font-bold text-[#191c1e]">Especialidad & Asignación Médica</h2>
+                  <h2 class="text-[15px] font-bold text-[#191c1e]">Especialidad &amp; Asignación Médica</h2>
                 </div>
                 <app-badge variant="teal" size="sm">Asignado</app-badge>
               </div>
@@ -150,7 +172,7 @@ interface DoctorOption {
                     <button
                       type="button"
                       class="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[#f2f4f6] transition-colors first:rounded-t-xl last:rounded-b-xl"
-                      [class]="selectedDoctorId() === d.id ? 'bg-[#f2f4f6]' : ''"
+                      [class.bg-[#f2f4f6]]="selectedDoctorId() === d.id"
                       (mousedown)="handleSelectDoctor(d)"
                     >
                       <div class="w-8 h-8 rounded-lg bg-[#006a61] text-white flex items-center justify-center text-[11px] font-bold ring-1 ring-[#eceef0] shrink-0">
@@ -181,6 +203,12 @@ interface DoctorOption {
                     <p class="text-[13px] font-bold text-[#191c1e] truncate">{{ doctor.name }}</p>
                     <p class="text-[11px] text-[#45464d] truncate">Especialidad: {{ doctor.specialty }}</p>
                   </div>
+                  @if (doctorJornada(); as j) {
+                    <span class="text-[11px] text-[#45464d] shrink-0 text-right">
+                      Jornada<br />
+                      <span class="font-bold text-[#006a61]">{{ j.startTime }}–{{ j.endTime }}</span>
+                    </span>
+                  }
                 </div>
               }
             </div>
@@ -189,36 +217,208 @@ interface DoctorOption {
               <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#eceef0]">
                 <div class="flex items-center gap-2.5">
                   <span class="w-7 h-7 rounded-full bg-[#006a61] text-white flex items-center justify-center text-[13px] font-bold">3</span>
-                  <h2 class="text-[15px] font-bold text-[#191c1e]">Tipo de Consulta & Duración del Bloque</h2>
+                  <h2 class="text-[15px] font-bold text-[#191c1e]">Tipo de Consulta &amp; Duración del Bloque</h2>
                 </div>
               </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                @for (item of consultationTypes; track item.id) {
-                  <div
-                    (click)="consultationType.set(item.id)"
-                    class="p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between"
-                    [class]="consultationType() === item.id
-                      ? 'border-2 border-[#006a61] bg-[#006a61]/5 shadow-xs'
-                      : 'border-[#e0e3e5] bg-[#f2f4f6] hover:bg-[#e6e8ea]'"
-                  >
-                    <div class="flex items-start justify-between">
-                      <div>
-                        <div class="flex items-center gap-1.5">
-                          <span class="text-[13px] font-bold text-[#191c1e]">{{ item.title }}</span>
-                          @if (item.suggested) {
-                            <span class="px-1.5 py-0.2 rounded bg-[#006a61] text-white text-[9px] font-bold">Sugerido</span>
-                          }
+              @if (loadingTypes()) {
+                <p class="text-[12px] text-[#76777d]">Cargando tipos de consulta...</p>
+              } @else {
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  @for (item of consultationTypes(); track item.id) {
+                    <button
+                      type="button"
+                      (click)="onSelectType(item.id)"
+                      class="text-left p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between"
+                      [class]="consultationType() === item.id
+                        ? 'border-2 border-[#006a61] bg-[#006a61]/5 shadow-xs'
+                        : 'border-[#e0e3e5] bg-[#f2f4f6] hover:bg-[#e6e8ea]'"
+                    >
+                      <div class="flex items-start justify-between">
+                        <div>
+                          <div class="flex items-center gap-1.5">
+                            <span class="text-[13px] font-bold text-[#191c1e]">{{ item.title }}</span>
+                            @if (item.suggested) {
+                              <span class="px-1.5 py-0.2 rounded bg-[#006a61] text-white text-[9px] font-bold">Sugerido</span>
+                            }
+                          </div>
+                          <p class="text-[11px] text-[#45464d] mt-0.5">{{ item.note }}</p>
                         </div>
-                        <p class="text-[11px] text-[#45464d] mt-0.5">{{ item.note }}</p>
                       </div>
-                    </div>
-                    <div class="flex items-center justify-between mt-3 pt-2 border-t border-[#e0e3e5] text-[11px]">
-                      <span class="font-semibold text-[#006a61]">{{ item.mins }}</span>
-                      <span class="text-[#76777d]">{{ item.price }}</span>
-                    </div>
-                  </div>
+                      <div class="flex items-center justify-between mt-3 pt-2 border-t border-[#e0e3e5] text-[11px]">
+                        <span class="font-semibold text-[#006a61]">{{ item.durationMinutes }} minutos</span>
+                        <span class="text-[#76777d]">{{ item.price }}</span>
+                      </div>
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-[#e6e8ea]">
+              <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#eceef0]">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-7 h-7 rounded-full bg-[#006a61] text-white flex items-center justify-center text-[13px] font-bold">4</span>
+                  <h2 class="text-[15px] font-bold text-[#191c1e]">Día y Hora Disponibles</h2>
+                </div>
+                @if (selectedDate()) {
+                  <app-badge variant="teal" size="sm">{{ slots().totalSlots }} horarios libres</app-badge>
                 }
               </div>
+
+              @if (!selectedDoctorId()) {
+                <p class="text-[12.5px] text-[#76777d]">Seleccione un médico para ver los días y horarios.</p>
+              } @else if (loadingDays()) {
+                <p class="text-[12.5px] text-[#76777d] flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                  Consultando días abiertos...
+                </p>
+              } @else if (bookableDays().length === 0) {
+                <div class="p-3.5 rounded-xl bg-[#fff7ed] border border-[#fed7aa]">
+                  <span class="text-[12.5px] text-[#92400e]">No hay días abiertos cargados en el calendario. Revise la configuración de días de atención.</span>
+                </div>
+              } @else {
+                <div class="flex items-center gap-1.5 mb-3 flex-wrap">
+                  <span class="text-[11px] text-[#76777d] mr-1">Vista del calendario:</span>
+                  @for (v of dayPickerVariants; track v.id) {
+                    <button
+                      type="button"
+                      (click)="dayPickerVariant.set(v.id)"
+                      class="px-2 py-1 rounded-md text-[11px] font-semibold transition-colors"
+                      [class]="dayPickerVariant() === v.id ? 'bg-[#006a61] text-white' : 'bg-[#f2f4f6] text-[#45464d] hover:bg-[#e6e8ea]'"
+                    >
+                      {{ v.label }}
+                    </button>
+                  }
+                </div>
+
+                @switch (dayPickerVariant()) {
+                  @case ('cards') {
+                    <div class="flex gap-2 overflow-x-auto pb-2">
+                      @for (d of bookableDays(); track d.date) {
+                        <button
+                          type="button"
+                          (click)="onSelectDate(d)"
+                          [disabled]="!d.bookable"
+                          [title]="d.blockedDetail ?? 'Cupos libres: ' + d.remaining"
+                          class="shrink-0 w-[74px] rounded-xl border px-2 py-2.5 text-center transition-all"
+                          [class]="selectedDate() === d.date
+                            ? 'border-2 border-[#006a61] bg-[#006a61]/5'
+                            : d.bookable
+                              ? 'border-[#e0e3e5] bg-white hover:border-[#006a61]/40'
+                              : 'border-[#eceef0] bg-[#f8f9fa] opacity-55 cursor-not-allowed'"
+                        >
+                          <span class="block text-[10px] font-semibold uppercase text-[#76777d]">{{ d.day.slice(0, 3) }}</span>
+                          <span class="block text-[19px] font-bold leading-tight"
+                            [class]="selectedDate() === d.date ? 'text-[#006a61]' : d.bookable ? 'text-[#191c1e]' : 'text-[#b0b3b7]'">
+                            {{ d.dayNumber }}
+                          </span>
+                          <span class="block text-[9.5px] text-[#76777d]">{{ d.monthLabel.slice(0, 3) }}</span>
+                          <span class="block mt-1 text-[9px] font-semibold"
+                            [class]="d.bookable ? 'text-[#006a61]' : 'text-[#b0b3b7]'">
+                            {{ d.bookable ? d.remaining + ' cupos' : shortBlocked(d.blockedBy) }}
+                          </span>
+                        </button>
+                      }
+                    </div>
+                  }
+                  @case ('calendar') {
+                    <div class="flex items-center justify-between mb-2">
+                      <button type="button" (click)="shiftMonth(-1)" class="p-1.5 rounded-lg hover:bg-[#f2f4f6]" title="Mes anterior">
+                        <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+                      </button>
+                      <span class="text-[13px] font-bold text-[#191c1e]">{{ visibleMonthLabel() }}</span>
+                      <button type="button" (click)="shiftMonth(1)" class="p-1.5 rounded-lg hover:bg-[#f2f4f6]" title="Mes siguiente">
+                        <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+                      </button>
+                    </div>
+                    <div class="grid grid-cols-7 gap-1 mb-1">
+                      @for (h of weekHeaders; track h) {
+                        <span class="text-center text-[10px] font-bold uppercase text-[#76777d]">{{ h }}</span>
+                      }
+                    </div>
+                    <div class="grid grid-cols-7 gap-1">
+                      @for (cell of calendarCells(); track cell.date) {
+                        <button
+                          type="button"
+                          (click)="onSelectDate(cell)"
+                          [disabled]="!cell.bookable"
+                          [title]="cell.blockedDetail ?? (cell.bookable ? 'Cupos libres: ' + cell.remaining : '')"
+                          class="aspect-square rounded-lg border text-[11px] font-semibold flex flex-col items-center justify-center transition-all leading-none"
+                          [class]="selectedDate() === cell.date
+                            ? 'bg-[#006a61] text-white border-[#006a61]'
+                            : cell.bookable
+                              ? 'bg-white text-[#191c1e] border-[#e0e3e5] hover:border-[#006a61]/50'
+                              : 'bg-[#f8f9fa] text-[#c2c5c9] border-[#f0f1f2] cursor-not-allowed'"
+                        >
+                          <span>{{ cell.dayNumber }}</span>
+                          @if (cell.bookable && cell.remaining <= 5) {
+                            <span class="text-[8px] font-bold" [class]="selectedDate() === cell.date ? 'text-white/80' : 'text-[#b45309]'">{{ cell.remaining }}</span>
+                          }
+                        </button>
+                      }
+                    </div>
+                    <p class="mt-2 text-[10.5px] text-[#76777d]">El número chico es la cantidad de cupos restantes. Los días en gris no tienen atención.</p>
+                  }
+                  @case ('select') {
+                    <select
+                      class="w-full px-3 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                      [value]="selectedDate() ?? ''"
+                      (change)="onSelectDateByValue($event)"
+                    >
+                      <option value="" disabled>Elige un día disponible</option>
+                      @for (d of bookableDays(); track d.date) {
+                        <option [value]="d.date" [disabled]="!d.bookable">
+                          {{ d.day }} {{ d.dayNumber }} {{ d.monthLabel }} — {{ d.bookable ? d.remaining + ' cupos' : d.blockedDetail }}
+                        </option>
+                      }
+                    </select>
+                  }
+                }
+
+                <div class="mt-4 pt-4 border-t border-[#eceef0]">
+                  @if (!selectedDate()) {
+                    <p class="text-[12.5px] text-[#76777d]">Elige un día para ver los horarios libres.</p>
+                  } @else if (loadingSlots()) {
+                    <p class="text-[12.5px] text-[#76777d] flex items-center gap-2">
+                      <span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                      Consultando horarios...
+                    </p>
+                  } @else if (slots().blockedDetail) {
+                    <div class="p-3 rounded-xl bg-[#fff7ed] border border-[#fed7aa]">
+                      <span class="text-[12px] text-[#92400e]">{{ slots().blockedDetail }}</span>
+                    </div>
+                  } @else if (slots().slots.length === 0) {
+                    <div class="p-3 rounded-xl bg-[#fff7ed] border border-[#fed7aa]">
+                      <span class="text-[12px] text-[#92400e]">
+                        No quedan horarios libres de {{ durationMinutes() }} minutos ese día. Prueba con otro día o con un bloque más corto.
+                      </span>
+                    </div>
+                  } @else {
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-[12px] font-semibold text-[#191c1e]">
+                        Horarios para {{ selectedDayLabel() }}
+                      </span>
+                      <span class="text-[11px] text-[#76777d]">
+                        Jornada {{ slots().startTime }}–{{ slots().endTime }} · {{ durationMinutes() }} min por turno
+                      </span>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5">
+                      @for (slot of slots().slots; track slot) {
+                        <button
+                          type="button"
+                          (click)="selectedTime.set(slot)"
+                          class="px-3 py-1.5 rounded-lg border text-[12px] font-semibold transition-all"
+                          [class]="selectedTime() === slot
+                            ? 'bg-[#006a61] text-white border-[#006a61]'
+                            : 'bg-white text-[#191c1e] border-[#e0e3e5] hover:border-[#006a61]/50 hover:bg-[#006a61]/5'"
+                        >
+                          {{ slot }}
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              }
             </div>
           </div>
 
@@ -250,12 +450,25 @@ interface DoctorOption {
                   <span class="font-semibold text-[#191c1e]">{{ selectedDoctor()?.name ?? '—' }}</span>
                 </div>
                 <div class="flex items-center justify-between">
-                  <span>Cita:</span>
-                  <span class="font-bold text-[#006a61]">Lunes {{ selectedDay() }} Oct · {{ selectedTime() }}</span>
+                  <span>Consulta:</span>
+                  <span class="font-semibold text-[#191c1e]">{{ selectedType()?.title ?? '—' }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span>Día:</span>
+                  <span class="font-bold text-[#006a61]">{{ selectedDate() ? selectedDayLabel() : '—' }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span>Hora:</span>
+                  <span class="font-bold text-[#006a61]">{{ selectedTime() ?? '—' }}</span>
                 </div>
               </div>
+              @if (missingHint(); as hint) {
+                <p class="mb-3 text-[11.5px] text-[#b45309] bg-[#fff7ed] border border-[#fed7aa] rounded-lg px-3 py-2">
+                  {{ hint }}
+                </p>
+              }
               <app-button variant="primary" size="lg" icon="check_circle" [fullWidth]="true" [disabled]="!canConfirm()" (click)="showConfirmModal.set(true)">
-                Confirmar y Agendar Cita
+                {{ saving() ? 'Agendando...' : 'Confirmar y Agendar Cita' }}
               </app-button>
             </div>
           </div>
@@ -275,12 +488,15 @@ interface DoctorOption {
           <div class="p-3.5 rounded-xl bg-[#f2f4f6] border border-[#e0e3e5] space-y-1.5">
             <p class="font-bold text-[#191c1e]">Paciente: {{ selectedPatient()?.name }}</p>
             <p class="text-[#45464d]">Profesional: {{ selectedDoctor()?.name }}</p>
-            <p class="text-[#45464d]">Fecha: Lunes {{ selectedDay() }} Octubre 2024 a las {{ selectedTime() }}</p>
+            <p class="text-[#45464d]">Consulta: {{ selectedType()?.title }} ({{ durationMinutes() }} minutos)</p>
+            <p class="text-[#45464d]">Fecha: {{ selectedDate() ? selectedDayLabel() : '—' }} a las {{ selectedTime() }}</p>
           </div>
         </div>
         <div modal-footer class="flex items-center justify-end gap-2.5">
           <app-button variant="light" (click)="showConfirmModal.set(false)">Cancelar</app-button>
-          <app-button variant="primary" icon="check" (click)="handleConfirmBooking()">Confirmar Definitivamente</app-button>
+          <app-button variant="primary" icon="check" [disabled]="saving()" (click)="handleConfirmBooking()">
+            {{ saving() ? 'Agendando...' : 'Confirmar Definitivamente' }}
+          </app-button>
         </div>
       </app-modal>
 
@@ -300,18 +516,47 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
   toast = inject(ToastService);
 
   timeLeft = signal(582);
-  selectedDay = signal(28);
-  selectedTime = signal('12:15 PM');
   consultationType = signal('control');
   showConfirmModal = signal(false);
   selectedPatient = signal<Patient | null>(null);
   showNewPatientModal = signal(false);
+  saving = signal(false);
 
   searchPatientTerm = signal('');
   showPatientDropdown = signal(false);
   doctorSearchTerm = signal('');
   showDoctorDropdown = signal(false);
   selectedDoctorId = signal<string | null>(this.data.doctors()[0]?.id ?? null);
+
+  // ---- disponibilidad ----
+  consultationTypes = signal<ConsultationType[]>([]);
+  loadingTypes = signal(true);
+  bookableDays = signal<BookableDay[]>([]);
+  loadingDays = signal(false);
+  selectedDate = signal<string | null>(null);
+  slots = signal<{ slots: string[]; startTime: string; endTime: string; totalSlots: number; blockedDetail: string | null }>({
+    slots: [],
+    startTime: '',
+    endTime: '',
+    totalSlots: 0,
+    blockedDetail: null,
+  });
+  loadingSlots = signal(false);
+  selectedTime = signal<string | null>(null);
+  doctorJornada = signal<{ startTime: string; endTime: string } | null>(null);
+
+  /** Vista del calendario. Temporal: se borran las dos perdedoras cuando se elija una. */
+  dayPickerVariant = signal<DayPickerVariant>('cards');
+  readonly dayPickerVariants: Array<{ id: DayPickerVariant; label: string }> = [
+    { id: 'cards', label: 'Tarjetas' },
+    { id: 'calendar', label: 'Calendario' },
+    { id: 'select', label: 'Lista' },
+  ];
+  readonly weekHeaders = WEEK_HEADERS;
+
+  visibleMonth = signal<Date>(firstOfCurrentMonth());
+
+  private timer: ReturnType<typeof setInterval> | null = null;
 
   readonly filteredPatients = computed(() => {
     const term = this.searchPatientTerm().toLowerCase().trim();
@@ -336,21 +581,90 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
     return this.data.doctors().find((d) => d.id === id) ?? null;
   });
 
-  readonly canConfirm = computed(() => !!this.selectedPatient() && !!this.selectedDoctor());
+  readonly selectedType = computed<ConsultationType | null>(() => {
+    return this.consultationTypes().find(t => t.id === this.consultationType()) ?? null;
+  });
 
-  private timer: ReturnType<typeof setInterval> | null = null;
+  readonly durationMinutes = computed(() => this.selectedType()?.durationMinutes ?? 30);
 
-  consultationTypes = [
-    { id: 'primera', title: 'Primera Consulta', mins: '45 minutos', price: '$75.000 Particular', note: 'Anamnesis completa y examen físico', suggested: false },
-    { id: 'control', title: 'Control Periódico', mins: '30 minutos', price: '$60.000 Particular', note: 'Sugerido por Sistema', suggested: true },
-    { id: 'sobrecupo', title: 'Sobrecupo de Urgencia', mins: '20 minutos', price: '$50.000 Particular', note: 'Requiere autorización médica', suggested: false },
-    { id: 'examenes', title: 'Lectura de Exámenes', mins: '15 minutos', price: 'Sin costo adicional', note: 'Revisión rápida de laboratorio', suggested: false },
-  ];
+  readonly canConfirm = computed(
+    () =>
+      !!this.selectedPatient() &&
+      !!this.selectedDoctorId() &&
+      !!this.selectedDate() &&
+      !!this.selectedTime() &&
+      !this.saving(),
+  );
+
+  /** Que falta para poder confirmar, para que la pantalla lo diga. */
+  readonly missingHint = computed(() => {
+    if (!this.selectedPatient()) return 'Falta seleccionar el paciente.';
+    if (!this.selectedDoctorId()) return 'Falta seleccionar el médico.';
+    if (!this.selectedDate()) return 'Falta elegir el día.';
+    if (!this.selectedTime()) return 'Falta elegir la hora.';
+    return null;
+  });
+
+  readonly selectedDayLabel = computed(() => {
+    const date = this.selectedDate();
+    const day = this.bookableDays().find(d => d.date === date);
+    if (!day) return date ?? '—';
+    return `${day.day} ${day.dayNumber} ${day.monthLabel}`;
+  });
+
+  readonly visibleMonthLabel = computed(() => {
+    const m = this.visibleMonth();
+    return `${MONTHS[m.getMonth()]} ${m.getFullYear()}`;
+  });
+
+  /** Celdas del mes visible, con su estado de reserva. */
+  readonly calendarCells = computed(() => {
+    const month = this.visibleMonth();
+    const first = new Date(month.getFullYear(), month.getMonth(), 1);
+    // getDay() arranca en domingo; la semana arranca en lunes.
+    const lead = (first.getDay() + 6) % 7;
+    const start = new Date(month.getFullYear(), month.getMonth(), 1 - lead);
+    const byDate = new Map(this.bookableDays().map(d => [d.date, d]));
+    const today = todayStr();
+
+    const cells: BookableDay[] = [];
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+      const date = toDateStr(d);
+      const known = byDate.get(date);
+      cells.push(
+        known ?? {
+          date,
+          dayOfWeek: ((d.getDay() + 6) % 7) + 1,
+          day: '',
+          dayNumber: d.getDate(),
+          monthLabel: MONTHS[d.getMonth()],
+          bookable: false,
+          blockedBy: 'sin-abrir',
+          blockedDetail: date < today ? 'Día pasado' : 'La clínica no atiende este día',
+          remaining: 0,
+        },
+      );
+    }
+    return cells;
+  });
 
   ngOnInit(): void {
     this.timer = setInterval(() => {
       this.timeLeft.update(prev => (prev > 0 ? prev - 1 : 0));
     }, 1000);
+
+    this.data.getConsultationTypes().subscribe({
+      next: types => {
+        this.consultationTypes.set(types);
+        const suggested = types.find(t => t.suggested) ?? types[0];
+        if (suggested) this.consultationType.set(suggested.id);
+        this.loadingTypes.set(false);
+      },
+      error: () => this.loadingTypes.set(false),
+    });
+
+    this.loadDoctorContext();
   }
 
   ngOnDestroy(): void {
@@ -365,6 +679,129 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')} min`;
   }
+
+  shortBlocked(reason: string | null): string {
+    switch (reason) {
+      case 'ausencia': return 'ausencia';
+      case 'jornada-cerrada': return 'no atiende';
+      case 'sin-cupo': return 'sin cupo';
+      case 'sin-abrir': return 'cerrado';
+      default: return 'cerrado';
+    }
+  }
+
+  // ---- carga de disponibilidad ----
+
+  /** Jornada y dias abiertos del medico elegido. */
+  private loadDoctorContext(): void {
+    const doctorId = this.selectedDoctorId();
+    if (!doctorId) return;
+
+    this.data.loadScheduleFor(doctorId).subscribe({
+      next: days => {
+        const enabled = days.find(d => d.enabled);
+        this.doctorJornada.set(enabled ? { startTime: enabled.startTime, endTime: enabled.endTime } : null);
+      },
+      error: () => this.doctorJornada.set(null),
+    });
+
+    this.loadDays(doctorId);
+  }
+
+  private loadDays(doctorId: string): void {
+    this.loadingDays.set(true);
+    this.selectedDate.set(null);
+    this.selectedTime.set(null);
+    this.slots.set({ slots: [], startTime: '', endTime: '', totalSlots: 0, blockedDetail: null });
+
+    this.data.getBookableDays(doctorId, undefined, 60).subscribe({
+      next: days => {
+        this.bookableDays.set(days);
+        this.loadingDays.set(false);
+        // Preselecciona el primer dia con disponibilidad para no dejar la
+        // pantalla en blanco al abrirla.
+        const first = days.find(d => d.bookable);
+        if (first) this.selectDate(first.date);
+      },
+      error: () => {
+        this.bookableDays.set([]);
+        this.loadingDays.set(false);
+      },
+    });
+  }
+
+  private selectDate(date: string): void {
+    const doctorId = this.selectedDoctorId();
+    const day = this.bookableDays().find(d => d.date === date);
+    if (!doctorId || !day?.bookable) return;
+
+    this.selectedDate.set(date);
+    this.selectedTime.set(null);
+    this.loadingSlots.set(true);
+
+    this.data.getAvailableSlots(doctorId, date, this.durationMinutes()).subscribe({
+      next: res => {
+        this.slots.set({
+          slots: res.slots,
+          startTime: res.startTime,
+          endTime: res.endTime,
+          totalSlots: res.totalSlots,
+          blockedDetail: res.blockedDetail,
+        });
+        this.loadingSlots.set(false);
+      },
+      error: () => {
+        this.slots.set({ slots: [], startTime: '', endTime: '', totalSlots: 0, blockedDetail: 'No se pudieron consultar los horarios.' });
+        this.loadingSlots.set(false);
+      },
+    });
+  }
+
+  onSelectDate(day: BookableDay): void {
+    if (!day.bookable) {
+      this.toast.show('Día no disponible', day.blockedDetail ?? 'Ese día no tiene atención.');
+      return;
+    }
+    this.selectDate(day.date);
+  }
+
+  onSelectDateByValue(event: Event): void {
+    const date = (event.target as HTMLSelectElement).value;
+    if (date) this.selectDate(date);
+  }
+
+  onSelectType(id: string): void {
+    this.consultationType.set(id);
+    // Cambia la duracion, asi que la rejilla se recalcula.
+    const doctorId = this.selectedDoctorId();
+    const date = this.selectedDate();
+    if (doctorId && date) {
+      this.selectedTime.set(null);
+      this.loadingSlots.set(true);
+      this.data.getAvailableSlots(doctorId, date, this.durationMinutes()).subscribe({
+        next: res => {
+          this.slots.set({
+            slots: res.slots,
+            startTime: res.startTime,
+            endTime: res.endTime,
+            totalSlots: res.totalSlots,
+            blockedDetail: res.blockedDetail,
+          });
+          this.loadingSlots.set(false);
+        },
+        error: () => {
+          this.slots.set({ slots: [], startTime: '', endTime: '', totalSlots: 0, blockedDetail: 'No se pudieron consultar los horarios.' });
+          this.loadingSlots.set(false);
+        },
+      });
+    }
+  }
+
+  shiftMonth(delta: number): void {
+    this.visibleMonth.update(m => new Date(m.getFullYear(), m.getMonth() + delta, 1));
+  }
+
+  // ---- paciente / medico ----
 
   onSearchPatient(event: Event): void {
     this.searchPatientTerm.set((event.target as HTMLInputElement).value);
@@ -416,23 +853,49 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
     this.selectedDoctorId.set(doctor.id);
     this.doctorSearchTerm.set('');
     this.showDoctorDropdown.set(false);
+    this.loadDoctorContext();
   }
 
+  // ---- confirmacion ----
+
   handleConfirmBooking(): void {
-    this.showConfirmModal.set(false);
     const patient = this.selectedPatient();
+    const doctorId = this.selectedDoctorId();
+    const date = this.selectedDate();
+    const time = this.selectedTime();
     const doctor = this.selectedDoctor();
-    if (!patient || !doctor) return;
-    const type = this.consultationTypes.find((t) => t.id === this.consultationType());
-    this.data.createAppointment({
-      date: `2024-10-${String(this.selectedDay()).padStart(2, '0')}`,
-      time: this.selectedTime(),
-      durationMinutes: Number((type?.mins ?? '30').split(' ')[0]) || 30,
-      patientId: patient.id,
-      doctorId: doctor.id,
-      reason: type?.title ?? 'Consulta',
-      consultationTypeId: type?.id,
-    });
-    this.toast.show('¡Cita Médica Agendada Exitosamente!', `Cita reservada para ${patient.name} (${doctor.name}) el Lunes ${this.selectedDay()} Octubre.`);
+    const type = this.selectedType();
+    if (!patient || !doctorId || !date || !time || !doctor || !this.canConfirm()) return;
+
+    this.showConfirmModal.set(false);
+    this.saving.set(true);
+
+    this.data
+      .createAppointment({
+        date,
+        time,
+        durationMinutes: this.durationMinutes(),
+        patientId: patient.id,
+        doctorId,
+        reason: type?.title ?? 'Consulta',
+        consultationTypeId: type?.id,
+      })
+      .subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.toast.show(
+            '¡Cita Médica Agendada Exitosamente!',
+            `Cita reservada para ${patient.name} (${doctor.name}) el ${this.selectedDayLabel()} a las ${time}.`,
+          );
+          this.selectedTime.set(null);
+          this.selectDate(date);
+        },
+        error: (err: Error) => {
+          this.saving.set(false);
+          this.toast.show('No se pudo agendar', err.message);
+          // El horario puede haberse tomado mientras tanto: se recarga la rejilla.
+          if (date) this.selectDate(date);
+        },
+      });
   }
 }

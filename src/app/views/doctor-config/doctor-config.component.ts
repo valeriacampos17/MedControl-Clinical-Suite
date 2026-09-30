@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -72,7 +72,7 @@ import { DaySchedule } from '../../core/models/types';
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-[#eceef0]">
-                  @for (day of scheduleDays(); track day.day; let idx = $index) {
+                  @for (day of scheduleDays(); track day.dayOfWeek; let idx = $index) {
                     <tr class="transition-colors" [class.opacity-60]="!day.enabled">
                       <td class="py-3 px-3">
                         <div class="flex items-center gap-2.5">
@@ -83,7 +83,19 @@ import { DaySchedule } from '../../core/models/types';
                       <td class="py-3 px-3">
                         @if (day.enabled) {
                           <div class="flex items-center gap-1.5">
-                            <span class="font-semibold text-[#191c1e]">{{ day.startTime }} - {{ day.endTime }}</span>
+                            <input
+                              type="time"
+                              [value]="day.startTime"
+                              (change)="onTimeChange(idx, 'startTime', $event)"
+                              class="px-2 py-1 rounded-md border border-[#d7d9dc] text-[12px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                            />
+                            <span class="text-[#76777d]">-</span>
+                            <input
+                              type="time"
+                              [value]="day.endTime"
+                              (change)="onTimeChange(idx, 'endTime', $event)"
+                              class="px-2 py-1 rounded-md border border-[#d7d9dc] text-[12px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                            />
                           </div>
                         } @else {
                           <span class="text-[#76777d] italic">Sin jornada</span>
@@ -91,7 +103,14 @@ import { DaySchedule } from '../../core/models/types';
                       </td>
                       <td class="py-3 px-3 text-right">
                         @if (day.enabled) {
-                          <span class="font-bold text-[#006a61] text-[13px]">{{ day.totalCapacity }} pacientes</span>
+                          <input
+                            type="number"
+                            min="0"
+                            max="999"
+                            [value]="day.totalCapacity"
+                            (change)="onCapacityChange(idx, $event)"
+                            class="w-20 px-2 py-1 rounded-md border border-[#d7d9dc] text-[13px] font-bold text-[#006a61] text-right focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                          />
                         } @else {
                           <span class="text-[#76777d]">0</span>
                         }
@@ -151,13 +170,15 @@ import { DaySchedule } from '../../core/models/types';
     </div>
   `,
 })
-export class DoctorConfigComponent {
+export class DoctorConfigComponent implements OnInit {
   nav = inject(NavigationService);
   data = inject(MockDataService);
   toast = inject(ToastService);
 
   scheduleDays = signal<DaySchedule[]>([...this.data.schedule()]);
   absences = signal([...this.data.absences()]);
+  loading = signal(true);
+  saving = signal(false);
 
   totalWeeklyCapacity = signal(
     this.data.schedule()
@@ -165,11 +186,39 @@ export class DoctorConfigComponent {
       .reduce((acc, curr) => acc + curr.totalCapacity, 0)
   );
 
+  /** La jornada es por medico, asi que se pide la de este. */
+  ngOnInit(): void {
+    this.data.loadScheduleFor(this.data.doctor.id).subscribe({
+      next: days => {
+        this.scheduleDays.set(days);
+        this.loading.set(false);
+        this.recalculateCapacity();
+      },
+      error: () => {
+        this.loading.set(false);
+        this.toast.show('No se pudo cargar la jornada', 'Revise la conexión e intente de nuevo.');
+      },
+    });
+  }
+
   toggleDay(dayIndex: number): void {
     this.scheduleDays.update(days =>
-      days.map((day, idx) =>
-        idx === dayIndex ? { ...day, enabled: !day.enabled } : day
-      )
+      days.map((day, idx) => (idx === dayIndex ? { ...day, enabled: !day.enabled } : day))
+    );
+    this.recalculateCapacity();
+  }
+
+  onTimeChange(dayIndex: number, field: 'startTime' | 'endTime', event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.scheduleDays.update(days =>
+      days.map((day, idx) => (idx === dayIndex ? { ...day, [field]: value } : day))
+    );
+  }
+
+  onCapacityChange(dayIndex: number, event: Event): void {
+    const value = Math.max(0, Number((event.target as HTMLInputElement).value) || 0);
+    this.scheduleDays.update(days =>
+      days.map((day, idx) => (idx === dayIndex ? { ...day, totalCapacity: value } : day))
     );
     this.recalculateCapacity();
   }
@@ -188,6 +237,17 @@ export class DoctorConfigComponent {
   }
 
   handleSaveAllConfig(): void {
-    this.toast.show('Configuración Guardada', 'Parámetros de disponibilidad y reglas de atención sincronizados con éxito.');
+    this.saving.set(true);
+    this.data.saveScheduleFor(this.data.doctor.id, this.scheduleDays()).subscribe({
+      next: days => {
+        this.scheduleDays.set(days);
+        this.saving.set(false);
+        this.toast.show('Configuración Guardada', 'La jornada quedó actualizada y afecta los horarios de reserva.');
+      },
+      error: (err: Error) => {
+        this.saving.set(false);
+        this.toast.show('No se pudo guardar', err.message);
+      },
+    });
   }
 }

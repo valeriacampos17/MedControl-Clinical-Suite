@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { db } from '../db/connection.js';
 import { classifyTriage } from '../services/triage.js';
+import { assertBookable, normalizeTime } from '../services/availability.js';
 import type { AppointmentItem, TriageVitals } from '../types.js';
 
 export const appointmentsRouter = Router();
@@ -64,7 +65,8 @@ appointmentsRouter.get('/', (req, res) => {
 });
 
 const appointmentSchema = z.object({
-  date: z.string().min(1),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'La fecha debe tener formato YYYY-MM-DD'),
+  // Acepta HH:MM y tambien 'h:mm AM/PM'; se guarda siempre en 24 horas.
   time: z.string().min(1),
   durationMinutes: z.number().int().positive(),
   patientId: z.string().min(1),
@@ -80,12 +82,45 @@ appointmentsRouter.post('/', (req, res) => {
     return;
   }
   const data = parsed.data;
-  const id = 'APT-' + Date.now();
-  db.prepare(`
-    INSERT INTO appointments (id, date, time, duration_minutes, patient_id, doctor_id, reason, status, consultation_type_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
-  `).run(id, data.date, data.time, data.durationMinutes, data.patientId, data.doctorId, data.reason, data.consultationTypeId ?? null);
-  const row = db.prepare('SELECT * FROM appointments WHERE id = ?').get(id) as AppointmentRow;
+  const time = normalizeTime(data.time);
+  if (!time) {
+    res.status(400).json({ error: `El horario "${data.time}" no es valido` });
+    return;
+  }
+
+  // Se valida y se guarda en la misma transaccion, asi dos reservas
+  // simultaneas sobre el mismo horario no pueden colarse.
+  let saved = false;
+  let createdId = '';
+  let rejectionMessage = '';
+  let rejectionReason = '';
+
+  db.transaction(() => {
+    const verdict = assertBookable({
+      doctorId: data.doctorId,
+      date: data.date,
+      time,
+      durationMinutes: data.durationMinutes,
+    });
+    if (!verdict.ok) {
+      rejectionMessage = verdict.message;
+      rejectionReason = verdict.reason;
+      return;
+    }
+    createdId = 'APT-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+    db.prepare(`
+      INSERT INTO appointments (id, date, time, duration_minutes, patient_id, doctor_id, reason, status, consultation_type_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+    `).run(createdId, data.date, time, data.durationMinutes, data.patientId, data.doctorId, data.reason, data.consultationTypeId ?? null);
+    saved = true;
+  })();
+
+  if (!saved) {
+    res.status(409).json({ error: rejectionMessage, reason: rejectionReason });
+    return;
+  }
+
+  const row = db.prepare('SELECT * FROM appointments WHERE id = ?').get(createdId) as AppointmentRow;
   res.status(201).json({ appointment: toAppointment(row) });
 });
 
@@ -177,7 +212,7 @@ appointmentsRouter.patch('/:id/complete-triage', (req, res) => {
 });
 
 const rescheduleSchema = z.object({
-  date: z.string().min(1),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'La fecha debe tener formato YYYY-MM-DD'),
   time: z.string().min(1),
 });
 
@@ -187,12 +222,31 @@ appointmentsRouter.patch('/:id/reschedule', (req, res) => {
     res.status(400).json({ error: parsed.error.issues.map((i) => i.message).join('; ') });
     return;
   }
-  const existing = db.prepare('SELECT id FROM appointments WHERE id = ?').get(req.params.id);
+  const existing = db.prepare('SELECT * FROM appointments WHERE id = ?').get(req.params.id) as
+    | AppointmentRow
+    | undefined;
   if (!existing) {
     res.status(404).json({ error: 'Cita no encontrada' });
     return;
   }
-  db.prepare('UPDATE appointments SET date = ?, time = ? WHERE id = ?').run(parsed.data.date, parsed.data.time, req.params.id);
+  const time = normalizeTime(parsed.data.time);
+  if (!time) {
+    res.status(400).json({ error: `El horario "${parsed.data.time}" no es valido` });
+    return;
+  }
+  // Se excluye la propia cita del chequeo de solapes, asi puede moverla de hora.
+  const verdict = assertBookable({
+    doctorId: existing.doctor_id,
+    date: parsed.data.date,
+    time,
+    durationMinutes: existing.duration_minutes,
+    ignoreAppointmentId: existing.id,
+  });
+  if (!verdict.ok) {
+    res.status(409).json({ error: verdict.message, reason: verdict.reason });
+    return;
+  }
+  db.prepare('UPDATE appointments SET date = ?, time = ? WHERE id = ?').run(parsed.data.date, time, req.params.id);
   const row = db.prepare('SELECT * FROM appointments WHERE id = ?').get(req.params.id) as AppointmentRow;
   res.json({ appointment: toAppointment(row) });
 });

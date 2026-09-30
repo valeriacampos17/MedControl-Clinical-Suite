@@ -8,6 +8,7 @@ import { requireAuth } from './middleware/auth.js';
 import { authRouter } from './routes/auth.routes.js';
 import { patientsRouter } from './routes/patients.routes.js';
 import { appointmentsRouter } from './routes/appointments.routes.js';
+import { availabilityRouter } from './routes/availability.routes.js';
 import { doctorsRouter } from './routes/doctors.routes.js';
 import { consultationsRouter } from './routes/consultations.routes.js';
 import { catalogsRouter } from './routes/catalogs.routes.js';
@@ -54,6 +55,7 @@ app.use('/api/auth', authRouter);
 
 app.use('/api/patients', requireAuth, patientsRouter);
 app.use('/api/appointments', requireAuth, appointmentsRouter);
+app.use('/api/availability', requireAuth, availabilityRouter);
 app.use('/api/doctors', requireAuth, doctorsRouter);
 app.use('/api/consultations', requireAuth, consultationsRouter);
 app.use('/api/catalogs', requireAuth, catalogsRouter);
