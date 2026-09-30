@@ -45,7 +45,7 @@ import { DaySchedule } from '../../core/models/types';
                   <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-[12px] text-[#45464d]">
                     <span>Jornada: <strong class="text-[#191c1e]">08:00 - 16:00</strong></span>
                     <span>•</span>
-                    <span>Capacidad: <strong class="text-[#191c1e]">{{ totalWeeklyCapacity() }} pacientes/sem</strong></span>
+                    <span>Capacidad: <strong class="text-[#191c1e]">{{ defaultCapacity() }} pacientes/día</strong></span>
                   </div>
                 </div>
               </div>
@@ -158,7 +158,20 @@ import { DaySchedule } from '../../core/models/types';
                   <tr class="border-b border-[#eceef0] text-[#76777d] uppercase text-[11px] font-bold tracking-wider">
                     <th class="py-2.5 px-3">Día</th>
                     <th class="py-2.5 px-3">Horario</th>
-                    <th class="py-2.5 px-3 text-right">Capacidad Diaria</th>
+                    <th class="py-2.5 px-3 text-right">
+                      <div class="flex items-center justify-end gap-1.5">
+                        <span>Cupos</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="999"
+                          [value]="defaultCapacity()"
+                          (change)="onDefaultCapacityChange($event)"
+                          title="Se aplica a todos los días. Si un día necesita otro número, cámbialo en su fila."
+                          class="w-20 px-2 py-1 rounded-md border border-[#006a61] text-[13px] font-bold text-[#006a61] text-right focus:outline-none focus:ring-2 focus:ring-[#006a61]/30"
+                        />
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-[#eceef0]">
@@ -199,7 +212,13 @@ import { DaySchedule } from '../../core/models/types';
                             max="999"
                             [value]="day.totalCapacity"
                             (change)="onCapacityChange(idx, $event)"
-                            class="w-20 px-2 py-1 rounded-md border border-[#d7d9dc] text-[13px] font-bold text-[#006a61] text-right focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                            [title]="day.totalCapacity === defaultCapacity() ? 'Mismo valor para todos los días' : 'Excepción: solo ' + day.day.toLowerCase() + ' tiene ' + day.totalCapacity + ' cupos'"
+                            class="w-20 px-2 py-1 rounded-md border text-[13px] font-bold text-right focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                            [class.border-[#d7d9dc]]="day.totalCapacity === defaultCapacity()"
+                            [class.text-[#006a61]]="day.totalCapacity === defaultCapacity()"
+                            [class.border-[#b45309]]="day.totalCapacity !== defaultCapacity()"
+                            [class.text-[#b45309]]="day.totalCapacity !== defaultCapacity()"
+                            [class.bg-[#fff7ed]]="day.totalCapacity !== defaultCapacity()"
                           />
                         } @else {
                           <span class="text-[#76777d]">0</span>
@@ -213,7 +232,7 @@ import { DaySchedule } from '../../core/models/types';
             <div class="mt-4 pt-3 border-t border-[#eceef0] flex flex-col sm:flex-row items-center justify-between text-[12px] text-[#45464d] gap-2">
               <span class="flex items-center gap-1">
                 <span class="material-symbols-outlined text-[16px] text-[#006a61]">info</span>
-                Capacidad Teórica Semanal: <strong>{{ totalWeeklyCapacity() }} Pacientes</strong>
+                El campo de arriba aplica el mismo número de cupos a todos los días. Solo cámbielo en la fila de un día si ese día necesita otro.
               </span>
             </div>
           </div>
@@ -270,19 +289,12 @@ export class DoctorConfigComponent implements OnInit {
   loading = signal(true);
   saving = signal(false);
 
-  totalWeeklyCapacity = signal(
-    this.data.schedule()
-      .filter(d => d.enabled)
-      .reduce((acc, curr) => acc + curr.totalCapacity, 0)
-  );
-
   /** La jornada es por medico, asi que se pide la de este. */
   ngOnInit(): void {
     this.data.loadScheduleFor(this.data.doctor.id).subscribe({
       next: days => {
         this.scheduleDays.set(days);
         this.loading.set(false);
-        this.recalculateCapacity();
       },
       error: () => {
         this.loading.set(false);
@@ -296,7 +308,6 @@ export class DoctorConfigComponent implements OnInit {
     this.scheduleDays.update(days =>
       days.map((day, idx) => (idx === dayIndex ? { ...day, enabled: !day.enabled } : day))
     );
-    this.recalculateCapacity();
   }
 
   /** Mismo toggle que la tabla, pero dirigido por dia de la semana. */
@@ -304,7 +315,6 @@ export class DoctorConfigComponent implements OnInit {
     this.scheduleDays.update(days =>
       days.map(day => (day.dayOfWeek === dayOfWeek ? { ...day, enabled: !day.enabled } : day))
     );
-    this.recalculateCapacity();
   }
 
   readonly anyDayEnabled = computed(() => this.scheduleDays().some(day => day.enabled));
@@ -496,14 +506,24 @@ export class DoctorConfigComponent implements OnInit {
     this.scheduleDays.update(days =>
       days.map((day, idx) => (idx === dayIndex ? { ...day, totalCapacity: value } : day))
     );
-    this.recalculateCapacity();
   }
 
-  recalculateCapacity(): void {
-    this.totalWeeklyCapacity.set(
-      this.scheduleDays()
-        .filter(d => d.enabled)
-        .reduce((acc, curr) => acc + curr.totalCapacity, 0)
+  /**
+   * El numero que se repite en las filas. Se toma del primer dia habilitado
+   * para que, al cambiarlo, un solo campo siga siendo la fuente de verdad.
+   */
+  readonly defaultCapacity = computed(() => {
+    const first = this.scheduleDays().find(d => d.enabled);
+    return first?.totalCapacity ?? 0;
+  });
+
+  /** Un solo campo para todos los dias: se escribe el mismo valor en cada fila. */
+  onDefaultCapacityChange(event: Event): void {
+    const value = Math.max(0, Math.min(999, Number((event.target as HTMLInputElement).value) || 0));
+    this.scheduleDays.update(days => days.map(day => ({ ...day, totalCapacity: value })));
+    this.toast.show(
+      'Cupos aplicados a todos los días',
+      'Se guardan al presionar el botón de guardar.',
     );
   }
 

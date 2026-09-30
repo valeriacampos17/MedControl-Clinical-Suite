@@ -17,8 +17,6 @@ interface DoctorOption {
   avatarUrl?: string;
 }
 
-type DayPickerVariant = 'cards' | 'calendar' | 'select';
-
 const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
@@ -288,103 +286,42 @@ function firstOfCurrentMonth(): Date {
                   <span class="text-[12.5px] text-[#92400e]">No hay días para mostrar en este mes.</span>
                 </div>
               } @else {
-                <div class="flex items-center gap-1.5 mb-3 flex-wrap">
-                  <span class="text-[11px] text-[#76777d] mr-1">Vista del calendario:</span>
-                  @for (v of dayPickerVariants; track v.id) {
+                <div class="flex items-center justify-between mb-2">
+                  <button type="button" (click)="shiftMonth(-1)" class="p-1.5 rounded-lg hover:bg-[#f2f4f6]" title="Mes anterior">
+                    <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+                  </button>
+                  <span class="text-[13px] font-bold text-[#191c1e]">{{ visibleMonthLabel() }}</span>
+                  <button type="button" (click)="shiftMonth(1)" class="p-1.5 rounded-lg hover:bg-[#f2f4f6]" title="Mes siguiente">
+                    <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+                  </button>
+                </div>
+                <div class="grid grid-cols-7 gap-1 mb-1">
+                  @for (h of weekHeaders; track h) {
+                    <span class="text-center text-[10px] font-bold uppercase text-[#76777d]">{{ h }}</span>
+                  }
+                </div>
+                <div class="grid grid-cols-7 gap-1">
+                  @for (cell of calendarCells(); track cell.date) {
                     <button
                       type="button"
-                      (click)="dayPickerVariant.set(v.id)"
-                      class="px-2 py-1 rounded-md text-[11px] font-semibold transition-colors"
-                      [class]="dayPickerVariant() === v.id ? 'bg-[#006a61] text-white' : 'bg-[#f2f4f6] text-[#45464d] hover:bg-[#e6e8ea]'"
+                      (click)="onSelectDate(cell)"
+                      [disabled]="!cell.bookable"
+                      [title]="cell.blockedDetail ?? (cell.bookable ? 'Cupos libres: ' + cell.remaining : '')"
+                      class="aspect-square rounded-lg border text-[11px] font-semibold flex flex-col items-center justify-center transition-all leading-none"
+                      [class]="selectedDate() === cell.date
+                        ? 'bg-[#006a61] text-white border-[#006a61]'
+                        : cell.bookable
+                          ? 'bg-white text-[#191c1e] border-[#e0e3e5] hover:border-[#006a61]/50'
+                          : 'bg-[#f8f9fa] text-[#c2c5c9] border-[#f0f1f2] cursor-not-allowed'"
                     >
-                      {{ v.label }}
+                      <span>{{ cell.dayNumber }}</span>
+                      @if (cell.bookable && cell.remaining <= 5) {
+                        <span class="text-[8px] font-bold" [class]="selectedDate() === cell.date ? 'text-white/80' : 'text-[#b45309]'">{{ cell.remaining }}</span>
+                      }
                     </button>
                   }
                 </div>
-
-                @switch (dayPickerVariant()) {
-                  @case ('cards') {
-                    <div class="flex gap-2 overflow-x-auto pb-2">
-                      @for (d of bookableDays(); track d.date) {
-                        <button
-                          type="button"
-                          (click)="onSelectDate(d)"
-                          [disabled]="!d.bookable"
-                          [title]="d.blockedDetail ?? 'Cupos libres: ' + d.remaining"
-                          class="shrink-0 w-[74px] rounded-xl border px-2 py-2.5 text-center transition-all"
-                          [class]="selectedDate() === d.date
-                            ? 'border-2 border-[#006a61] bg-[#006a61]/5'
-                            : d.bookable
-                              ? 'border-[#e0e3e5] bg-white hover:border-[#006a61]/40'
-                              : 'border-[#eceef0] bg-[#f8f9fa] opacity-55 cursor-not-allowed'"
-                        >
-                          <span class="block text-[10px] font-semibold uppercase text-[#76777d]">{{ d.day.slice(0, 3) }}</span>
-                          <span class="block text-[19px] font-bold leading-tight"
-                            [class]="selectedDate() === d.date ? 'text-[#006a61]' : d.bookable ? 'text-[#191c1e]' : 'text-[#b0b3b7]'">
-                            {{ d.dayNumber }}
-                          </span>
-                          <span class="block text-[9.5px] text-[#76777d]">{{ d.monthLabel.slice(0, 3) }}</span>
-                          <span class="block mt-1 text-[9px] font-semibold"
-                            [class]="d.bookable ? 'text-[#006a61]' : 'text-[#b0b3b7]'">
-                            {{ d.bookable ? d.remaining + ' cupos' : shortBlocked(d.blockedBy) }}
-                          </span>
-                        </button>
-                      }
-                    </div>
-                  }
-                  @case ('calendar') {
-                    <div class="flex items-center justify-between mb-2">
-                      <button type="button" (click)="shiftMonth(-1)" class="p-1.5 rounded-lg hover:bg-[#f2f4f6]" title="Mes anterior">
-                        <span class="material-symbols-outlined text-[18px]">chevron_left</span>
-                      </button>
-                      <span class="text-[13px] font-bold text-[#191c1e]">{{ visibleMonthLabel() }}</span>
-                      <button type="button" (click)="shiftMonth(1)" class="p-1.5 rounded-lg hover:bg-[#f2f4f6]" title="Mes siguiente">
-                        <span class="material-symbols-outlined text-[18px]">chevron_right</span>
-                      </button>
-                    </div>
-                    <div class="grid grid-cols-7 gap-1 mb-1">
-                      @for (h of weekHeaders; track h) {
-                        <span class="text-center text-[10px] font-bold uppercase text-[#76777d]">{{ h }}</span>
-                      }
-                    </div>
-                    <div class="grid grid-cols-7 gap-1">
-                      @for (cell of calendarCells(); track cell.date) {
-                        <button
-                          type="button"
-                          (click)="onSelectDate(cell)"
-                          [disabled]="!cell.bookable"
-                          [title]="cell.blockedDetail ?? (cell.bookable ? 'Cupos libres: ' + cell.remaining : '')"
-                          class="aspect-square rounded-lg border text-[11px] font-semibold flex flex-col items-center justify-center transition-all leading-none"
-                          [class]="selectedDate() === cell.date
-                            ? 'bg-[#006a61] text-white border-[#006a61]'
-                            : cell.bookable
-                              ? 'bg-white text-[#191c1e] border-[#e0e3e5] hover:border-[#006a61]/50'
-                              : 'bg-[#f8f9fa] text-[#c2c5c9] border-[#f0f1f2] cursor-not-allowed'"
-                        >
-                          <span>{{ cell.dayNumber }}</span>
-                          @if (cell.bookable && cell.remaining <= 5) {
-                            <span class="text-[8px] font-bold" [class]="selectedDate() === cell.date ? 'text-white/80' : 'text-[#b45309]'">{{ cell.remaining }}</span>
-                          }
-                        </button>
-                      }
-                    </div>
-                    <p class="mt-2 text-[10.5px] text-[#76777d]">El número chico es la cantidad de cupos restantes. Los días en gris no tienen atención.</p>
-                  }
-                  @case ('select') {
-                    <select
-                      class="w-full px-3 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
-                      [value]="selectedDate() ?? ''"
-                      (change)="onSelectDateByValue($event)"
-                    >
-                      <option value="" disabled>Elige un día disponible</option>
-                      @for (d of bookableDays(); track d.date) {
-                        <option [value]="d.date" [disabled]="!d.bookable">
-                          {{ d.day }} {{ d.dayNumber }} {{ d.monthLabel }} — {{ d.bookable ? d.remaining + ' cupos' : d.blockedDetail }}
-                        </option>
-                      }
-                    </select>
-                  }
-                }
+                <p class="mt-2 text-[10.5px] text-[#76777d]">El número chico es la cantidad de cupos restantes. Los días en gris no tienen atención.</p>
 
                 <div class="mt-4 pt-4 border-t border-[#eceef0]">
                   @if (!selectedDate()) {
@@ -558,13 +495,6 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
   selectedTime = signal<string | null>(null);
   doctorJornada = signal<{ startTime: string; endTime: string } | null>(null);
 
-  /** Vista del calendario. Temporal: se borran las dos perdedoras cuando se elija una. */
-  dayPickerVariant = signal<DayPickerVariant>('cards');
-  readonly dayPickerVariants: Array<{ id: DayPickerVariant; label: string }> = [
-    { id: 'cards', label: 'Tarjetas' },
-    { id: 'calendar', label: 'Calendario' },
-    { id: 'select', label: 'Lista' },
-  ];
   readonly weekHeaders = WEEK_HEADERS;
 
   visibleMonth = signal<Date>(firstOfCurrentMonth());
@@ -795,11 +725,6 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
       return;
     }
     this.selectDate(day.date);
-  }
-
-  onSelectDateByValue(event: Event): void {
-    const date = (event.target as HTMLSelectElement).value;
-    if (date) this.selectDate(date);
   }
 
   onSelectType(id: string): void {
