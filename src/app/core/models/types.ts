@@ -96,7 +96,7 @@ export interface ConsultationType {
 }
 
 export type BlockedReason =
-  | 'sin-abrir'
+  | 'pasado'
   | 'ausencia'
   | 'jornada-cerrada'
   | 'sin-cupo';

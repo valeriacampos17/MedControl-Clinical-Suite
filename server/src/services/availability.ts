@@ -1,5 +1,5 @@
 import { db } from '../db/connection.js';
-import { DAY_NAMES, getDaySchedule, isoDayOfWeek } from './schedule.js';
+import { DAY_NAMES, ensureDaySchedule, getDaySchedule, isoDayOfWeek } from './schedule.js';
 
 /**
  * Paso de la rejilla de horarios.
@@ -122,7 +122,7 @@ function bookedThatDay(doctorId: string, date: string): Array<{ start: number; e
 
 // ------------------------------------------------------------- capacidad ---
 
-export type BlockedReason = 'sin-abrir' | 'ausencia' | 'jornada-cerrada' | 'sin-cupo';
+export type BlockedReason = 'pasado' | 'ausencia' | 'jornada-cerrada' | 'sin-cupo';
 
 export interface BookableDay {
   date: string;
@@ -154,12 +154,19 @@ function dayMeta(date: string): Pick<BookableDay, 'dayOfWeek' | 'day' | 'dayNumb
 
 /**
  * Por que un dia no se puede reservar, o null si se puede.
- * No mira slots: solo fecha abierta, ausencia, jornada del dia y cupo.
+ *
+ * La jornada del medico es la unica fuente de verdad: si ese dia de la semana
+ * esta habilitado, el dia se puede agendar. Antes esto se apoyaba en la tabla
+ * `working_days`, que es una lista blanca de fechas con horizonte fijo (la
+ * siembra 8 semanas y la migracion hasta una fecha concreta). Esa tabla se
+ * acababa sola: el calendario de reservas se vaciaba, el Dashboard ponia todas
+ * las fechas en gris y el desplegable de reagendar se quedaba sin opciones.
+ * Un medico sin dias abiertos es un dato de `day_schedules`, no una fila que
+ * haya que reponer.
  */
 function whyBlocked(doctorId: string, date: string): { reason: BlockedReason; detail: string } | null {
-  const isOpen = db.prepare('SELECT 1 FROM working_days WHERE date = ?').get(date);
-  if (!isOpen) {
-    return { reason: 'sin-abrir', detail: 'La clinica no atiende este dia' };
+  if (date < todayStr()) {
+    return { reason: 'pasado', detail: 'Dia pasado' };
   }
 
   const absence = blockingAbsence(doctorId, date);
@@ -185,28 +192,61 @@ function whyBlocked(doctorId: string, date: string): { reason: BlockedReason; de
   return null;
 }
 
+/**
+ * Fechas en las que la clinica atiende, sin importar que medico se elija:
+ * hay al menos un medico con ese dia de la semana habilitado y no hay un
+ * cierre general.
+ *
+ * El Dashboard usa esto para no pintar en gris toda la agenda, y el
+ * desplegable de reagendar para no quedarse sin opciones. Antes consultaba la
+ * tabla `working_days`, que se acaba en una fecha fija.
+ */
+export function getOpenDates(from: string, to: string): string[] {
+  const doctors = db.prepare('SELECT id FROM doctors').all() as Array<{ id: string }>;
+  // Los dias de la semana con al menos un medico habilitado.
+  const openWeekdays = new Set<number>();
+  for (const { id } of doctors) {
+    ensureDaySchedule(id);
+    for (let dayOfWeek = 1; dayOfWeek <= 7; dayOfWeek++) {
+      if (getDaySchedule(id, dayOfWeek)?.enabled) openWeekdays.add(dayOfWeek);
+    }
+  }
+  if (openWeekdays.size === 0) return [];
+
+  const dates: string[] = [];
+  for (let date = from; date <= to; date = addDays(date, 1)) {
+    if (date < todayStr()) continue;
+    if (!openWeekdays.has(isoDayOfWeek(date))) continue;
+    // Un cierre de clinica (ausencia sin medico) apaga el dia para todos.
+    const closure = db
+      .prepare(
+        `SELECT 1 FROM absences
+          WHERE doctor_id IS NULL AND start_date <= ? AND end_date >= ?
+            AND (validation_status IS NULL OR NOT (
+              lower(validation_status) LIKE '%valid%'
+              OR lower(validation_status) LIKE '%aprob%' OR lower(validation_status) LIKE '%confirm%'))`,
+      )
+      .get(date, date);
+    if (closure) continue;
+    dates.push(date);
+  }
+  return dates;
+}
+
 export function getBookableDays(
   doctorId: string,
   from: string = todayStr(),
-  horizonDays: number = DEFAULT_HORIZON_DAYS,
+  to?: string,
 ): BookableDay[] {
   const days: BookableDay[] = [];
-  const firstOpen = db.prepare('SELECT date FROM working_days WHERE date >= ? ORDER BY date LIMIT 1').get(from) as
-    | { date: string }
-    | undefined;
-  if (!firstOpen) return days;
-
-  const lastOpen = db
-    .prepare('SELECT date FROM working_days WHERE date >= ? ORDER BY date DESC LIMIT 1')
-    .get(from) as { date: string } | undefined;
-
-  const start = firstOpen.date;
-  const end = lastOpen ? lastOpen.date : start;
+  const start = from;
+  // Sin tope explicito se asume el horizonte por defecto hacia adelante.
+  const end = to && to > start ? to : addDays(start, DEFAULT_HORIZON_DAYS - 1);
 
   // El conteo de horarios no se calcula aqui a proposito: seria una consulta
   // por dia y por tipo de consulta. El dia solo informa si se puede reservar y
   // quantos cupos quedan; los horarios libres se piden al elegir el dia.
-  for (let date = start; date <= end && days.length < horizonDays; date = addDays(date, 1)) {
+  for (let date = start; date <= end; date = addDays(date, 1)) {
     const blocked = whyBlocked(doctorId, date);
     days.push({
       date,
@@ -331,8 +371,8 @@ export function assertBookable(input: {
     const message =
       blocked.reason === 'ausencia'
         ? `No se puede agendar: ${blocked.detail}`
-        : blocked.reason === 'sin-abrir'
-          ? 'La clinica no atiende ese dia'
+        : blocked.reason === 'pasado'
+          ? 'No se pueden agendar citas en dias que ya pasaron'
           : blocked.reason === 'sin-cupo'
             ? 'No quedan cupos para ese medico en ese dia'
             : 'El medico no atiende ese dia';

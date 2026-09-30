@@ -1,7 +1,25 @@
 import { Router } from 'express';
-import { getAvailableSlots, getBookableDays, normalizeTime } from '../services/availability.js';
+import {
+  getAvailableSlots,
+  getBookableDays,
+  getOpenDates,
+  normalizeTime,
+} from '../services/availability.js';
 
 export const availabilityRouter = Router();
+
+const MAX_RANGE_DAYS = 120;
+
+/** Dias inclusive entre dos fechas ISO. */
+function dayCount(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
+}
+
+function addDaysStr(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 /** Dias que se pueden reservar para un medico, con el motivo si no se puede. */
 availabilityRouter.get('/days', (req, res) => {
@@ -11,14 +29,39 @@ availabilityRouter.get('/days', (req, res) => {
     return;
   }
   const rawFrom = req.query.from ? String(req.query.from) : null;
-  const days = req.query.days ? Number(req.query.days) : undefined;
-  if (days !== undefined && (!Number.isInteger(days) || days <= 0 || days > 180)) {
-    res.status(400).json({ error: 'El parametro days debe ser un entero entre 1 y 180' });
+  const rawTo = req.query.to ? String(req.query.to) : null;
+  // Una fecha con formato inesperado se ignora y arranca desde hoy.
+  const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const from = rawFrom && isDate(rawFrom) ? rawFrom : null;
+  const to = rawTo && isDate(rawTo) ? rawTo : null;
+  if (to && from && to < from) {
+    res.status(400).json({ error: 'El parametro to no puede ser anterior a from' });
     return;
   }
-  // Una fecha con formato inesperado se ignora y arranca desde hoy.
-  const from = rawFrom && /^\d{4}-\d{2}-\d{2}$/.test(rawFrom) ? rawFrom : null;
-  res.json({ doctorId, from, days: getBookableDays(doctorId, from ?? undefined, days) });
+  // Tope del rango: el calendario pide un mes, no una agenda infinita.
+  if (from && to && dayCount(from, to) > MAX_RANGE_DAYS) {
+    res.status(400).json({ error: `El rango no puede superar ${MAX_RANGE_DAYS} dias` });
+    return;
+  }
+  res.json({ doctorId, from, days: getBookableDays(doctorId, from ?? undefined, to ?? undefined) });
+});
+
+/** Fechas en las que la clinica atiende, para el Dashboard. */
+availabilityRouter.get('/open-dates', (req, res) => {
+  const isDate = (v: unknown) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const from = isDate(req.query.from) ? String(req.query.from) : todayStr;
+  const to = isDate(req.query.to) ? String(req.query.to) : addDaysStr(from, 41);
+  if (to < from) {
+    res.status(400).json({ error: 'El parametro to no puede ser anterior a from' });
+    return;
+  }
+  if (dayCount(from, to) > MAX_RANGE_DAYS) {
+    res.status(400).json({ error: `El rango no puede superar ${MAX_RANGE_DAYS} dias` });
+    return;
+  }
+  res.json({ from, to, openDates: getOpenDates(from, to) });
 });
 
 /** Horarios libres de un dia, segun la duracion del tipo de consulta. */

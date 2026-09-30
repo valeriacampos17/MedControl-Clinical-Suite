@@ -232,7 +232,30 @@ export class MockDataService {
     { date: addDays(todayStr(), 9), note: 'Turno normal' },
   ]);
 
-  readonly enabledDates = computed(() => new Set(this.workingDays().map(w => w.date)));
+  /**
+   * Fechas en las que la clinica atiende, cargadas desde el motor de
+   * disponibilidad. Antes salia de `working_days`, una lista blanca que se
+   * acababa en una fecha fija: el Dashboard ponia toda la agenda en gris y el
+   * desplegable de reagendar se quedaba sin opciones.
+   */
+  readonly openDates = signal<Set<string>>(new Set());
+
+  loadOpenDates(from?: string, to?: string): void {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    const qs = params.toString();
+    this.api
+      .get<{ openDates: string[] }>(`/availability/open-dates${qs ? `?${qs}` : ''}`)
+      .subscribe({
+        next: r => this.openDates.set(new Set(r.openDates)),
+        error: () => this.openDates.set(new Set()),
+      });
+  }
+
+  isDateOpen(dateStr: string): boolean {
+    return this.openDates().has(dateStr);
+  }
 
   readonly selectedDate = signal<string>(todayStr());
   readonly calendarMonth = signal<Date>(new Date());
@@ -265,7 +288,7 @@ export class MockDataService {
   });
 
   isBusinessDay(dateStr: string): boolean {
-    return this.enabledDates().has(dateStr);
+    return this.isDateOpen(dateStr);
   }
 
   toggleWorkingDay(dateStr: string): void {
@@ -291,7 +314,9 @@ export class MockDataService {
   getBusinessDays(fromDate: string, count: number): string[] {
     const result: string[] = [];
     let current = fromDate;
-    while (result.length < count) {
+    // Tope de 120 intentos: sin esto, si no hay ninguna fecha abierta el ciclo
+    // no termina nunca.
+    for (let i = 0; i < 120 && result.length < count; i++) {
       if (this.isBusinessDay(current)) {
         result.push(current);
       }
@@ -376,10 +401,15 @@ export class MockDataService {
   }
 
   /** Dias que se pueden reservar para un medico, con el motivo si no se puede. */
-  getBookableDays(doctorId: string, from?: string, days?: number): Observable<BookableDay[]> {
+  /**
+   * Dias reservables de un medico en un rango. La jornada del medico es la
+   * fuente de verdad, asi que el calendario pide el mes que esta viendo en vez
+   * de una ventana fija que se quedaria corta.
+   */
+  getBookableDays(doctorId: string, from?: string, to?: string): Observable<BookableDay[]> {
     const params = new URLSearchParams({ doctorId });
     if (from) params.set('from', from);
-    if (days) params.set('days', String(days));
+    if (to) params.set('to', to);
     return this.api
       .get<{ days: BookableDay[] }>(`/availability/days?${params.toString()}`)
       .pipe(map(r => r.days));

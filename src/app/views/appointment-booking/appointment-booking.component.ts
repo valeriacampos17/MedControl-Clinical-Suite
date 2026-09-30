@@ -272,9 +272,20 @@ function firstOfCurrentMonth(): Date {
                   <span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
                   Consultando días abiertos...
                 </p>
+              } @else if (daysError()) {
+                <div class="p-3.5 rounded-xl bg-[#fef2f2] border border-[#fecaca]">
+                  <span class="text-[12.5px] text-[#991b1b]">No se pudo consultar la disponibilidad: {{ daysError() }}</span>
+                </div>
+              } @else if (!hasAnyBookableDay()) {
+                <div class="p-3.5 rounded-xl bg-[#fff7ed] border border-[#fed7aa]">
+                  <span class="text-[12.5px] text-[#92400e]">
+                    Este médico no tiene días de atención habilitados. Actívalos en
+                    <strong>Configuración → Días a laborar</strong>.
+                  </span>
+                </div>
               } @else if (bookableDays().length === 0) {
                 <div class="p-3.5 rounded-xl bg-[#fff7ed] border border-[#fed7aa]">
-                  <span class="text-[12.5px] text-[#92400e]">No hay días abiertos cargados en el calendario. Revise la configuración de días de atención.</span>
+                  <span class="text-[12.5px] text-[#92400e]">No hay días para mostrar en este mes.</span>
                 </div>
               } @else {
                 <div class="flex items-center gap-1.5 mb-3 flex-wrap">
@@ -533,6 +544,8 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
   loadingTypes = signal(true);
   bookableDays = signal<BookableDay[]>([]);
   loadingDays = signal(false);
+  /** Distingue "no se pudo consultar" de "no hay dias", que no es lo mismo. */
+  daysError = signal<string | null>(null);
   selectedDate = signal<string | null>(null);
   slots = signal<{ slots: string[]; startTime: string; endTime: string; totalSlots: number; blockedDetail: string | null }>({
     slots: [],
@@ -617,6 +630,9 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
     return `${MONTHS[m.getMonth()]} ${m.getFullYear()}`;
   });
 
+  /** El medico no tiene ningun dia de la semana habilitado en su jornada. */
+  readonly hasAnyBookableDay = computed(() => this.bookableDays().some(d => d.bookable));
+
   /** Celdas del mes visible, con su estado de reserva. */
   readonly calendarCells = computed(() => {
     const month = this.visibleMonth();
@@ -640,8 +656,8 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
           dayNumber: d.getDate(),
           monthLabel: MONTHS[d.getMonth()],
           bookable: false,
-          blockedBy: 'sin-abrir',
-          blockedDetail: date < today ? 'Día pasado' : 'La clínica no atiende este día',
+          blockedBy: date < today ? 'pasado' : 'jornada-cerrada',
+          blockedDetail: date < today ? 'Día pasado' : 'Sin datos de disponibilidad para esta fecha',
           remaining: 0,
         },
       );
@@ -685,8 +701,8 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
       case 'ausencia': return 'ausencia';
       case 'jornada-cerrada': return 'no atiende';
       case 'sin-cupo': return 'sin cupo';
-      case 'sin-abrir': return 'cerrado';
-      default: return 'cerrado';
+      case 'pasado': return 'pasado';
+      default: return 'no disponible';
     }
   }
 
@@ -710,11 +726,15 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
 
   private loadDays(doctorId: string): void {
     this.loadingDays.set(true);
+    this.daysError.set(null);
     this.selectedDate.set(null);
     this.selectedTime.set(null);
     this.slots.set({ slots: [], startTime: '', endTime: '', totalSlots: 0, blockedDetail: null });
 
-    this.data.getBookableDays(doctorId, undefined, 60).subscribe({
+    // Se pide el mes que se esta viendo, no una ventana fija: asi el calendario
+    // no se queda corto cuando se navega a un mes que todavia no se consulto.
+    const { from, to } = this.monthRange(this.visibleMonth());
+    this.data.getBookableDays(doctorId, from, to).subscribe({
       next: days => {
         this.bookableDays.set(days);
         this.loadingDays.set(false);
@@ -723,11 +743,21 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
         const first = days.find(d => d.bookable);
         if (first) this.selectDate(first.date);
       },
-      error: () => {
+      error: (err: Error) => {
         this.bookableDays.set([]);
+        this.daysError.set(err.message);
         this.loadingDays.set(false);
+        this.toast.show('No se pudo consultar la disponibilidad', err.message);
       },
     });
+  }
+
+  /** Rango que cubre el mes visible completo. */
+  private monthRange(month: Date): { from: string; to: string } {
+    const y = month.getFullYear();
+    const m = month.getMonth();
+    const lastDay = new Date(y, m + 1, 0).getDate();
+    return { from: toDateStr(new Date(y, m, 1)), to: toDateStr(new Date(y, m, lastDay)) };
   }
 
   private selectDate(date: string): void {
@@ -799,6 +829,8 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
 
   shiftMonth(delta: number): void {
     this.visibleMonth.update(m => new Date(m.getFullYear(), m.getMonth() + delta, 1));
+    const doctorId = this.selectedDoctorId();
+    if (doctorId) this.loadDays(doctorId);
   }
 
   // ---- paciente / medico ----

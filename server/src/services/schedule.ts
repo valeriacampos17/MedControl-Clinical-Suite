@@ -105,6 +105,7 @@ export function getBusinessDays(fromDate: string, count: number): string[] {
  * Si el medico no tiene nada cargado se devuelven los dias tal cual, apagados.
  */
 export function getDaySchedules(doctorId?: string | null): DaySchedule[] {
+  if (doctorId) ensureDaySchedule(doctorId);
   const base: DaySchedule[] = [1, 2, 3, 4, 5, 6, 7].map((dayOfWeek) => ({
     dayOfWeek,
     day: DAY_NAMES[dayOfWeek],
@@ -139,8 +140,36 @@ export function getDaySchedules(doctorId?: string | null): DaySchedule[] {
   return base;
 }
 
+/**
+ * Crea la jornada por defecto de un medico que no tiene ninguna fila.
+ *
+ * Sin esto, un medico agregado despues de la migracion queda con los siete
+ * dias apagados y su calendario de reservas aparece vacio sin explicar por
+ * que. No hace falta configurar nada: solo se escribe cuando el medico no
+ * tiene ninguna fila, y la jornada creada es la misma que usa la migracion.
+ */
+export function ensureDaySchedule(doctorId: string): void {
+  if (!doctorId) return;
+  const existing = db
+    .prepare('SELECT COUNT(*) AS n FROM day_schedules WHERE doctor_id = ?')
+    .get(doctorId) as { n: number };
+  if (existing.n > 0) return;
+
+  const insert = db.prepare(
+    `INSERT OR IGNORE INTO day_schedules (doctor_id, day_of_week, enabled, start_time, end_time, total_capacity)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  );
+  db.transaction(() => {
+    for (let dayOfWeek = 1; dayOfWeek <= 7; dayOfWeek++) {
+      const workday = dayOfWeek <= 5;
+      insert.run(doctorId, dayOfWeek, workday ? 1 : 0, workday ? '08:00' : null, workday ? '16:00' : null, workday ? 20 : 0);
+    }
+  })();
+}
+
 /** Jornada de un medico para un dia de la semana puntual, o null si no la tiene. */
 export function getDaySchedule(doctorId: string | null, dayOfWeek: number): DaySchedule | null {
+  if (doctorId) ensureDaySchedule(doctorId);
   const row = db
     .prepare(
       `SELECT day_of_week, enabled, start_time, end_time, total_capacity

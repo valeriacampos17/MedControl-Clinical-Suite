@@ -1024,6 +1024,25 @@ export class DashboardComponent {
     } else {
       this.data.selectedDoctorId.set(null);
     }
+    this.refreshOpenDates();
+  }
+
+  /**
+   * Carga los dias en los que la clinica atiende para el mes visible y para
+   * las semanas siguientes, que es lo que necesita tambien el desplegable de
+   * reagendar.
+   */
+  refreshOpenDates(): void {
+    const month = this.data.calendarMonth();
+    const y = month.getFullYear();
+    const m = month.getMonth();
+    const lastDay = new Date(y, m + 1, 0).getDate();
+    const from = this.calendarDateStr(1);
+    // Se pide mas alla del mes visible para que el desplegable de reagendar
+    // tenga opciones aunque se este viendo el mes en curso.
+    const forward = new Date(y, m, lastDay + 45);
+    const to = `${forward.getFullYear()}-${String(forward.getMonth() + 1).padStart(2, '0')}-${String(forward.getDate()).padStart(2, '0')}`;
+    this.data.loadOpenDates(from, to);
   }
 
   handleOpenConsultation(): void {
@@ -1200,16 +1219,19 @@ export class DashboardComponent {
     const m = new Date(this.data.calendarMonth());
     m.setMonth(m.getMonth() - 1);
     this.data.calendarMonth.set(m);
+    this.refreshOpenDates();
   }
 
   nextMonth(): void {
     const m = new Date(this.data.calendarMonth());
     m.setMonth(m.getMonth() + 1);
     this.data.calendarMonth.set(m);
+    this.refreshOpenDates();
   }
 
   goToToday(): void {
     this.data.selectedDate.set(this.todayStr());
     this.data.calendarMonth.set(new Date());
+    this.refreshOpenDates();
   }
 }

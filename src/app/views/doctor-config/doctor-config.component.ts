@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -58,8 +58,43 @@ import { DaySchedule } from '../../core/models/types';
                 <span class="material-symbols-outlined text-[20px]">calendar_month</span>
               </span>
               <div>
+                <h3 class="text-[16px] font-bold text-[#191c1e]">Días a Laborar</h3>
+                <p class="text-[12px] text-[#45464d]">Estos días son los que aparecen en el calendario de reservas del médico</p>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              @for (day of scheduleDays(); track day.dayOfWeek) {
+                <button
+                  type="button"
+                  (click)="toggleDayByDayOfWeek(day.dayOfWeek)"
+                  [class.bg-[#006a61]]="day.enabled"
+                  [class.text-white]="day.enabled"
+                  [class.border-[#006a61]]="day.enabled"
+                  [class.bg-[#f7f9fb]]="!day.enabled"
+                  [class.text-[#76777d]]="!day.enabled"
+                  [class.border-[#e0e3e5]]="!day.enabled"
+                  class="px-4 py-2 rounded-lg border text-[13px] font-bold transition-colors"
+                >
+                  {{ day.day }}
+                  <span class="ml-1 font-normal opacity-80">{{ day.enabled ? 'Sí' : 'No' }}</span>
+                </button>
+              }
+            </div>
+            @if (!anyDayEnabled()) {
+              <p class="mt-3 p-2.5 rounded-lg bg-[#fff7ed] border border-[#fed7aa] text-[12px] text-[#92400e]">
+                Con los siete días apagados este médico no tendrá ningún día disponible para reservar.
+              </p>
+            }
+          </div>
+
+          <div class="bg-white rounded-xl p-5 lg:p-6 shadow-sm border border-[#e6e8ea]">
+            <div class="flex items-center gap-2.5 pb-3 mb-4 border-b border-[#eceef0]">
+              <span class="w-8 h-8 rounded-lg bg-[#f2f4f6] flex items-center justify-center text-[#006a61]">
+                <span class="material-symbols-outlined text-[20px]">schedule</span>
+              </span>
+              <div>
                 <h3 class="text-[16px] font-bold text-[#191c1e]">Jornadas Semanales y Horarios de Atención</h3>
-                <p class="text-[12px] text-[#45464d]">Distribución de bloques horarios y capacidad de atención</p>
+                <p class="text-[12px] text-[#45464d]">Horario y capacidad de cada día que el médico atiende</p>
               </div>
             </div>
             <div class="overflow-x-auto">
@@ -207,6 +242,16 @@ export class DoctorConfigComponent implements OnInit {
     );
     this.recalculateCapacity();
   }
+
+  /** Mismo toggle que la tabla, pero dirigido por dia de la semana. */
+  toggleDayByDayOfWeek(dayOfWeek: number): void {
+    this.scheduleDays.update(days =>
+      days.map(day => (day.dayOfWeek === dayOfWeek ? { ...day, enabled: !day.enabled } : day))
+    );
+    this.recalculateCapacity();
+  }
+
+  readonly anyDayEnabled = computed(() => this.scheduleDays().some(day => day.enabled));
 
   onTimeChange(dayIndex: number, field: 'startTime' | 'endTime', event: Event): void {
     const value = (event.target as HTMLInputElement).value;
