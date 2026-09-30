@@ -994,12 +994,17 @@ export class DashboardComponent {
     return { pct, optimal: pct >= 90, label: pct >= 90 ? 'Óptimo' : pct >= 70 ? 'Atención' : 'Crítico' };
   });
 
+  /**
+   * Minutos desde medianoche. Acepta 'HH:MM' de 24 horas y tambien
+   * 'hh:mm AM/PM', para que la vista no se rompa si alguna cita quedo guardada
+   * en el formato viejo.
+   */
   private parseTimeMin(time: string): number {
-    const m = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    const m = time.match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
     if (!m) return 0;
     let hours = parseInt(m[1], 10);
     const minutes = parseInt(m[2], 10);
-    const meridiem = m[3].toUpperCase();
+    const meridiem = m[3]?.toUpperCase();
     if (meridiem === 'PM' && hours !== 12) hours += 12;
     if (meridiem === 'AM' && hours === 12) hours = 0;
     return hours * 60 + minutes;
@@ -1160,8 +1165,11 @@ export class DashboardComponent {
   }
 
   morningOrAfternoonLabel(): string {
-    const hasMorning = this.data.selectedDateAppointments().some(a => a.time.includes('AM'));
-    const hasAfternoon = this.data.selectedDateAppointments().some(a => a.time.includes('PM'));
+    // El bloque se decide por la hora, no buscando 'AM'/'PM' en el texto, para
+    // que funcione con citas en 24 horas.
+    const appointments = this.data.selectedDateAppointments();
+    const hasMorning = appointments.some(a => this.parseTimeMin(a.time) < 12 * 60);
+    const hasAfternoon = appointments.some(a => this.parseTimeMin(a.time) >= 12 * 60);
     if (hasMorning && hasAfternoon) return 'Bloques Matutino y Vespertino';
     if (hasMorning) return 'Bloque Matutino';
     if (hasAfternoon) return 'Bloque Vespertino';

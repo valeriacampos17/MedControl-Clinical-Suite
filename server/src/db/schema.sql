@@ -120,6 +120,12 @@ CREATE TABLE IF NOT EXISTS day_schedules (
   total_capacity INTEGER
 );
 
+-- Un horario por medico y dia de la semana. Sin este indice el upsert de
+-- jornadas no puede resolverse (ON CONFLICT necesita una restriccion UNIQUE)
+-- y se podrian duplicar filas para el mismo par.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_day_schedules_doctor_day
+  ON day_schedules(doctor_id, day_of_week);
+
 CREATE TABLE IF NOT EXISTS absences (
   id                TEXT PRIMARY KEY,
   doctor_id         TEXT REFERENCES doctors(id),

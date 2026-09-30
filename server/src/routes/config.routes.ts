@@ -1,6 +1,14 @@
 import { Router } from 'express';
 import { db } from '../db/connection.js';
-import { getDaySchedules, getWorkingDays, getBusinessDays, toggleWorkingDay, setWorkingDays, setDaySchedule } from '../services/schedule.js';
+import {
+  dayNameToNumber,
+  getDaySchedules,
+  getWorkingDays,
+  getBusinessDays,
+  toggleWorkingDay,
+  setWorkingDays,
+  setDaySchedule,
+} from '../services/schedule.js';
 
 export const configRouter = Router();
 
@@ -38,28 +46,88 @@ configRouter.put('/working-days', (req, res) => {
   res.json({ workingDays: getWorkingDays() });
 });
 
-configRouter.get('/schedules', (_req, res) => {
-  res.json({ schedule: getDaySchedules() });
+configRouter.get('/schedules', (req, res) => {
+  const doctorId = req.query.doctorId ? String(req.query.doctorId) : null;
+  res.json({ doctorId, schedule: getDaySchedules(doctorId) });
 });
 
-const dayScheduleSchema = {
-  day: 'Lunes',
-  enabled: true,
-  startTime: '08:00',
-  endTime: '16:00',
-  totalCapacity: 20,
-};
+const TIME_HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 configRouter.put('/schedules', (req, res) => {
-  const schedule = req.body?.schedule as Array<typeof dayScheduleSchema> | undefined;
+  const doctorId = (req.body?.doctorId as string | undefined) ?? null;
+  const schedule = req.body?.schedule as
+    | Array<{
+        dayOfWeek?: number;
+        day?: string;
+        enabled?: boolean;
+        startTime?: string;
+        endTime?: string;
+        totalCapacity?: number;
+      }>
+    | undefined;
+
   if (!Array.isArray(schedule)) {
     res.status(400).json({ error: 'Se espera un arreglo de jornadas' });
     return;
   }
+
   for (const s of schedule) {
-    setDaySchedule(s.day, Boolean(s.enabled), s.startTime, s.endTime, Number(s.totalCapacity));
+    // Se acepta dayOfWeek (1 = lunes ... 7 = domingo) o el nombre del dia.
+    const dayOfWeek =
+      typeof s.dayOfWeek === 'number' ? s.dayOfWeek : dayNameToNumber(String(s.day ?? ''));
+    if (!dayOfWeek || dayOfWeek < 1 || dayOfWeek > 7) {
+      res.status(400).json({ error: `Dia de la semana invalido: ${s.dayOfWeek ?? s.day}` });
+      return;
+    }
+    const startTime = String(s.startTime ?? '');
+    const endTime = String(s.endTime ?? '');
+    if (startTime && !TIME_HHMM.test(startTime)) {
+      res.status(400).json({ error: `Hora de inicio invalida: ${startTime} (se espera HH:MM)` });
+      return;
+    }
+    if (endTime && !TIME_HHMM.test(endTime)) {
+      res.status(400).json({ error: `Hora de fin invalida: ${endTime} (se espera HH:MM)` });
+      return;
+    }
+    if (startTime && endTime && startTime >= endTime) {
+      res.status(400).json({ error: 'La hora de fin debe ser posterior a la de inicio' });
+      return;
+    }
+    setDaySchedule(
+      doctorId,
+      dayOfWeek,
+      Boolean(s.enabled),
+      startTime,
+      endTime,
+      Number(s.totalCapacity ?? 0),
+    );
   }
-  res.json({ schedule: getDaySchedules() });
+  res.json({ doctorId, schedule: getDaySchedules(doctorId) });
+});
+
+configRouter.get('/consultation-types', (_req, res) => {
+  const rows = db
+    .prepare(
+      'SELECT id, title, duration_minutes, price, note, suggested FROM consultation_types ORDER BY suggested DESC, title',
+    )
+    .all() as Array<{
+    id: string;
+    title: string;
+    duration_minutes: number;
+    price: string;
+    note: string | null;
+    suggested: number;
+  }>;
+  res.json({
+    consultationTypes: rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      durationMinutes: r.duration_minutes,
+      price: r.price,
+      note: r.note ?? '',
+      suggested: r.suggested === 1,
+    })),
+  });
 });
 
 configRouter.get('/absences', (_req, res) => {
