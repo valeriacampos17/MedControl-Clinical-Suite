@@ -16,6 +16,22 @@ function json(value: unknown): string {
   return JSON.stringify(value ?? []);
 }
 
+/** dia de la semana con la convencion de la base: 1 = lunes ... 7 = domingo. */
+function isoDayOfWeek(dateStr: string): number {
+  return ((new Date(dateStr + 'T00:00:00').getDay() + 6) % 7) + 1;
+}
+
+/**
+ * Deja la hora en HH:MM de 24 horas. Acepta el formato de 12 horas que se
+ * escribe en el seed ('10:15 AM') y tambien una hora que ya venga en 24.
+ */
+function to24h(time: string): string {
+  const match = /^(\d{1,2}):(\d{2})\s*([AP])M$/i.exec(time.trim());
+  if (!match) return time.trim();
+  const hour = (Number(match[1]) % 12) + (match[3].toUpperCase() === 'P' ? 12 : 0);
+  return `${String(hour).padStart(2, '0')}:${match[2]}`;
+}
+
 export function seed(): void {
   const count = db.prepare('SELECT COUNT(*) AS count FROM users').get() as { count: number };
   if (count.count > 0) return;
@@ -81,31 +97,50 @@ export function seed(): void {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const today = todayStr();
+
+  /**
+   * Fecha del n-esimo dia habil a partir de hoy. Los offsets negativos
+   * retroceden. Sirve para que las citas de ejemplo caigan siempre en dias
+   * abiertos, en vez de contar dias crudos y toparse con un fin de semana.
+   */
+  function openDayFromToday(offset: number): string {
+    const step = offset >= 0 ? 1 : -1;
+    let remaining = Math.abs(offset);
+    let cursor = today;
+    for (;;) {
+      if (isoDayOfWeek(cursor) <= 5) {
+        if (remaining === 0) return cursor;
+        remaining--;
+      }
+      cursor = addDays(cursor, step);
+    }
+  }
+
   const appointments: Array<[string, string, string, number, string | null, string | null, string, string, string | null]> = [
     ['apt-1', today, '08:30 AM', 40, 'MED-0001', 'doc-aguirre', 'Control Hipertensión Arterial', 'completed', null],
     ['apt-2', today, '09:15 AM', 45, 'MED-0005', 'doc-aguirre', 'Evaluación de Arritmia y Disnea', 'in-progress', null],
     ['apt-3', today, '10:00 AM', 30, 'MED-0004', 'doc-aguirre', 'Primera Consulta - Dolor Torácico', 'pending', null],
     ['apt-4', today, '10:45 AM', 45, null, null, 'Espacio reservado para informe médico', 'break', null],
     ['apt-5', today, '11:30 AM', 30, 'MED-0003', 'doc-aguirre', 'Control Rutinario', 'pending', null],
-    ['apt-6', addDays(today, 1), '08:30 AM', 30, 'MED-0006', 'doc-mawad', 'Control Diabetes Mellitus Tipo 2', 'confirmed', null],
-    ['apt-7', addDays(today, 1), '10:00 AM', 45, 'MED-0007', 'doc-mawad', 'Control Presión Arterial Post-Operatorio', 'pending', null],
-    ['apt-8', addDays(today, 1), '11:30 AM', 30, 'MED-0002', 'doc-mawad', 'Chequeo General', 'confirmed', null],
-    ['apt-9', addDays(today, 2), '09:00 AM', 40, 'MED-0009', 'doc-mawad', 'Ecocardiograma Transtorácico', 'confirmed', null],
-    ['apt-10', addDays(today, 2), '10:30 AM', 30, 'MED-0008', 'doc-mawad', 'Control Colesterol - Resultados', 'pending', null],
-    ['apt-11', addDays(today, 3), '08:30 AM', 35, 'MED-0004', 'doc-munoz', 'Seguimiento Arritmia Cardíaca', 'confirmed', null],
-    ['apt-12', addDays(today, 3), '10:15 AM', 30, 'MED-0005', 'doc-munoz', 'Control Colesterol y Triglicéridos', 'pending', null],
-    ['apt-13', addDays(today, 5), '09:00 AM', 40, 'MED-0007', 'doc-munoz', 'Control Insuficiencia Cardíaca', 'confirmed', null],
-    ['apt-14', addDays(today, 6), '08:30 AM', 30, 'MED-0010', 'doc-munoz', 'Primera Consulta - Dolor Torácico', 'pending', null],
-    ['apt-15', addDays(today, 6), '10:45 AM', 45, 'MED-0002', 'doc-munoz', 'Stress Test / Prueba de Esfuerzo', 'confirmed', null],
-    ['apt-16', addDays(today, 7), '09:30 AM', 30, 'MED-0009', 'doc-aguirre', 'Control Hipertensión Resistente', 'pending', null],
+    ['apt-6', openDayFromToday(1), '08:30 AM', 30, 'MED-0006', 'doc-mawad', 'Control Diabetes Mellitus Tipo 2', 'confirmed', null],
+    ['apt-7', openDayFromToday(1), '10:00 AM', 45, 'MED-0007', 'doc-mawad', 'Control Presión Arterial Post-Operatorio', 'pending', null],
+    ['apt-8', openDayFromToday(1), '11:30 AM', 30, 'MED-0002', 'doc-mawad', 'Chequeo General', 'confirmed', null],
+    ['apt-9', openDayFromToday(2), '09:00 AM', 40, 'MED-0009', 'doc-mawad', 'Ecocardiograma Transtorácico', 'confirmed', null],
+    ['apt-10', openDayFromToday(2), '10:30 AM', 30, 'MED-0008', 'doc-mawad', 'Control Colesterol - Resultados', 'pending', null],
+    ['apt-11', openDayFromToday(3), '08:30 AM', 35, 'MED-0004', 'doc-munoz', 'Seguimiento Arritmia Cardíaca', 'confirmed', null],
+    ['apt-12', openDayFromToday(3), '10:15 AM', 30, 'MED-0005', 'doc-munoz', 'Control Colesterol y Triglicéridos', 'pending', null],
+    ['apt-13', openDayFromToday(5), '09:00 AM', 40, 'MED-0007', 'doc-munoz', 'Control Insuficiencia Cardíaca', 'confirmed', null],
+    ['apt-14', openDayFromToday(6), '08:30 AM', 30, 'MED-0010', 'doc-munoz', 'Primera Consulta - Dolor Torácico', 'pending', null],
+    ['apt-15', openDayFromToday(6), '10:45 AM', 45, 'MED-0002', 'doc-munoz', 'Stress Test / Prueba de Esfuerzo', 'confirmed', null],
+    ['apt-16', openDayFromToday(7), '09:30 AM', 30, 'MED-0009', 'doc-aguirre', 'Control Hipertensión Resistente', 'pending', null],
     ['apt-17', today, '09:30 AM', 30, 'MED-0011', 'doc-mawad', 'Chequeo General', 'confirmed', null],
     ['apt-18', today, '10:00 AM', 30, 'MED-0006', 'doc-munoz', 'Control Diabetes Mellitus Tipo 2', 'pending', null],
     ['apt-19', today, '10:00 AM', 30, 'MED-0008', 'doc-munoz', 'Primera Consulta - Palpitaciones', 'pending', null],
-    ['apt-past-1', addDays(today, -1), '09:00 AM', 30, 'MED-0011', 'doc-aguirre', 'Control Cardiología Rutinario', 'completed', null],
-    ['apt-past-2', addDays(today, -1), '10:30 AM', 30, 'MED-0012', 'doc-mawad', 'Evaluación de Palpitaciones', 'no-show', null],
+    ['apt-past-1', openDayFromToday(-1), '09:00 AM', 30, 'MED-0011', 'doc-aguirre', 'Control Cardiología Rutinario', 'completed', null],
+    ['apt-past-2', openDayFromToday(-1), '10:30 AM', 30, 'MED-0012', 'doc-mawad', 'Evaluación de Palpitaciones', 'no-show', null],
   ];
   for (const a of appointments) {
-    insertAppointment.run(...a);
+    insertAppointment.run(a[0], a[1], to24h(a[2]), ...a.slice(3));
   }
 
   const triageInsert = db.prepare(`
@@ -188,11 +223,17 @@ export function seed(): void {
   }
   void insertConsultation;
 
-  const insertWorkingDay = db.prepare('INSERT INTO working_days (date, note) VALUES (?, ?)');
-  const days = [ -1, 0, 1, 2, 3, 5, 6, 7, 8, 9 ] as const;
-  for (const n of days) insertWorkingDay.run(addDays(today, n), 'Turno normal');
+  // Dias abiertos: 8 semanas de lunes a viernes. Se agregan a mano las
+  // fechas que ya traen citas para que nunca queden huérfanas.
+  const insertWorkingDay = db.prepare('INSERT OR IGNORE INTO working_days (date, note) VALUES (?, ?)');
+  const openDates = new Set<string>(['2026-10-01', '2026-10-02']);
+  for (let n = 0; n < 56; n++) {
+    if (isoDayOfWeek(addDays(today, n)) <= 5) openDates.add(addDays(today, n));
+  }
+  for (const date of [...openDates].sort()) insertWorkingDay.run(date, 'Turno normal');
 
-  const insertDaySchedule = db.prepare('INSERT INTO day_schedules (doctor_id, day_of_week, enabled, start_time, end_time, total_capacity) VALUES (NULL, ?, ?, ?, ?, ?)');
+  // Jornada semanal por medico (1 = lunes ... 7 = domingo).
+  const insertDaySchedule = db.prepare('INSERT OR IGNORE INTO day_schedules (doctor_id, day_of_week, enabled, start_time, end_time, total_capacity) VALUES (?, ?, ?, ?, ?, ?)');
   const weekdays: Array<[number, number, string, string, number]> = [
     [1, 1, '08:00', '16:00', 20],
     [2, 1, '08:00', '16:00', 20],
@@ -200,8 +241,12 @@ export function seed(): void {
     [4, 1, '08:00', '16:00', 20],
     [5, 1, '08:00', '16:00', 20],
     [6, 0, '', '', 0],
+    [7, 0, '', '', 0],
   ];
-  for (const s of weekdays) insertDaySchedule.run(...s);
+  const doctors = db.prepare('SELECT id FROM doctors ORDER BY id').all() as Array<{ id: string }>;
+  for (const doctor of doctors) {
+    for (const s of weekdays) insertDaySchedule.run(doctor.id, ...s);
+  }
 
   const insertAbsence = db.prepare('INSERT INTO absences (id, doctor_id, reason, location, type, start_date, end_date, affected_note, collision_status, validation_status, icon_name) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
   insertAbsence.run('abs-1', 'Congreso Médico Venezolano 2026', 'Hotel Alba Caracas', 'Actividad Académica', '2026-11-15', '2026-11-18', '0 citas colisionadas', 'ok', 'Aprobado por Dirección Médica', 'school');
