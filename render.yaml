@@ -13,3 +13,9 @@ services:
         generateValue: true
       - key: DB_PATH
         value: /tmp/medcontrol.db
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: "*"
