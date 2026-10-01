@@ -1128,6 +1128,25 @@ daysUntilHorizon(): number {
   }
 
   /**
+   * Dias habilitados a los que les falta una hora, del payload ya armado. La
+   * misma regla que aplica el servidor: un dia habilitado sin inicio y fin no
+   * es un estado representable. Un dia apagado con las horas vacias es valido
+   * y no se reporta.
+   */
+  private incompleteDays(payloads: DaySchedule[][]): string[] {
+    const bad = new Set<string>();
+    for (const payload of payloads) {
+      for (const day of payload) {
+        if (!day.enabled) continue;
+        const hasBoth = !!day.startTime && !!day.endTime;
+        const ordered = hasBoth && day.startTime < day.endTime;
+        if (!hasBoth || !ordered) bad.add(day.day);
+      }
+    }
+    return [...bad];
+  }
+
+  /**
    * Guarda la jornada. En modo grupal cada medico recibe su propia copia, y
    * las filas que NO se tocaron conservan el valor que ya tenia cada uno: si el
    * lunes es 08:00 para Mawad y 09:00 para Aguirre, guardar sin tocar esa fila
@@ -1145,18 +1164,40 @@ daysUntilHorizon(): number {
     }
     this.confirmedSave = false;
 
-    this.saving.set(true);
     const touched = this.touchedRows();
     const shown = this.scheduleDays();
 
+    // Se arma el payload antes de enviar, igual que lo haria el PUT, y se
+    // revisa lo que de verdad va a viajar. Importa revisar el payload y no la
+    // pantalla: una fila que no se toco conserva el valor que ya tenia ese
+    // medico, y si ese valor veio roto de antes el error sigue siendo real.
+    const payloads = ids.map(id => {
+      const current = this.schedulesByDoctor()[id] ?? [];
+      return shown.map(day => {
+        const own = current.find(d => d.dayOfWeek === day.dayOfWeek);
+        const keepOwn = !touched.has(day.dayOfWeek) && own;
+        return keepOwn ? own : day;
+      });
+    });
+
+    // El servidor ya rechaza un dia habilitado sin horas, pero responder 400
+    // despues de enviar esconde el motivo detras de un error generico y en
+    // modo grupado tapa el resto de los medicos. Aqui se dice que dia falta y
+    // que escribir, y no se sale a la red.
+    const problems = this.incompleteDays(payloads);
+    if (problems.length) {
+      this.toast.show(
+        `Faltan horas en ${problems.length === 1 ? 'un día' : `${problems.length} días`}`,
+        `${problems.join(', ')}: escriba la hora de inicio y de fin, o apague el día.`,
+      );
+      return;
+    }
+
+    this.saving.set(true);
+
     forkJoin(
-      ids.map(id => {
-        const current = this.schedulesByDoctor()[id] ?? [];
-        const payload = shown.map(day => {
-          const own = current.find(d => d.dayOfWeek === day.dayOfWeek);
-          const keepOwn = !touched.has(day.dayOfWeek) && own;
-          return keepOwn ? own : day;
-        });
+      payloads.map((payload, i) => {
+        const id = ids[i];
         return this.data.saveScheduleFor(id, payload).pipe(
           tap(days => this.schedulesByDoctor.update(all => ({ ...all, [id]: days }))),
         );
