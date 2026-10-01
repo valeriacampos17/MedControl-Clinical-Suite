@@ -120,6 +120,19 @@ CREATE TABLE IF NOT EXISTS day_schedules (
   total_capacity INTEGER
 );
 
+-- Dias concretos que un medico labora. Un "rango" del 5 al 10 de octubre no es
+-- mas que seis filas aqui: eso permite desmarcar el 12 y volverlo a marcar.
+CREATE TABLE IF NOT EXISTS doctor_working_dates (
+  doctor_id TEXT NOT NULL REFERENCES doctors(id),
+  date      TEXT NOT NULL,
+  note      TEXT,
+  -- Clave compuesta: no hace falta id y evita duplicados del mismo par.
+  PRIMARY KEY (doctor_id, date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_doctor_working_dates_date
+  ON doctor_working_dates(date);
+
 -- Un horario por medico y dia de la semana. Sin este indice el upsert de
 -- jornadas no puede resolverse (ON CONFLICT necesita una restriccion UNIQUE)
 -- y se podrian duplicar filas para el mismo par.

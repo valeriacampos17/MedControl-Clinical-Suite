@@ -76,6 +76,8 @@ export interface WorkingDay {
 }
 
 export interface DaySchedule {
+  /** 1 = lunes ... 7 = domingo */
+  dayOfWeek: number;
   day: string;
   enabled: boolean;
   startTime: string;
@@ -83,8 +85,61 @@ export interface DaySchedule {
   totalCapacity: number;
 }
 
+/** Tipo de consulta que define la duracion del bloque de la cita. */
+export interface ConsultationType {
+  id: string;
+  title: string;
+  durationMinutes: number;
+  price: string;
+  note: string;
+  suggested: boolean;
+}
+
+export type BlockedReason =
+  | 'pasado'
+  | 'no-labora'
+  | 'ausencia'
+  | 'jornada-cerrada'
+  | 'sin-horario'
+  | 'sin-cupo';
+
+/** Dia concreto que un medico marco para laborar. */
+export interface WorkingDateItem {
+  date: string;
+  note: string | null;
+}
+
+/** Dia abierto que se puede (o no) reservar para un medico. */
+export interface BookableDay {
+  date: string;
+  dayOfWeek: number;
+  day: string;
+  dayNumber: number;
+  monthLabel: string;
+  bookable: boolean;
+  blockedBy: BlockedReason | null;
+  blockedDetail: string | null;
+  remaining: number;
+}
+
+export interface AvailableSlots {
+  date: string;
+  doctorId: string;
+  durationMinutes: number;
+  startTime: string;
+  endTime: string;
+  /** Horarios libres en HH:MM de 24 horas. */
+  slots: string[];
+  takenCount: number;
+  totalSlots: number;
+  blockedBy: BlockedReason | null;
+  blockedDetail: string | null;
+}
+
 export interface AbsenceBlock {
   id: string;
+  /** Ausente: es un cierre de clinica y aplica a todos los medicos. */
+  doctorId?: string;
   reason: string;
   location: string;
   type: string;

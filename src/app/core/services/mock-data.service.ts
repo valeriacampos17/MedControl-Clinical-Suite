@@ -1,5 +1,6 @@
 import { Injectable, signal, computed, WritableSignal, inject } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Observable, throwError } from 'rxjs';
+import { catchError, map, tap } from 'rxjs/operators';
 import {
   Patient,
   Doctor,
@@ -19,6 +20,10 @@ import {
   OrganizationSettings,
   AlertRule,
   AppUser,
+  BookableDay,
+  AvailableSlots,
+  ConsultationType,
+  WorkingDateItem,
 } from '../models/types';
 import { ApiService } from './api.service';
 
@@ -60,7 +65,6 @@ export class MockDataService {
       firstValueFrom(this.api.get<{ patients: Patient[] }>('/patients')),
       firstValueFrom(this.api.get<{ doctors: DoctorSummary[] }>('/doctors')),
       firstValueFrom(this.api.get<{ appointments: AppointmentItem[] }>('/appointments')),
-      firstValueFrom(this.api.get<{ schedule: DaySchedule[] }>('/config/schedules')),
       firstValueFrom(this.api.get<{ absences: AbsenceBlock[] }>('/config/absences')),
       firstValueFrom(this.api.get<{ workingDays: WorkingDay[] }>('/config/working-days')),
       firstValueFrom(this.api.get<{ organization: OrganizationSettings }>('/config/organization')),
@@ -76,14 +80,13 @@ export class MockDataService {
       firstValueFrom(this.api.get<{ examOrders: ExamOrder[] }>('/records/exam-orders')),
     ]);
     const [
-      patients, doctors, appointments, schedule, absences, workingDays,
+      patients, doctors, appointments, absences, workingDays,
       organization, alertRules, catalogUsers, exams, medications,
       diagnoses, triageLevels, triageRules, consultations, prescriptions, examOrders,
     ] = result;
     if (patients.status === 'fulfilled') this.patients.set(patients.value.patients);
     if (doctors.status === 'fulfilled') this.doctors.set(doctors.value.doctors);
     if (appointments.status === 'fulfilled') this.appointments.set(appointments.value.appointments);
-    if (schedule.status === 'fulfilled') this.schedule.set(schedule.value.schedule);
     if (absences.status === 'fulfilled') this.absences.set(absences.value.absences);
     if (workingDays.status === 'fulfilled') this.workingDays.set(workingDays.value.workingDays);
     if (organization.status === 'fulfilled') this.organization.set(organization.value.organization);
@@ -194,12 +197,13 @@ export class MockDataService {
   ]);
 
   readonly schedule = signal<DaySchedule[]>([
-    { day: 'Lunes', enabled: true, startTime: '08:00', endTime: '16:00', totalCapacity: 20 },
-    { day: 'Martes', enabled: true, startTime: '08:00', endTime: '16:00', totalCapacity: 20 },
-    { day: 'Miércoles', enabled: true, startTime: '08:00', endTime: '16:00', totalCapacity: 20 },
-    { day: 'Jueves', enabled: true, startTime: '08:00', endTime: '16:00', totalCapacity: 20 },
-    { day: 'Viernes', enabled: true, startTime: '08:00', endTime: '16:00', totalCapacity: 20 },
-    { day: 'Sábado', enabled: false, startTime: '', endTime: '', totalCapacity: 0 },
+    { dayOfWeek: 1, day: 'Lunes', enabled: true, startTime: '08:00', endTime: '16:00', totalCapacity: 20 },
+    { dayOfWeek: 2, day: 'Martes', enabled: true, startTime: '08:00', endTime: '16:00', totalCapacity: 20 },
+    { dayOfWeek: 3, day: 'Miércoles', enabled: true, startTime: '08:00', endTime: '16:00', totalCapacity: 20 },
+    { dayOfWeek: 4, day: 'Jueves', enabled: true, startTime: '08:00', endTime: '16:00', totalCapacity: 20 },
+    { dayOfWeek: 5, day: 'Viernes', enabled: true, startTime: '08:00', endTime: '16:00', totalCapacity: 20 },
+    { dayOfWeek: 6, day: 'Sábado', enabled: false, startTime: '', endTime: '', totalCapacity: 0 },
+    { dayOfWeek: 7, day: 'Domingo', enabled: false, startTime: '', endTime: '', totalCapacity: 0 },
   ]);
 
   readonly absences = signal<AbsenceBlock[]>([
@@ -229,7 +233,30 @@ export class MockDataService {
     { date: addDays(todayStr(), 9), note: 'Turno normal' },
   ]);
 
-  readonly enabledDates = computed(() => new Set(this.workingDays().map(w => w.date)));
+  /**
+   * Fechas en las que la clinica atiende, cargadas desde el motor de
+   * disponibilidad. Antes salia de `working_days`, una lista blanca que se
+   * acababa en una fecha fija: el Dashboard ponia toda la agenda en gris y el
+   * desplegable de reagendar se quedaba sin opciones.
+   */
+  readonly openDates = signal<Set<string>>(new Set());
+
+  loadOpenDates(from?: string, to?: string): void {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    const qs = params.toString();
+    this.api
+      .get<{ openDates: string[] }>(`/availability/open-dates${qs ? `?${qs}` : ''}`)
+      .subscribe({
+        next: r => this.openDates.set(new Set(r.openDates)),
+        error: () => this.openDates.set(new Set()),
+      });
+  }
+
+  isDateOpen(dateStr: string): boolean {
+    return this.openDates().has(dateStr);
+  }
 
   readonly selectedDate = signal<string>(todayStr());
   readonly calendarMonth = signal<Date>(new Date());
@@ -262,7 +289,7 @@ export class MockDataService {
   });
 
   isBusinessDay(dateStr: string): boolean {
-    return this.enabledDates().has(dateStr);
+    return this.isDateOpen(dateStr);
   }
 
   toggleWorkingDay(dateStr: string): void {
@@ -288,7 +315,9 @@ export class MockDataService {
   getBusinessDays(fromDate: string, count: number): string[] {
     const result: string[] = [];
     let current = fromDate;
-    while (result.length < count) {
+    // Tope de 120 intentos: sin esto, si no hay ninguna fecha abierta el ciclo
+    // no termina nunca.
+    for (let i = 0; i < 120 && result.length < count; i++) {
       if (this.isBusinessDay(current)) {
         result.push(current);
       }
@@ -306,6 +335,11 @@ export class MockDataService {
     });
   }
 
+  /**
+   * Agenda la cita de forma optimista y devuelve el Observable para que la
+   * pantalla pueda avisar al usuario si el backend la rechaza (horario ya
+   * tomado, dia cerrado, cupo lleno). Antes el error se comia en silencio.
+   */
   createAppointment(payload: {
     date: string;
     time: string;
@@ -314,9 +348,9 @@ export class MockDataService {
     doctorId: string;
     reason: string;
     consultationTypeId?: string;
-  }): void {
+  }): Observable<AppointmentItem> {
     const optimistic: AppointmentItem = {
-      id: 'APT-' + Date.now(),
+      id: 'OPT-' + Date.now(),
       date: payload.date,
       time: payload.time,
       durationMinutes: payload.durationMinutes,
@@ -326,12 +360,110 @@ export class MockDataService {
       status: 'pending',
     };
     this.appointments.update(list => [...list, optimistic]);
-    this.api.post<{ appointment: AppointmentItem }>('/appointments', payload).subscribe({
-      next: (r) => {
-        this.appointments.update(list => [...list.filter(a => a.id !== optimistic.id), r.appointment]);
-      },
-      error: () => this.appointments.update(list => list.filter(a => a.id !== optimistic.id)),
+    return this.api.post<{ appointment: AppointmentItem }>('/appointments', payload).pipe(
+      map(r => r.appointment),
+      tap(appointment => {
+        this.appointments.update(list => [...list.filter(a => a.id !== optimistic.id), appointment]);
+      }),
+      catchError(err => {
+        this.appointments.update(list => list.filter(a => a.id !== optimistic.id));
+        return throwError(() => err);
+      }),
+    );
+  }
+
+  // ------------------------------------------------------- disponibilidad ---
+
+  /** Jornada semanal de un medico. Como la jornada es por medico, no hay una global. */
+  loadScheduleFor(doctorId: string): Observable<DaySchedule[]> {
+    return this.api
+      .get<{ schedule: DaySchedule[] }>(`/config/schedules?doctorId=${encodeURIComponent(doctorId)}`)
+      .pipe(tap(r => this.schedule.set(r.schedule)), map(r => r.schedule));
+  }
+
+  /** Guarda la jornada semanal de un medico. */
+  saveScheduleFor(doctorId: string, schedule: DaySchedule[]): Observable<DaySchedule[]> {
+    const payload = {
+      doctorId,
+      schedule: schedule.map(d => ({
+        dayOfWeek: d.dayOfWeek,
+        enabled: d.enabled,
+        startTime: d.startTime,
+        endTime: d.endTime,
+        totalCapacity: d.totalCapacity,
+      })),
+    };
+    return this.api
+      .put<{ schedule: DaySchedule[] }>(
+        `/config/schedules?doctorId=${encodeURIComponent(doctorId)}`,
+        payload,
+      )
+      .pipe(tap(r => this.schedule.set(r.schedule)), map(r => r.schedule));
+  }
+
+  /** Dias que se pueden reservar para un medico, con el motivo si no se puede. */
+  /** Dias que el medico tiene marcados para laborar. Un rango son varias filas. */
+  getDoctorWorkingDates(doctorId: string, from?: string, to?: string): Observable<WorkingDateItem[]> {
+    const params = new URLSearchParams({ doctorId });
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    return this.api
+      .get<{ dates: WorkingDateItem[] }>(`/availability/working-dates?${params.toString()}`)
+      .pipe(map(r => r.dates));
+  }
+
+  /** Marca o desmarca un dia. Es lo que dispara el clic en el calendario. */
+  toggleDoctorWorkingDate(doctorId: string, date: string, marked: boolean): Observable<{ marked: boolean }> {
+    return this.api.post<{ marked: boolean }>(
+      `/availability/working-dates/${date}`,
+      { doctorId, marked },
+    );
+  }
+
+  /** Reemplaza el conjunto completo de dias marcados. */
+  setDoctorWorkingDates(doctorId: string, dates: WorkingDateItem[]): Observable<WorkingDateItem[]> {
+    return this.api
+      .put<{ dates: WorkingDateItem[] }>('/availability/working-dates', { doctorId, dates })
+      .pipe(map(r => r.dates));
+  }
+
+  /** Marca de una vez los proximos dias que coincidan con la jornada semanal. */
+  markFromSchedule(doctorId: string, days = 60): Observable<{ marked: number; dates: WorkingDateItem[] }> {
+    return this.api.post<{ marked: number; dates: WorkingDateItem[] }>(
+      '/availability/working-dates/mark-from-schedule',
+      { doctorId, days },
+    );
+  }
+
+  /**
+   * Dias reservables de un medico en un rango. Los dias que el medico marco
+   * son los que aparecen, asi que el calendario pide el mes que esta viendo en
+   * vez de una ventana fija que se quedaria corta.
+   */
+  getBookableDays(doctorId: string, from?: string, to?: string): Observable<BookableDay[]> {
+    const params = new URLSearchParams({ doctorId });
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    return this.api
+      .get<{ days: BookableDay[] }>(`/availability/days?${params.toString()}`)
+      .pipe(map(r => r.days));
+  }
+
+  /** Horarios libres de un dia segun la duracion del tipo de consulta. */
+  getAvailableSlots(doctorId: string, date: string, durationMinutes: number): Observable<AvailableSlots> {
+    const params = new URLSearchParams({
+      doctorId,
+      date,
+      durationMinutes: String(durationMinutes),
     });
+    return this.api.get<AvailableSlots>(`/availability/slots?${params.toString()}`);
+  }
+
+  /** Tipos de consulta con su duracion, que es la que arma la rejilla de horas. */
+  getConsultationTypes(): Observable<ConsultationType[]> {
+    return this.api
+      .get<{ consultationTypes: ConsultationType[] }>('/config/consultation-types')
+      .pipe(map(r => r.consultationTypes));
   }
 
   readonly currentTriageAppointmentId = signal<string | null>(null);
