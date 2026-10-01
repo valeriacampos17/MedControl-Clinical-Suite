@@ -2,6 +2,7 @@ import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { NavigationService } from '../../core/services/navigation.service';
+import { ApiService } from '../../core/services/api.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ButtonComponent } from '../../shared/button/button.component';
@@ -421,6 +422,7 @@ import { DaySchedule } from '../../core/models/types';
 export class DoctorConfigComponent implements OnInit {
   nav = inject(NavigationService);
   data = inject(MockDataService);
+  api = inject(ApiService);
   toast = inject(ToastService);
 
   scheduleDays = signal<DaySchedule[]>([...this.data.schedule()]);
@@ -445,7 +447,9 @@ export class DoctorConfigComponent implements OnInit {
 
   readonly scopeLabel = computed(() => {
     if (this.scopeIsAll()) return `Configurando los ${this.data.doctors().length} médicos a la vez`;
-    return this.data.selectedDoctor()?.name ?? '';
+    // Se resuelve desde el scope y no desde el medico del sidebar: son
+    // independientes y aqui manda el que se esta configurando.
+    return this.doctorName(this.scope());
   });
 
   /** Jornada de un solo medico, para cuando el scope es individual. */
@@ -488,6 +492,9 @@ export class DoctorConfigComponent implements OnInit {
   onSelectScope(id: 'all' | string): void {
     if (this.scope() === id) return;
     this.rangeAnchor.set(null);
+    // El aviso de guardado grupal es por intento, no permanente: cambiar de
+    // medico tiene que pedir confirmacion de nuevo.
+    this.confirmedSave = false;
     this.scope.set(id);
     this.loadScope();
   }
@@ -725,7 +732,7 @@ daysUntilHorizon(): number {
   readonly rangeHint = computed(() => {
     const anchor = this.rangeAnchor();
     if (!anchor) return '';
-    const who = this.scopeIsAll() ? 'los médicos del grupo' : this.data.selectedDoctor()?.shortName;
+    const who = this.scopeIsAll() ? 'los médicos del grupo' : this.doctorName(this.scope());
     return `Rango iniciado en ${anchor}. Elija el día final y se marcará para ${who}.`;
   });
 
@@ -1094,9 +1101,15 @@ daysUntilHorizon(): number {
     return all.filter(a => !a.doctorId || a.doctorId === id);
   });
 
+  /** Elimina el bloqueo de verdad; si el servidor lo rechaza, el bloque sigue. */
   removeAbsence(id: string): void {
-    this.absences.update(abs => abs.filter(a => a.id !== id));
-    this.toast.show('Bloqueo Eliminado', 'Horario liberado para agendamiento.');
+    this.api.delete<{ ok: boolean }>(`/config/absences/${id}`).subscribe({
+      next: () => {
+        this.absences.update(abs => abs.filter(a => a.id !== id));
+        this.toast.show('Bloqueo Eliminado', 'Horario liberado para agendamiento.');
+      },
+      error: (err: Error) => this.toast.show('No se pudo eliminar el bloqueo', err.message),
+    });
   }
 
   /**

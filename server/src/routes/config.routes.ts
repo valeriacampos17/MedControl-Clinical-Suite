@@ -160,6 +160,21 @@ configRouter.get('/absences', (_req, res) => {
   });
 });
 
+/**
+ * Elimina un bloqueo. Antes el boton de la interfaz solo lo sacaba de memoria,
+ * asi que se perdia al recargar y en realidad nunca se liberaba el horario.
+ */
+configRouter.delete('/absences/:id', (req, res) => {
+  const id = String(req.params.id);
+  const row = db.prepare('SELECT id FROM absences WHERE id = ?').get(id);
+  if (!row) {
+    res.status(404).json({ error: 'El bloqueo no existe' });
+    return;
+  }
+  db.prepare('DELETE FROM absences WHERE id = ?').run(id);
+  res.json({ ok: true, id });
+});
+
 interface OrganizationRow {
   id: string;
   name: string;
