@@ -139,7 +139,7 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
             <span class="text-[13px] font-semibold text-[#191c1e]">Nivel activo en la clasificación</span>
           </label>
         </div>
-        <div modal-footer>
+        <div modal-footer class="flex items-center justify-end gap-2.5">
           <app-button variant="light" size="md" (click)="closeLevel()">Cancelar</app-button>
           <app-button variant="primary" size="md" icon="check" (click)="saveLevel()">Guardar Nivel</app-button>
         </div>
@@ -184,7 +184,7 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
             </label>
           </div>
         </div>
-        <div modal-footer>
+        <div modal-footer class="flex items-center justify-end gap-2.5">
           <app-button variant="light" size="md" (click)="closeRule()">Cancelar</app-button>
           <app-button variant="primary" size="md" icon="check" (click)="saveRule()">Guardar Regla</app-button>
         </div>

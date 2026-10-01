@@ -136,7 +136,7 @@ import { inputValue, selectValue } from '../../core/utils/form.utils';
           <span>Los datos clínicos (consentimiento, condiciones crónicas y medicamentos) se precargan con la ficha de demostración hasta que se agregue información real.</span>
         </div>
       </form>
-      <div modal-footer>
+      <div modal-footer class="flex items-center justify-end gap-2.5">
         <app-button variant="light" size="md" (click)="dismiss.emit()">Cancelar</app-button>
         <app-button
           variant="primary"

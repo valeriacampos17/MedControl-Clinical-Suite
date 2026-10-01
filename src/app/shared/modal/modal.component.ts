@@ -34,7 +34,14 @@ import { Component, input, output, HostListener } from '@angular/core';
             <ng-content />
           </div>
           @if (footerTemplate) {
-            <div class="flex items-center justify-end gap-2.5 p-4 border-t border-[#eceef0] bg-[#f7f9fb]">
+            <!--
+              Solo el fondo y el borde. El layout de los botones va en el
+              <div modal-footer> de cada modal, no aqui: lo que se proyecta es
+              ese div como elemento, asi que un flex en este contenedor se
+              aplicaria a el y no a los botones de dentro, que se quedarian
+              en display inline alineados por linea base.
+            -->
+            <div class="p-4 border-t border-[#eceef0] bg-[#f7f9fb]">
               <ng-content select="[modal-footer]" />
             </div>
           }
