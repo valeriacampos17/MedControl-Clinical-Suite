@@ -6,6 +6,10 @@ services:
     buildCommand: npm run build
     startCommand: npm start
     healthCheckPath: /api/health
+    # Sin esto Render queda en Manual Deploy y un merge no llega a produccion:
+    # el #16 mergeo a las 19:30 y el servidor siguio con el codigo viejo hasta
+    # que se lanzo el deploy a mano.
+    autoDeploy: true
     envVars:
       - key: NODE_VERSION
         # El Angular CLI 22.1.8 exige ^22.22.3 || ^24.15.0 || >=26.0.0.
