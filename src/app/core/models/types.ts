@@ -138,6 +138,8 @@ export interface AvailableSlots {
 
 export interface AbsenceBlock {
   id: string;
+  /** Ausente: es un cierre de clinica y aplica a todos los medicos. */
+  doctorId?: string;
   reason: string;
   location: string;
   type: string;
