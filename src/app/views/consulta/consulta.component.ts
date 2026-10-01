@@ -633,7 +633,7 @@ export class ConsultaComponent {
 
       if (!complaint || !diagnosisCode || !diagnosisDescription) {
         const firstField = !complaint ? 'chiefComplaint' : !diagnosisCode ? 'diagnosisCode' : 'diagnosisDescription';
-        this.toast.show('Faltan Datos', 'Complete los campos resaltados en rojo antes de guardar.');
+        this.toast.show('Faltan Datos', 'Complete los campos resaltados en rojo antes de guardar.', 'warning');
         document.getElementById(firstField)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         (<HTMLInputElement | null>document.getElementById(firstField))?.focus();
         return;
@@ -706,7 +706,7 @@ export class ConsultaComponent {
       this.goBack();
     } catch (error) {
       console.error('Error al guardar la consulta:', error);
-      this.toast.show('Error al Guardar', 'Ocurrió un error inesperado al registrar la consulta. Revise la consola del navegador.');
+      this.toast.show('Error al Guardar', 'Ocurrió un error inesperado al registrar la consulta. Revise la consola del navegador.', 'error');
     }
   }
 }

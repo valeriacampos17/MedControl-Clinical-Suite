@@ -255,12 +255,12 @@ export class RecetasComponent {
   saveEmittedRecipe(): void {
     const patient = this.data.getPatient(this.emitPatientId());
     if (!patient) {
-      this.toast.show('Faltan Datos', 'Seleccione un paciente para emitir la receta.');
+      this.toast.show('Faltan Datos', 'Seleccione un paciente para emitir la receta.', 'warning');
       return;
     }
     const meds = this.emitMeds().filter((m) => m.name.trim() !== '');
     if (meds.length === 0) {
-      this.toast.show('Faltan Datos', 'Agregue al menos un medicamento con su nombre para emitir la receta.');
+      this.toast.show('Faltan Datos', 'Agregue al menos un medicamento con su nombre para emitir la receta.', 'warning');
       return;
     }
     const now = new Date();
@@ -472,7 +472,7 @@ export class RecetasComponent {
   private openDocument(title: string, html: string, autoPrint: boolean): void {
     const win = window.open('', '_blank', 'width=900,height=720,left=100,top=100');
     if (!win) {
-      this.toast.show('Ventana Bloqueada', 'Permita las ventanas emergentes para visualizar o imprimir el documento.');
+      this.toast.show('Ventana Bloqueada', 'Permita las ventanas emergentes para visualizar o imprimir el documento.', 'warning');
       return;
     }
     win.document.open();
