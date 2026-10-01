@@ -78,7 +78,7 @@ function firstOfCurrentMonth(): Date {
                 @if (selectedPatient()?.id) {
                   <app-badge variant="success" size="sm">Completado</app-badge>
                 } @else {
-                  <app-badge variant="gray" size="sm">Pendiente</app-badge>
+                  <app-badge variant="neutral" size="sm">Pendiente</app-badge>
                 }
               </div>
 
@@ -107,7 +107,7 @@ function firstOfCurrentMonth(): Date {
                 @if (selectedDoctorId()) {
                   <app-badge variant="teal" size="sm">Asignado</app-badge>
                 } @else {
-                  <app-badge variant="gray" size="sm">Pendiente</app-badge>
+                  <app-badge variant="neutral" size="sm">Pendiente</app-badge>
                 }
               </div>
 
