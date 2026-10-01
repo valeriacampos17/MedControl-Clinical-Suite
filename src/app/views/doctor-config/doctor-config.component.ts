@@ -34,41 +34,43 @@ import { DaySchedule } from '../../core/models/types';
         <div class="flex flex-col gap-6">
           <!-- Medico a configurar: por defecto el grupo completo. -->
           <div class="bg-white rounded-xl p-4 lg:px-5 shadow-sm border border-[#e6e8ea]">
-            <div class="flex flex-col lg:flex-row lg:items-center gap-3 justify-between">
-              <span class="text-[11px] font-bold text-[#76777d] uppercase tracking-wider shrink-0">Ver médico:</span>
-              <div class="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
-                <button
-                  type="button"
-                  (click)="onSelectScope('all')"
-                  class="flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all shrink-0 border"
-                  [class]="scopeIsAll()
-                    ? 'bg-[#006a61] text-white border-[#006a61] shadow-sm'
-                    : 'bg-white text-[#45464d] border-[#e0e3e5] hover:border-[#006a61] hover:text-[#006a61]'"
-                >
-                  <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                    [class]="scopeIsAll() ? 'bg-white/20 text-white' : 'bg-[#006a61]/15 text-[#006a61]'">
-                    <span class="material-symbols-outlined text-[14px]">group</span>
-                  </span>
-                  <span>Todos</span>
-                </button>
-                @for (doc of data.doctors(); track doc.id) {
+            <div class="flex flex-col gap-2">
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <span class="text-[11px] font-bold text-[#76777d] uppercase tracking-wider shrink-0">Ver médico:</span>
+                <div class="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    (click)="onSelectScope(doc.id)"
-                    class="flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all shrink-0 border"
-                    [class]="scope() === doc.id
+                    (click)="onSelectScope('all')"
+                    class="flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all border"
+                    [class]="scopeIsAll()
                       ? 'bg-[#006a61] text-white border-[#006a61] shadow-sm'
                       : 'bg-white text-[#45464d] border-[#e0e3e5] hover:border-[#006a61] hover:text-[#006a61]'"
                   >
-                    <img [src]="doc.avatarUrl" [alt]="doc.name" class="w-5 h-5 rounded-full object-cover ring-1 ring-current/20" />
-                    <span>{{ doc.shortName }}</span>
+                    <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                      [class]="scopeIsAll() ? 'bg-white/20 text-white' : 'bg-[#006a61]/15 text-[#006a61]'">
+                      <span class="material-symbols-outlined text-[14px]">group</span>
+                    </span>
+                    <span>Todos</span>
                   </button>
-                }
+                  @for (doc of data.doctors(); track doc.id) {
+                    <button
+                      type="button"
+                      (click)="onSelectScope(doc.id)"
+                      class="flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all border"
+                      [class]="scope() === doc.id
+                        ? 'bg-[#006a61] text-white border-[#006a61] shadow-sm'
+                        : 'bg-white text-[#45464d] border-[#e0e3e5] hover:border-[#006a61] hover:text-[#006a61]'"
+                    >
+                      <img [src]="doc.avatarUrl" [alt]="doc.name" class="w-5 h-5 rounded-full object-cover ring-1 ring-current/20" />
+                      <span>{{ doc.shortName }}</span>
+                    </button>
+                  }
+                </div>
               </div>
               @if (scopeIsAll()) {
-                <span class="text-[11px] text-[#76777d] shrink-0">
-                  Lo que marque o guarde se aplica a los {{ data.doctors().length }} médicos.
-                </span>
+                <p class="text-[11px] text-[#76777d]">
+                  Los cambios de este bloque se guardan para los {{ data.doctors().length }} médicos a la vez.
+                </p>
               }
             </div>
           </div>
@@ -109,6 +111,15 @@ import { DaySchedule } from '../../core/models/types';
                 <button type="button" (click)="shiftMarkingMonth(1)" class="p-1.5 rounded-lg hover:bg-[#f2f4f6]">
                   <span class="material-symbols-outlined text-[18px]">chevron_right</span>
                 </button>
+                @if (!isCurrentMarkingMonth()) {
+                  <button
+                    type="button"
+                    (click)="goToCurrentMonth()"
+                    class="ml-1 px-2 py-1 rounded-lg text-[11px] font-bold bg-[#f2f4f6] text-[#45464d] border border-[#e0e3e5] hover:bg-[#e8eaec]"
+                  >
+                    Hoy
+                  </button>
+                }
               </div>
               <span class="text-[12px] text-[#45464d]">
                 <strong class="text-[#006a61]">{{ markedCount() }}</strong> días marcados
@@ -118,40 +129,90 @@ import { DaySchedule } from '../../core/models/types';
               </span>
             </div>
 
+            <div class="flex gap-1.5 mb-3 overflow-x-auto pb-1">
+              @for (m of monthStrip(); track m.full) {
+                <button
+                  type="button"
+                  (click)="goToMonth(m.date)"
+                  [title]="m.full + ' — ' + (monthStripCounts()[stripKey(m.date)] || 0) + ' días marcados'"
+                  class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-colors shrink-0"
+                  [class.bg-[#006a61]]="stripKey(m.date) === stripKey(markingMonth())"
+                  [class.text-white]="stripKey(m.date) === stripKey(markingMonth())"
+                  [class.border-[#006a61]]="stripKey(m.date) === stripKey(markingMonth())"
+                  [class.bg-white]="stripKey(m.date) !== stripKey(markingMonth())"
+                  [class.text-[#45464d]]="stripKey(m.date) !== stripKey(markingMonth())"
+                  [class.border-[#e0e3e5]]="stripKey(m.date) !== stripKey(markingMonth())"
+                  [class.hover:border-[#006a61]]="stripKey(m.date) !== stripKey(markingMonth())"
+                  [class.hover:text-[#006a61]]="stripKey(m.date) !== stripKey(markingMonth())"
+                >
+                  <span>{{ m.label }}</span>
+                  <span
+                    class="px-1.5 py-0.5 rounded-full text-[10px] leading-none"
+                    [class.bg-white/20]="stripKey(m.date) === stripKey(markingMonth())"
+                    [class.text-white]="stripKey(m.date) === stripKey(markingMonth())"
+                    [class.bg-[#f0fdfa]]="stripKey(m.date) !== stripKey(markingMonth()) && (monthStripCounts()[stripKey(m.date)] || 0) > 0"
+                    [class.text-[#006a61]]="stripKey(m.date) !== stripKey(markingMonth()) && (monthStripCounts()[stripKey(m.date)] || 0) > 0"
+                    [class.bg-[#f2f4f6]]="stripKey(m.date) !== stripKey(markingMonth()) && (monthStripCounts()[stripKey(m.date)] || 0) === 0"
+                    [class.text-[#9a9ca1]]="stripKey(m.date) !== stripKey(markingMonth()) && (monthStripCounts()[stripKey(m.date)] || 0) === 0"
+                  >
+                    {{ monthStripCounts()[stripKey(m.date)] || 0 }}
+                  </span>
+                </button>
+              }
+            </div>
+
             <div class="grid grid-cols-7 gap-1 mb-1">
-              @for (d of weekLabels; track d) {
-                <span class="text-center text-[11px] font-bold text-[#76777d] uppercase">{{ d }}</span>
+              @for (d of weekLabels; track d; let i = $index) {
+                <button
+                  type="button"
+                  (click)="toggleWeekday(i + 1)"
+                  [disabled]="!weekdayDates(i + 1).length"
+                  [title]="weekdayDates(i + 1).length
+                    ? 'Clic para ' + (weekdayState(i + 1) === 'full' ? 'desmarcar' : 'marcar') + ' todos los ' + d.toLowerCase() + ' de ' + markingMonthLabel()
+                    : d + ': no quedan días futuros en este mes'"
+                  class="text-center text-[11px] font-bold uppercase rounded py-1 transition-colors"
+                  [class.text-[#76777d]]="weekdayState(i + 1) === 'none'"
+                  [class.hover:text-[#006a61]]="weekdayState(i + 1) === 'none'"
+                  [class.hover:bg-[#f2f4f6]]="weekdayState(i + 1) === 'none'"
+                  [class.text-[#006a61]]="weekdayState(i + 1) !== 'none'"
+                  [class.bg-[#f0fdfa]]="weekdayState(i + 1) !== 'none'"
+                  [class.cursor-not-allowed]="!weekdayDates(i + 1).length"
+                  [class.opacity-40]="!weekdayDates(i + 1).length"
+                >
+                  {{ d }}
+                </button>
               }
             </div>
             <div class="grid grid-cols-7 gap-1">
-              @for (blank of [].constructor(markingLead()); track $index) {
-                <span class="aspect-square"></span>
-              }
               @for (cell of markingCells(); track cell.date) {
                 <button
                   type="button"
                   (click)="onMarkingDayClick(cell.date)"
-                  [disabled]="cell.past"
-                  [class.bg-[#006a61]]="stateOf(cell.date) === 'full'"
-                  [class.text-white]="stateOf(cell.date) === 'full'"
-                  [class.bg-gradient-to-r]="stateOf(cell.date) === 'partial'"
-                  [class.from-[#006a61]]="stateOf(cell.date) === 'partial'"
-                  [class.from-0]="stateOf(cell.date) === 'partial'"
-                  [class.to-transparent]="stateOf(cell.date) === 'partial'"
-                  [class.to-90%]="stateOf(cell.date) === 'partial'"
-                  [class.border-2]="stateOf(cell.date) === 'partial'"
-                  [class.border-[#006a61]]="stateOf(cell.date) === 'partial'"
-                  [class.bg-white]="stateOf(cell.date) === 'none'"
-                  [class.text-[#191c1e]]="stateOf(cell.date) === 'none'"
-                  [class.opacity-40]="cell.past"
-                  [class.cursor-not-allowed]="cell.past"
+                  [disabled]="cell.locked"
+                  [class.bg-[#006a61]]="!cell.locked && stateOf(cell.date) === 'full'"
+                  [class.text-white]="!cell.locked && stateOf(cell.date) === 'full'"
+                  [class.bg-gradient-to-r]="!cell.locked && stateOf(cell.date) === 'partial'"
+                  [class.from-[#006a61]]="!cell.locked && stateOf(cell.date) === 'partial'"
+                  [class.from-0]="!cell.locked && stateOf(cell.date) === 'partial'"
+                  [class.to-transparent]="!cell.locked && stateOf(cell.date) === 'partial'"
+                  [class.to-90%]="!cell.locked && stateOf(cell.date) === 'partial'"
+                  [class.border-2]="!cell.locked && stateOf(cell.date) === 'partial'"
+                  [class.border-[#006a61]]="!cell.locked && stateOf(cell.date) === 'partial'"
+                  [class.bg-white]="!cell.locked && stateOf(cell.date) === 'none'"
+                  [class.text-[#191c1e]]="!cell.locked && stateOf(cell.date) === 'none'"
+                  [class.opacity-40]="cell.locked"
+                  [class.cursor-not-allowed]="cell.locked"
                   [class.ring-2]="isInRange(cell.date)"
                   [class.ring-[#006a61]/40]="isInRange(cell.date)"
                   class="aspect-square rounded-lg text-[12px] font-bold transition-colors hover:ring-2 hover:ring-[#006a61]/30"
-                  [title]="cell.date + (
-                    stateOf(cell.date) === 'full' ? ' — marcado'
-                    : stateOf(cell.date) === 'partial' ? ' — marcado solo para ' + markedDoctorNames(cell.date) + '. Clic para marcarlo para todos.'
-                    : ' — sin marcar')"
+                  [title]="cell.outside
+                    ? 'Día del mes vecino, solo ocupa su columna'
+                    : cell.date > maxMarkableDate()
+                    ? cell.date + ' — fuera del periodo programable'
+                    : cell.date + (
+                      stateOf(cell.date) === 'full' ? ' — marcado'
+                      : stateOf(cell.date) === 'partial' ? ' — marcado solo para ' + markedDoctorNames(cell.date) + '. Clic para marcarlo para todos.'
+                      : ' — sin marcar')"
                 >
                   {{ cell.dayNumber }}
                 </button>
@@ -535,14 +596,16 @@ export class DoctorConfigComponent implements OnInit {
     return map;
   });
 
-  readonly markedCount = computed(() => {
+  readonly markedCount = computed(() => this.markedCountFor(this.markingMonth()));
+
+  /** Dias de un mes con al menos un medico del scope marcado, sin repetir. */
+  private markedCountFor(month: Date): number {
     const ids = this.targetDoctorIds();
     const marked = this.markedByDoctor();
-    const month = this.markingMonth();
     return this.markedDatesInMonth(month).filter(date =>
       ids.some(id => marked[id]?.has(date)),
     ).length;
-  });
+  }
 
   /** Medicos del scope que tienen marcada una fecha, para el title de la celda. */
   markedDoctorNames(date: string): string {
@@ -573,18 +636,58 @@ export class DoctorConfigComponent implements OnInit {
     }).sort();
   }
 
-  readonly markingMonthLabel = computed(() => {
-    const m = this.markingMonth();
-    const names = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-    ];
-    return `${names[m.getMonth()]} ${m.getFullYear()}`;
-  });
+  readonly markingMonthLabel = computed(() => monthLabel(this.markingMonth()));
 
   readonly markingLead = computed(() => {
     const first = new Date(this.markingMonth().getFullYear(), this.markingMonth().getMonth(), 1);
     return (first.getDay() + 6) % 7;
+  });
+
+  /**
+   * Ultima fecha en la que se puede marcar. Se_markean hasta 3 meses despues
+   * del mes actual: el mes vigente mas los tres siguientes.
+   */
+  readonly maxMarkableDate = computed(() => {
+    const now = new Date();
+    return toDateStr(new Date(now.getFullYear(), now.getMonth() + MONTHS_AHEAD + 1, 0));
+  });
+
+  /** Meses navegables en la tira: el actual mas los 3 siguientes. */
+  readonly monthStrip = computed(() => {
+    const now = new Date();
+    const months = [];
+    for (let i = 0; i <= MONTHS_AHEAD; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      months.push({ date: d, label: MONTH_SHORT[d.getMonth()], full: monthLabel(d) });
+    }
+    return months;
+  });
+
+  /** Dias marcados de cada mes de la tira, para el scope activo. */
+  readonly monthStripCounts = computed(() => {
+    const tally: Record<string, number> = {};
+    for (const m of this.monthStrip()) tally[this.stripKey(m.date)] = this.markedCountFor(m.date);
+    return tally;
+  });
+
+  /** Ultimo mes programable: el mes actual mas MONTHS_AHEAD. */
+  readonly maxMarkableMonth = computed(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + MONTHS_AHEAD, 1);
+  });
+
+  /** Dias entre hoy y el final de la ventana programable, ambos inclusive. */
+daysUntilHorizon(): number {
+    const ms =
+      new Date(`${this.maxMarkableDate()}T00:00:00`).getTime() -
+      new Date(`${todayStr()}T00:00:00`).getTime();
+    return Math.floor(ms / 86400000) + 1;
+  }
+
+  /** El mes visible sigue dentro de la ventana programable? */
+  readonly monthIsProgramable = computed(() => {
+    const m = this.markingMonth();
+    return m.getTime() <= this.maxMarkableMonth().getTime();
   });
 
   readonly markingCells = computed(() => {
@@ -592,11 +695,29 @@ export class DoctorConfigComponent implements OnInit {
     const lead = this.markingLead();
     const start = new Date(month.getFullYear(), month.getMonth(), 1 - lead);
     const today = todayStr();
-    const cells: Array<{ date: string; dayNumber: number; past: boolean }> = [];
+    const horizon = this.maxMarkableDate();
+    const cells: Array<{
+      date: string;
+      dayNumber: number;
+      past: boolean;
+      outside: boolean;
+      locked: boolean;
+    }> = [];
     for (let i = 0; i < 42; i++) {
       const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
       const date = toDateStr(d);
-      cells.push({ date, dayNumber: d.getDate(), past: date < today });
+      // fuera = pertenece al mes anterior o siguiente. Las del inicio existen
+      // solo para alinear las columnas; en cuanto aparece una despues de haber
+      // entrado al mes, el mes ya termino y no hay nada que agregar.
+      const outside = d.getMonth() !== month.getMonth() || d.getFullYear() !== month.getFullYear();
+      if (outside && cells.some(c => !c.outside)) break;
+      cells.push({
+        date,
+        dayNumber: d.getDate(),
+        past: date < today,
+        outside,
+        locked: outside || date > horizon,
+      });
     }
     return cells;
   });
@@ -632,8 +753,36 @@ export class DoctorConfigComponent implements OnInit {
 
   shiftMarkingMonth(delta: number): void {
     const m = this.markingMonth();
-    this.markingMonth.set(new Date(m.getFullYear(), m.getMonth() + delta, 1));
+    const next = new Date(m.getFullYear(), m.getMonth() + delta, 1);
+    // No se navega mas alla de la ventana programable; hacia atras si se
+    // permite, para poder revisar meses ya criados sin poder editarlos.
+    if (delta > 0 && next.getTime() > this.maxMarkableMonth().getTime()) return;
+    this.markingMonth.set(next);
     this.rangeAnchor.set(null);
+  }
+
+  /** 'YYYY-MM', clave de mes que usan la tira y los contadores. */
+  stripKey(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  goToMonth(d: Date): void {
+    this.markingMonth.set(new Date(d.getFullYear(), d.getMonth(), 1));
+    this.rangeAnchor.set(null);
+  }
+
+  goToCurrentMonth(): void {
+    const now = new Date();
+    this.markingMonth.set(new Date(now.getFullYear(), now.getMonth(), 1));
+    this.rangeAnchor.set(null);
+  }
+
+  isCurrentMarkingMonth(): boolean {
+    const now = new Date();
+    return (
+      this.markingMonth().getFullYear() === now.getFullYear() &&
+      this.markingMonth().getMonth() === now.getMonth()
+    );
   }
 
   /**
@@ -643,6 +792,14 @@ export class DoctorConfigComponent implements OnInit {
    */
   onMarkingDayClick(date: string): void {
     if (date < todayStr()) return;
+    // Fuera de la ventana de programacion no se escribe nada.
+    if (date > this.maxMarkableDate()) {
+      this.toast.show(
+        'Fuera del periodo programable',
+        `Se puede marcar hasta el ${this.maxMarkableDate().split('-').reverse().join('/')}.`,
+      );
+      return;
+    }
 
     const anchor = this.rangeAnchor();
     if (anchor) {
@@ -660,6 +817,85 @@ export class DoctorConfigComponent implements OnInit {
     // siguiente clic lo cierre hasta donde se llegue.
     this.setMarked(date, this.stateOf(date) !== 'full');
     this.rangeArmed.set(true);
+  }
+
+  /**
+   * Fechas de un dia de la semana dentro del mes en pantalla. Los dias ya
+   * pasados se excluyen porque no se pueden marcar.
+   */
+  weekdayDates(dayOfWeek: number): string[] {
+    const month = this.markingMonth();
+    const prefix = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
+    return this.markingCells()
+      .filter(c => c.date.startsWith(prefix) && !c.past && !c.outside)
+      .filter(c => c.date <= this.maxMarkableDate())
+      .filter(c => isoDayOfWeekOf(c.date) === dayOfWeek)
+      .map(c => c.date);
+  }
+
+  /** Estado del encabezado: si todos los de ese dia estan marcados, se resalta. */
+  weekdayState(dayOfWeek: number): 'full' | 'partial' | 'none' {
+    const dates = this.weekdayDates(dayOfWeek);
+    if (!dates.length) return 'none';
+    const full = dates.filter(d => this.stateOf(d) === 'full').length;
+    if (full === 0) return 'none';
+    return full === dates.length ? 'full' : 'partial';
+  }
+
+  /**
+   * Clic en el encabezado del dia de la semana: marca o desmarca todas las
+   * fechas de ese dia en el mes visible, como si se hubieran marcado una por
+   * una. Se escribe una sola vez por medico con el conjunto completo, igual
+   * que el rango, para no disparar una peticion por cada dia del mes.
+   */
+  toggleWeekday(dayOfWeek: number): void {
+    const dates = this.weekdayDates(dayOfWeek);
+    if (!dates.length) return;
+
+    const unmark = this.weekdayState(dayOfWeek) === 'full';
+    const ids = this.targetDoctorIds();
+    const current = this.markedByDoctor();
+
+    this.savingDays.set(true);
+    this.markedByDoctor.update(all => {
+      const next: Record<string, Set<string>> = {};
+      for (const [id, set] of Object.entries(all)) next[id] = new Set(set);
+      for (const id of ids) {
+        for (const d of dates) {
+          if (unmark) next[id]?.delete(d);
+          else next[id]?.add(d);
+        }
+      }
+      return next;
+    });
+
+    forkJoin(
+      ids.map(id => {
+        const complete = new Set(current[id] ?? []);
+        for (const d of dates) {
+          if (unmark) complete.delete(d);
+          else complete.add(d);
+        }
+        return this.data.setDoctorWorkingDates(
+          id,
+          [...complete].map(d => ({ date: d, note: null })),
+        );
+      }),
+    ).subscribe({
+      next: () => {
+        this.savingDays.set(false);
+        const name = this.weekLabels[dayOfWeek - 1];
+        this.toast.show(
+          unmark ? `${name} desmarcado` : `${name} marcado`,
+          `${dates.length} días de ${name} para ${this.whoLabel()}.`,
+        );
+      },
+      error: () => {
+        this.savingDays.set(false);
+        this.loadScope();
+        this.toast.show('No se pudo cambiar el día de la semana', this.failureHint(ids));
+      },
+    });
   }
 
   private setMarked(date: string, marked: boolean): void {
@@ -707,9 +943,20 @@ export class DoctorConfigComponent implements OnInit {
     const dates: string[] = [];
     const cursor = new Date(`${from}T00:00:00`);
     const end = new Date(`${to}T00:00:00`);
+    const horizon = this.maxMarkableDate();
+    let truncated = false;
     while (cursor <= end) {
-      dates.push(toDateStr(cursor));
+      const date = toDateStr(cursor);
+      if (date > horizon) truncated = true;
+      else dates.push(date);
       cursor.setDate(cursor.getDate() + 1);
+    }
+    if (!dates.length) {
+      this.toast.show(
+        'Fuera del periodo programable',
+        `Se puede marcar hasta el ${horizon.split('-').reverse().join('/')}.`,
+      );
+      return;
     }
     const inRange = new Set(dates);
     const marked = this.markedByDoctor();
@@ -738,7 +985,9 @@ export class DoctorConfigComponent implements OnInit {
         this.savingDays.set(false);
         this.toast.show(
           `${dates.length} días marcados`,
-          `Del ${from} al ${to} para ${this.whoLabel()}.`,
+          truncated
+            ? `Del ${from} al ${horizon.split('-').reverse().join('/')} para ${this.whoLabel()}: el rango llegaba más allá de la ventana programable.`
+            : `Del ${from} al ${to} para ${this.whoLabel()}.`,
         );
       },
       error: () => {
@@ -765,8 +1014,11 @@ export class DoctorConfigComponent implements OnInit {
     this.markingSchedule.set(true);
     const ids = this.targetDoctorIds();
     // 90 dias, no 60: con 60 el horizonte no avanzaria mas alla de donde
-    // quedo la siembra y el boton pareceria no hacer nada.
-    forkJoin(ids.map(id => this.data.markFromSchedule(id, 90))).subscribe({
+    // quedo la siembra y el boton pareceria no hacer nada. Se recorta al final
+    // de la ventana programable para no escribir meses que el usuario no ve.
+    const available = this.daysUntilHorizon();
+    const days = Math.max(1, Math.min(90, available));
+    forkJoin(ids.map(id => this.data.markFromSchedule(id, days))).subscribe({
       next: results => {
         this.markingSchedule.set(false);
         this.loadScope();
@@ -915,4 +1167,18 @@ function toDateStr(d: Date): string {
 /** 1 = lunes ... 7 = domingo, igual que day_of_week en la base. */
 function isoDayOfWeekOf(dateStr: string): number {
   return ((new Date(`${dateStr}T00:00:00`).getDay() + 6) % 7) + 1;
+}
+
+const MONTH_NAMES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
+const MONTH_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+/** Meses hacia adelante en los que se puede seguir programando. */
+const MONTHS_AHEAD = 3;
+
+function monthLabel(d: Date): string {
+  return `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
 }
