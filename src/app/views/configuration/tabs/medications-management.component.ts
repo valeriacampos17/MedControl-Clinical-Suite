@@ -192,7 +192,7 @@ export class MedicationsManagementComponent {
   save(): void {
     const f = this.form();
     if (!f.name.trim()) {
-      this.toast.show('Faltan Datos', 'Ingrese el nombre del medicamento.');
+      this.toast.show('Faltan Datos', 'Ingrese el nombre del medicamento.', 'warning');
       return;
     }
     const med = { ...f, name: f.name.trim() };

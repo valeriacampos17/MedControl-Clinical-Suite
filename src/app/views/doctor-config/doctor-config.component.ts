@@ -484,7 +484,7 @@ export class DoctorConfigComponent implements OnInit {
       },
       error: () => {
         this.loading.set(false);
-        this.toast.show('No se pudo cargar la disponibilidad', 'Revise la conexión e intente de nuevo.');
+        this.toast.show('No se pudo cargar la disponibilidad', 'Revise la conexión e intente de nuevo.', 'error');
       },
     });
   }
@@ -812,8 +812,8 @@ daysUntilHorizon(): number {
     if (date > this.maxMarkableDate()) {
       this.toast.show(
         'Fuera del periodo programable',
-        `Se puede marcar hasta el ${this.maxMarkableDate().split('-').reverse().join('/')}.`,
-      );
+        `Se puede marcar hasta el ${this.maxMarkableDate().split('-').reverse().join('/')}.`
+      , 'warning');
       return;
     }
 
@@ -909,7 +909,7 @@ daysUntilHorizon(): number {
       error: () => {
         this.savingDays.set(false);
         this.loadScope();
-        this.toast.show('No se pudo cambiar el día de la semana', this.failureHint(ids));
+        this.toast.show('No se pudo cambiar el día de la semana', this.failureHint(ids), 'error');
       },
     });
   }
@@ -930,8 +930,8 @@ daysUntilHorizon(): number {
         this.loadScope();
         this.toast.show(
           'No se pudo cambiar el día',
-          this.failureHint(ids),
-        );
+          this.failureHint(ids)
+        , 'error');
       },
     });
   }
@@ -970,8 +970,8 @@ daysUntilHorizon(): number {
     if (!dates.length) {
       this.toast.show(
         'Fuera del periodo programable',
-        `Se puede marcar hasta el ${horizon.split('-').reverse().join('/')}.`,
-      );
+        `Se puede marcar hasta el ${horizon.split('-').reverse().join('/')}.`
+      , 'warning');
       return;
     }
     const inRange = new Set(dates);
@@ -1009,7 +1009,7 @@ daysUntilHorizon(): number {
       error: () => {
         this.savingDays.set(false);
         this.loadScope();
-        this.toast.show('No se pudo marcar el rango', this.failureHint(ids));
+        this.toast.show('No se pudo marcar el rango', this.failureHint(ids), 'error');
       },
     });
   }
@@ -1047,7 +1047,7 @@ daysUntilHorizon(): number {
       error: () => {
         this.markingSchedule.set(false);
         this.loadScope();
-        this.toast.show('No se pudieron marcar los días', this.failureHint(ids));
+        this.toast.show('No se pudieron marcar los días', this.failureHint(ids), 'error');
       },
     });
   }
@@ -1123,7 +1123,7 @@ daysUntilHorizon(): number {
         this.absences.update(abs => abs.filter(a => a.id !== id));
         this.toast.show('Bloqueo Eliminado', 'Horario liberado para agendamiento.');
       },
-      error: (err: Error) => this.toast.show('No se pudo eliminar el bloqueo', err.message),
+      error: (err: Error) => this.toast.show('No se pudo eliminar el bloqueo', err.message, 'error'),
     });
   }
 
@@ -1158,8 +1158,8 @@ daysUntilHorizon(): number {
       this.confirmedSave = true;
       this.toast.show(
         `Se guardará en ${ids.length} médicos`,
-        'Presione Guardar otra vez para confirmar, o cambie a un solo médico.',
-      );
+        'Presione Guardar otra vez para confirmar, o cambie a un solo médico.'
+      , 'info');
       return;
     }
     this.confirmedSave = false;
@@ -1188,8 +1188,8 @@ daysUntilHorizon(): number {
     if (problems.length) {
       this.toast.show(
         `Faltan horas en ${problems.length === 1 ? 'un día' : `${problems.length} días`}`,
-        `${problems.join(', ')}: escriba la hora de inicio y de fin, o apague el día.`,
-      );
+        `${problems.join(', ')}: escriba la hora de inicio y de fin, o apague el día.`
+      , 'warning');
       return;
     }
 
@@ -1215,7 +1215,7 @@ daysUntilHorizon(): number {
       error: (err: Error) => {
         this.saving.set(false);
         this.loadScope();
-        this.toast.show('No se pudo guardar', err.message);
+        this.toast.show('No se pudo guardar', err.message, 'error');
       },
     });
   }

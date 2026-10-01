@@ -180,7 +180,7 @@ export class NewPatientModalComponent {
 
   handleCreatePatient(): void {
     if (!this.canSubmit()) {
-      this.toast.show('Faltan Datos', 'Ingrese al menos el nombre completo y la CI del paciente.');
+      this.toast.show('Faltan Datos', 'Ingrese al menos el nombre completo y la CI del paciente.', 'warning');
       return;
     }
     const f = this.form();

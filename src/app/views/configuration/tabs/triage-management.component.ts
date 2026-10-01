@@ -292,7 +292,7 @@ export class TriageManagementComponent {
   saveLevel(): void {
     const f = this.levelForm();
     if (!f.name.trim()) {
-      this.toast.show('Faltan Datos', 'Ingrese el nombre del nivel.');
+      this.toast.show('Faltan Datos', 'Ingrese el nombre del nivel.', 'warning');
       return;
     }
     const order = this.levelCodes.indexOf(f.code) >= 0 ? this.levelCodes.length - this.levelCodes.indexOf(f.code) : 2;
@@ -333,11 +333,11 @@ export class TriageManagementComponent {
   saveRule(): void {
     const f = this.ruleForm();
     if (f.min === null && f.max === null) {
-      this.toast.show('Faltan Datos', 'Defina al menos un límite (mínimo o máximo) para la regla.');
+      this.toast.show('Faltan Datos', 'Defina al menos un límite (mínimo o máximo) para la regla.', 'warning');
       return;
     }
     if (f.min !== null && f.max !== null && f.min > f.max) {
-      this.toast.show('Rango Inválido', 'El mínimo no puede ser mayor que el máximo.');
+      this.toast.show('Rango Inválido', 'El mínimo no puede ser mayor que el máximo.', 'warning');
       return;
     }
     if (this.editingRule()) {

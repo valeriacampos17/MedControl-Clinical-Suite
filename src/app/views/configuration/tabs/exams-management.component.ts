@@ -180,7 +180,7 @@ export class ExamsManagementComponent {
   save(): void {
     const f = this.form();
     if (!f.name.trim()) {
-      this.toast.show('Faltan Datos', 'Ingrese el nombre del examen.');
+      this.toast.show('Faltan Datos', 'Ingrese el nombre del examen.', 'warning');
       return;
     }
     if (this.editing()) {

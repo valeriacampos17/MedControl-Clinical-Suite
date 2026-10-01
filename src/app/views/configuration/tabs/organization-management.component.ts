@@ -79,7 +79,7 @@ export class OrganizationManagementComponent {
   save(): void {
     const f = this.form();
     if (!f.name.trim()) {
-      this.toast.show('Faltan Datos', 'Ingrese el nombre del centro de salud.');
+      this.toast.show('Faltan Datos', 'Ingrese el nombre del centro de salud.', 'warning');
       return;
     }
     this.data.updateOrganization({ ...f, name: f.name.trim() });
