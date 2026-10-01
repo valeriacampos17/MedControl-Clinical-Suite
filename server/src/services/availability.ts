@@ -232,21 +232,27 @@ function whyBlocked(doctorId: string, date: string): { reason: BlockedReason; de
  */
 export function getOpenDates(from: string, to: string): string[] {
   const doctors = db.prepare('SELECT id FROM doctors').all() as Array<{ id: string }>;
-  const openDates = new Set<string>();
+  const marked = new Map<string, string[]>();
   for (const { id } of doctors) {
     ensureDaySchedule(id);
-    for (const { date } of getDoctorWorkingDates(id, from, to)) {
-      openDates.add(date);
-    }
+    marked.set(id, getDoctorWorkingDates(id, from, to).map(d => d.date));
   }
-  if (openDates.size === 0) return [];
 
   const dates: string[] = [];
   for (let date = from; date <= to; date = addDays(date, 1)) {
     if (date < todayStr()) continue;
-    if (!openDates.has(date)) continue;
     if (blockingClinicClosure(date)) continue;
-    dates.push(date);
+    // Antes bastaba con que un medico tuviera el dia marcado y el Dashboard
+    // abria el dia aunque ningun medico tuviera jornada ese dia de la semana.
+    // Ahora se consulta por medico con la misma razon que usa el calendario de
+    // reserva, asi los dos digiten la misma respuesta.
+    const someoneCanTakeIt = doctors.some(({ id }) => {
+      if (!marked.get(id)?.includes(date)) return false;
+      const blocked = whyBlocked(id, date);
+      // Sin-cupo no apaga el dia: la clinica abre igual, solo se lleno.
+      return blocked === null || blocked.reason === 'sin-cupo';
+    });
+    if (someoneCanTakeIt) dates.push(date);
   }
   return dates;
 }
