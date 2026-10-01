@@ -16,9 +16,7 @@ import { Component, input } from '@angular/core';
         @if (icon() && iconPosition() === 'left') {
           <span class="material-symbols-outlined text-[18px] leading-none shrink-0">{{ icon() }}</span>
         }
-        @if (children) {
-          <span><ng-content /></span>
-        }
+        <span><ng-content /></span>
         @if (icon() && iconPosition() === 'right') {
           <span class="material-symbols-outlined text-[18px] leading-none shrink-0">{{ icon() }}</span>
         }

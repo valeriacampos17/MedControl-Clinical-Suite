@@ -41,7 +41,7 @@ import { NavRoute } from '../../core/models/types';
               [value]="searchQuery()"
               (input)="onSearchInput($event)"
               (focus)="showSearchDropdown.set(true)"
-              placeholder="Buscar paciente por RUT, nombre o cita médica..."
+              placeholder="Buscar paciente por CI, nombre o cita médica..."
               class="w-full h-9 pl-10 pr-4 rounded-lg bg-[#f2f4f6] text-[13px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#006a61] transition-all border border-transparent focus:border-[#006a61]"
             />
           </div>
@@ -59,7 +59,7 @@ import { NavRoute } from '../../core/models/types';
                   >
                     <div>
                       <p class="text-[13px] font-semibold text-[#191c1e]">{{ item.name }}</p>
-                      <p class="text-[11px] text-[#76777d]">RUT: {{ item.rut }} · {{ item.age }}</p>
+                      <p class="text-[11px] text-[#76777d]">CI: {{ item.rut }} · {{ item.age }}</p>
                     </div>
                     <span class="material-symbols-outlined text-[#006a61] text-[18px]">
                       arrow_forward

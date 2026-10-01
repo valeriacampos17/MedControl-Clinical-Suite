@@ -336,7 +336,12 @@ export class RecetasComponent {
       .slice(0, 2)
       .map((w) => w[0].toUpperCase())
       .join('');
-    const meta = [subtitle, org.rut, org.phone].filter((v) => v && v.trim()).join(' · ');
+    // El identificador de la empresa es RIF, no CI: la CI identifica a un
+    // paciente. Se rotula porque esta linea comparte sitio con el telefono y
+    // un numero suelto no dice de que es.
+    const meta = [subtitle, org.rut ? `RIF ${org.rut}` : '', org.phone]
+      .filter((v) => v && v.trim())
+      .join(' · ');
     const slogan = org.slogan?.trim();
     return `
       <div class="brand">

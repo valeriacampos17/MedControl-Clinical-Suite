@@ -21,7 +21,7 @@ import { inputValue, selectValue } from '../../core/utils/form.utils';
       [footerTemplate]="true"
       (dismiss)="dismiss.emit()"
     >
-      <form class="flex flex-col gap-4" (ngSubmit)="handleCreatePatient()">
+      <form class="flex flex-col gap-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label class="flex flex-col gap-1.5 sm:col-span-2">
             <span class="text-[12px] font-bold text-[#191c1e]">Nombre Completo *</span>
@@ -37,7 +37,7 @@ import { inputValue, selectValue } from '../../core/utils/form.utils';
           </label>
 
           <label class="flex flex-col gap-1.5">
-            <span class="text-[12px] font-bold text-[#191c1e]">RUT *</span>
+            <span class="text-[12px] font-bold text-[#191c1e]">CI *</span>
             <input
               type="text"
               name="rut"
@@ -135,19 +135,19 @@ import { inputValue, selectValue } from '../../core/utils/form.utils';
           <span class="material-symbols-outlined text-[16px] shrink-0 mt-0.5">info</span>
           <span>Los datos clínicos (consentimiento, condiciones crónicas y medicamentos) se precargan con la ficha de demostración hasta que se agregue información real.</span>
         </div>
-        <div modal-footer>
-          <app-button variant="light" size="md" (click)="dismiss.emit()">Cancelar</app-button>
-          <app-button
-            variant="primary"
-            size="md"
-            type="submit"
-            icon="person_add"
-            [disabled]="!canSubmit()"
-          >
-            Registrar Paciente
-          </app-button>
-        </div>
       </form>
+      <div modal-footer>
+        <app-button variant="light" size="md" (click)="dismiss.emit()">Cancelar</app-button>
+        <app-button
+          variant="primary"
+          size="md"
+          icon="person_add"
+          [disabled]="!canSubmit()"
+          (click)="handleCreatePatient()"
+        >
+          Registrar Paciente
+        </app-button>
+      </div>
     </app-modal>
   `,
 })
@@ -180,7 +180,7 @@ export class NewPatientModalComponent {
 
   handleCreatePatient(): void {
     if (!this.canSubmit()) {
-      this.toast.show('Faltan Datos', 'Ingrese al menos el nombre completo y el RUT del paciente.');
+      this.toast.show('Faltan Datos', 'Ingrese al menos el nombre completo y la CI del paciente.');
       return;
     }
     const f = this.form();

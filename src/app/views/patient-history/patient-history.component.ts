@@ -45,8 +45,8 @@ import { NewPatientModalComponent } from '../../shared/new-patient-modal/new-pat
               <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#76777d] text-[18px] pointer-events-none" aria-hidden="true">search</span>
               <input
                 type="text"
-                placeholder="Buscar paciente por nombre o RUT..."
-                title="Buscar un paciente por nombre o RUT para seleccionarlo en la ficha clínica"
+                placeholder="Buscar paciente por nombre o CI..."
+                title="Buscar un paciente por nombre o CI para seleccionarlo en la ficha clínica"
                 class="w-full pl-9 pr-3 py-2 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61] transition-colors"
                 [value]="searchPatientTerm()"
                 (input)="onSearchPatient($event)"

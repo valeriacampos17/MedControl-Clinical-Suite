@@ -52,31 +52,31 @@ export interface PickerItem {
             (focus)="open.set(true)"
             (blur)="onBlur()"
           />
+          @if (open() && filtered().length > 0) {
+            <div class="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-lg border border-[#e6e8ea] max-h-60 overflow-y-auto">
+              @for (item of filtered(); track item.id) {
+                <button
+                  type="button"
+                  class="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[#f2f4f6] transition-colors first:rounded-t-xl last:rounded-b-xl"
+                  (mousedown)="choose(item.id)"
+                >
+                  <div class="w-8 h-8 rounded-lg bg-[#006a61] text-white flex items-center justify-center text-[11px] font-bold ring-1 ring-[#eceef0] shrink-0">
+                    {{ initials(item.title) }}
+                  </div>
+                  <div class="flex flex-col min-w-0">
+                    <span class="text-[13px] font-semibold text-[#191c1e] truncate">{{ item.title }}</span>
+                    <span class="text-[11px] text-[#76777d] truncate">{{ item.subtitle }}</span>
+                  </div>
+                </button>
+              }
+            </div>
+          }
+          @if (open() && term() && filtered().length === 0) {
+            <div class="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-lg border border-[#e6e8ea] p-4 text-center">
+              <span class="text-[12px] text-[#76777d]">{{ emptyMessage().replace('{term}', term()) }}</span>
+            </div>
+          }
         </div>
-        @if (open() && filtered().length > 0) {
-          <div class="absolute z-30 mt-1 w-full max-w-[calc(100%-2rem)] bg-white rounded-xl shadow-lg border border-[#e6e8ea] max-h-60 overflow-y-auto">
-            @for (item of filtered(); track item.id) {
-              <button
-                type="button"
-                class="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[#f2f4f6] transition-colors first:rounded-t-xl last:rounded-b-xl"
-                (mousedown)="choose(item.id)"
-              >
-                <div class="w-8 h-8 rounded-lg bg-[#006a61] text-white flex items-center justify-center text-[11px] font-bold ring-1 ring-[#eceef0] shrink-0">
-                  {{ initials(item.title) }}
-                </div>
-                <div class="flex flex-col min-w-0">
-                  <span class="text-[13px] font-semibold text-[#191c1e] truncate">{{ item.title }}</span>
-                  <span class="text-[11px] text-[#76777d] truncate">{{ item.subtitle }}</span>
-                </div>
-              </button>
-            }
-          </div>
-        }
-        @if (open() && term() && filtered().length === 0) {
-          <div class="absolute z-30 mt-1 w-full max-w-[calc(100%-2rem)] bg-white rounded-xl shadow-lg border border-[#e6e8ea] p-4 text-center">
-            <span class="text-[12px] text-[#76777d]">{{ emptyMessage().replace('{term}', term()) }}</span>
-          </div>
-        }
       </div>
     } @else {
       <div class="p-4 rounded-xl bg-[#f2f4f6] border border-[#e0e3e5]">
