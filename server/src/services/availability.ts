@@ -204,13 +204,24 @@ function whyBlocked(doctorId: string, date: string): { reason: BlockedReason; de
   }
 
   const schedule = getDaySchedule(doctorId, isoDayOfWeek(date));
+  const dayName = DAY_NAMES[isoDayOfWeek(date)];
   if (!schedule || !schedule.enabled) {
     // El dia esta marcado, asi que la falta son las horas. Decirlo asi evita
     // que el medico marque un sabado y vea que no se puede reservar sin
     // saber que le falta configurar el horario de ese dia de la semana.
     return {
       reason: 'sin-horario',
-      detail: `El ${DAY_NAMES[isoDayOfWeek(date)].toLowerCase()} esta marcado pero no tiene horario configurado en la jornada del medico`,
+      detail: `El ${dayName.toLowerCase()} esta marcado pero no tiene horario configurado en la jornada del medico`,
+    };
+  }
+  // Barrera extra para datos que quedaron viejos o imports que no pasaron por
+  // la validacion del PUT. Con enabled en true pero sin horas, la fila se
+  // colaba como disponible y getAvailableSlots devolvia cero horarios: el dia
+  // se veia agendable y no habia nada que elegir. Aqui se explica en su lugar.
+  if (Number.isNaN(toMinutes(schedule.startTime)) || Number.isNaN(toMinutes(schedule.endTime))) {
+    return {
+      reason: 'sin-horario',
+      detail: `El ${dayName.toLowerCase()} esta habilitado pero su jornada no tiene hora de inicio y de fin`,
     };
   }
 

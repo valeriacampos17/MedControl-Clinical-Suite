@@ -503,7 +503,16 @@ export class DoctorConfigComponent implements OnInit {
     const day = this.scheduleDays()[dayIndex];
     if (day) this.touchRow(day.dayOfWeek);
     this.scheduleDays.update(days =>
-      days.map((d, idx) => (idx === dayIndex ? { ...d, enabled: !d.enabled } : d))
+      days.map((d, idx) => {
+        if (idx !== dayIndex) return d;
+        // Apagar el dia se lleva las horas y los cupos: un dia habilitado sin
+        // horas no es un estado que el sistema pueda representar, y el PUT lo
+        // rechaza. Encenderlo deja las horas vacias a proposito, para que se
+        // escriban y el guardado no falle.
+        return d.enabled
+          ? { ...d, enabled: false, startTime: '', endTime: '', totalCapacity: 0 }
+          : { ...d, enabled: true };
+      }),
     );
   }
 
@@ -1047,6 +1056,12 @@ daysUntilHorizon(): number {
     const value = (event.target as HTMLInputElement).value;
     const day = this.scheduleDays()[dayIndex];
     if (day) this.touchRow(day.dayOfWeek);
+    // El input nativo entrega "" mientras la hora esta a medio escribir, por
+    // ejemplo cuando se teclea "09" y todavia no se completa. Propagar ese
+    // vacio borraba la hora que ya habia y dejaba el dia habilitado sin
+    // horas, que el servidor ahora rechaza y por eso rompia el guardado.
+    // Se ignora: el valor real llega cuando el control queda completo.
+    if (!value) return;
     this.scheduleDays.update(days =>
       days.map((d, idx) =>
         // Escribir una hora enciende el día: si no, una fila divergente que
