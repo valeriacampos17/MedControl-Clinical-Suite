@@ -86,7 +86,7 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
             <span class="text-[13px] font-semibold text-[#191c1e]">Activo</span>
           </label>
         </div>
-        <div modal-footer>
+        <div modal-footer class="flex items-center justify-end gap-2.5">
           <app-button variant="light" size="md" (click)="close()">Cancelar</app-button>
           <app-button variant="primary" size="md" icon="check" (click)="save()">{{ editing() ? 'Guardar Cambios' : 'Agregar Código' }}</app-button>
         </div>

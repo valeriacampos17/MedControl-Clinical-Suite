@@ -107,7 +107,7 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
             <textarea rows="2" [value]="form().preparation" (input)="onInput('preparation', $event)" class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61] resize-none" placeholder="Ej: Ayuno de 12 horas"></textarea>
           </label>
         </div>
-        <div modal-footer>
+        <div modal-footer class="flex items-center justify-end gap-2.5">
           <app-button variant="light" size="md" (click)="close()">Cancelar</app-button>
           <app-button variant="primary" size="md" icon="check" (click)="save()">{{ editing() ? 'Guardar Cambios' : 'Agregar Examen' }}</app-button>
         </div>

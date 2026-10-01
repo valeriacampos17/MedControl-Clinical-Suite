@@ -95,7 +95,7 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
             </label>
           </div>
         </div>
-        <div modal-footer>
+        <div modal-footer class="flex items-center justify-end gap-2.5">
           <app-button variant="light" size="md" (click)="close()">Cancelar</app-button>
           <app-button variant="primary" size="md" icon="check" (click)="save()">Crear Usuario</app-button>
         </div>
