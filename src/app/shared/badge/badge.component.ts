@@ -38,7 +38,12 @@ export class BadgeComponent {
       info: 'bg-[#acedff]/30 text-[#004e5c] border border-[#acedff]',
     };
 
-    return `inline-flex items-center gap-1.5 rounded-full select-none ${sizes[this.size()]} ${variants[this.variant()]}`;
+    // El proyecto corre con strictTemplates en false, asi que un variant mal
+    // escrito no falla el build: se cuela y devuelve undefined, y el navegador
+    // recibe la clase "undefined". Se cae a neutral para que se vea algo
+    // coherente en vez de una pastilla sin fondo.
+    const classes = variants[this.variant()] ?? variants['neutral'];
+    return `inline-flex items-center gap-1.5 rounded-full select-none ${sizes[this.size()]} ${classes}`;
   }
 
   dotColor(): string {
