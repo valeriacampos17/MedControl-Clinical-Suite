@@ -7,6 +7,8 @@ import {
 } from '../services/availability.js';
 import {
   getDoctorWorkingDates,
+  lastSchedulableDate,
+  outsideHorizon,
   markDoctorWorkingDate,
   markFromSchedule,
   setDoctorWorkingDates,
@@ -16,19 +18,6 @@ import {
 export const availabilityRouter = Router();
 
 const MAX_RANGE_DAYS = 120;
-
-/**
- * Ultimo dia que se puede agendar: el mes actual mas tres siguientes. Es el
- * mismo limite que aplica la interfaz al marcar dias en Configuracion del
- * Sistema, y va aqui para que ningun cliente pueda agendar mas alla. Sin esto,
- * una fecha lejana se aceptaba por API aunque nadie puede marcarla.
- */
-function lastSchedulableDate(): string {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() + 4, 0)
-    .toISOString()
-    .slice(0, 10);
-}
 
 /** Dias inclusive entre dos fechas ISO. */
 function dayCount(from: string, to: string): number {
@@ -137,8 +126,9 @@ availabilityRouter.post('/working-dates/:date', (req, res) => {
     res.status(400).json({ error: `Fecha invalida: ${date}` });
     return;
   }
-  if (date > lastSchedulableDate()) {
-    res.status(400).json({ error: `No se puede marcar mas alla del ${lastSchedulableDate()} (tres meses vista)` });
+  const outside = outsideHorizon(date);
+  if (outside) {
+    res.status(400).json({ error: outside });
     return;
   }
   const marked = req.body?.marked;

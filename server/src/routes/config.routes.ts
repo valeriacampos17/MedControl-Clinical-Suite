@@ -6,6 +6,7 @@ import {
   getDaySchedules,
   getWorkingDays,
   getBusinessDays,
+  outsideHorizon,
   toggleWorkingDay,
   setWorkingDays,
   setDaySchedule,
@@ -39,6 +40,14 @@ configRouter.post('/working-days/toggle', (req, res) => {
     res.status(400).json({ error: 'El parámetro date es requerido' });
     return;
   }
+  // Esta ruta tambien escribe un dia, asi que tambien consulta el horizonte.
+  // Antes solo lo hacia la ruta de disponibilidad, y por API se aceptaba una
+  // fecha de tres meses vista que la pantalla ya no dejaba marcar.
+  const outside = outsideHorizon(date);
+  if (outside) {
+    res.status(400).json({ error: outside });
+    return;
+  }
   toggleWorkingDay(date);
   res.json({ workingDays: getWorkingDays() });
 });
@@ -48,6 +57,16 @@ configRouter.put('/working-days', (req, res) => {
   if (!Array.isArray(days)) {
     res.status(400).json({ error: 'Se espera un arreglo de días hábiles' });
     return;
+  }
+  // Se revisa todo antes de escribir nada: setWorkingDays borra la tabla
+  // entera, asi que un dia fuera del horizonte que se colara en el arreglo
+  // dejaria los dias validos tambien en el aire.
+  for (const d of days) {
+    const outside = outsideHorizon(String(d?.date ?? ''));
+    if (outside) {
+      res.status(400).json({ error: `${outside} (recibe: ${String(d?.date ?? '')})` });
+      return;
+    }
   }
   setWorkingDays(days);
   res.json({ workingDays: getWorkingDays() });

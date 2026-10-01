@@ -18,6 +18,31 @@ export function isoDayOfWeek(dateStr: string): number {
 /** Tope de dias que se pueden recorrer al buscar dias habiles. */
 const MAX_SCAN_DAYS = 400;
 
+/**
+ * Ultimo dia que se puede agendar: el mes actual mas tres siguientes.
+ *
+ * Vive aqui y no en la ruta de disponibilidad porque hay mas de un camino para
+ * marcar un dia, y cada uno que no lo consulte abre su propia puerta: la
+ * pantalla de Configuracion tiene un toggle propio sobre `working_days` que
+ * aceptaba 2027-02-15 en produccion mientras la otra ruta si lo rechazaba.
+ * Una sola definicion del limite, y todas las rutas la comparten.
+ */
+export function lastSchedulableDate(): string {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 4, 0)
+    .toISOString()
+    .slice(0, 10);
+}
+
+/** Motivo por el que una fecha no se puede marcar, o null si se puede. */
+export function outsideHorizon(date: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return `Fecha invalida: ${date}`;
+  if (date > lastSchedulableDate()) {
+    return `No se puede marcar mas alla del ${lastSchedulableDate()} (tres meses vista)`;
+  }
+  return null;
+}
+
 // ------------------------------------------------- dias que labora el medico --
 
 export interface DoctorWorkingDate {
