@@ -17,6 +17,19 @@ export const availabilityRouter = Router();
 
 const MAX_RANGE_DAYS = 120;
 
+/**
+ * Ultimo dia que se puede agendar: el mes actual mas tres siguientes. Es el
+ * mismo limite que aplica la interfaz al marcar dias en Configuracion del
+ * Sistema, y va aqui para que ningun cliente pueda agendar mas alla. Sin esto,
+ * una fecha lejana se aceptaba por API aunque nadie puede marcarla.
+ */
+function lastSchedulableDate(): string {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 4, 0)
+    .toISOString()
+    .slice(0, 10);
+}
+
 /** Dias inclusive entre dos fechas ISO. */
 function dayCount(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
@@ -82,6 +95,12 @@ availabilityRouter.put('/working-dates', (req, res) => {
     res.status(400).json({ error: `Fecha invalida: ${String(invalid?.date)}` });
     return;
   }
+  const limit = lastSchedulableDate();
+  const beyond = days.find(d => String(d.date) > limit);
+  if (beyond) {
+    res.status(400).json({ error: `No se puede marcar mas alla del ${limit} (tres meses vista)` });
+    return;
+  }
   res.json({ doctorId, dates: setDoctorWorkingDates(doctorId, days.map(d => ({ date: d.date, note: d.note ?? null }))) });
 });
 
@@ -95,8 +114,11 @@ availabilityRouter.post('/working-dates/mark-from-schedule', (req, res) => {
     return;
   }
   const horizon = Number(req.body?.days ?? 60);
-  if (!Number.isInteger(horizon) || horizon <= 0 || horizon > 365) {
-    res.status(400).json({ error: 'El campo days debe ser un entero entre 1 y 365' });
+  // El tope real no es 365 sino los dias que faltan hasta el horizonte: pedir mas
+  // solo marcaria la misma ventana y haria creer que se avanzo.
+  const maxDays = dayCount(addDaysStr(new Date().toISOString().slice(0, 10), -1), lastSchedulableDate());
+  if (!Number.isInteger(horizon) || horizon <= 0 || horizon > maxDays) {
+    res.status(400).json({ error: `El campo days debe ser un entero entre 1 y ${maxDays} (hasta el horizonte)` });
     return;
   }
   const marked = markFromSchedule(doctorId, horizon);
@@ -113,6 +135,10 @@ availabilityRouter.post('/working-dates/:date', (req, res) => {
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     res.status(400).json({ error: `Fecha invalida: ${date}` });
+    return;
+  }
+  if (date > lastSchedulableDate()) {
+    res.status(400).json({ error: `No se puede marcar mas alla del ${lastSchedulableDate()} (tres meses vista)` });
     return;
   }
   const marked = req.body?.marked;

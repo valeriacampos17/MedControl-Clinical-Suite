@@ -2,6 +2,7 @@ import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { NavigationService } from '../../core/services/navigation.service';
+import { ApiService } from '../../core/services/api.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ButtonComponent } from '../../shared/button/button.component';
@@ -421,6 +422,7 @@ import { DaySchedule } from '../../core/models/types';
 export class DoctorConfigComponent implements OnInit {
   nav = inject(NavigationService);
   data = inject(MockDataService);
+  api = inject(ApiService);
   toast = inject(ToastService);
 
   scheduleDays = signal<DaySchedule[]>([...this.data.schedule()]);
@@ -445,7 +447,9 @@ export class DoctorConfigComponent implements OnInit {
 
   readonly scopeLabel = computed(() => {
     if (this.scopeIsAll()) return `Configurando los ${this.data.doctors().length} médicos a la vez`;
-    return this.data.selectedDoctor()?.name ?? '';
+    // Se resuelve desde el scope y no desde el medico del sidebar: son
+    // independientes y aqui manda el que se esta configurando.
+    return this.doctorName(this.scope());
   });
 
   /** Jornada de un solo medico, para cuando el scope es individual. */
@@ -488,6 +492,9 @@ export class DoctorConfigComponent implements OnInit {
   onSelectScope(id: 'all' | string): void {
     if (this.scope() === id) return;
     this.rangeAnchor.set(null);
+    // El aviso de guardado grupal es por intento, no permanente: cambiar de
+    // medico tiene que pedir confirmacion de nuevo.
+    this.confirmedSave = false;
     this.scope.set(id);
     this.loadScope();
   }
@@ -496,7 +503,16 @@ export class DoctorConfigComponent implements OnInit {
     const day = this.scheduleDays()[dayIndex];
     if (day) this.touchRow(day.dayOfWeek);
     this.scheduleDays.update(days =>
-      days.map((d, idx) => (idx === dayIndex ? { ...d, enabled: !d.enabled } : d))
+      days.map((d, idx) => {
+        if (idx !== dayIndex) return d;
+        // Apagar el dia se lleva las horas y los cupos: un dia habilitado sin
+        // horas no es un estado que el sistema pueda representar, y el PUT lo
+        // rechaza. Encenderlo deja las horas vacias a proposito, para que se
+        // escriban y el guardado no falle.
+        return d.enabled
+          ? { ...d, enabled: false, startTime: '', endTime: '', totalCapacity: 0 }
+          : { ...d, enabled: true };
+      }),
     );
   }
 
@@ -725,7 +741,7 @@ daysUntilHorizon(): number {
   readonly rangeHint = computed(() => {
     const anchor = this.rangeAnchor();
     if (!anchor) return '';
-    const who = this.scopeIsAll() ? 'los médicos del grupo' : this.data.selectedDoctor()?.shortName;
+    const who = this.scopeIsAll() ? 'los médicos del grupo' : this.doctorName(this.scope());
     return `Rango iniciado en ${anchor}. Elija el día final y se marcará para ${who}.`;
   });
 
@@ -1040,6 +1056,12 @@ daysUntilHorizon(): number {
     const value = (event.target as HTMLInputElement).value;
     const day = this.scheduleDays()[dayIndex];
     if (day) this.touchRow(day.dayOfWeek);
+    // El input nativo entrega "" mientras la hora esta a medio escribir, por
+    // ejemplo cuando se teclea "09" y todavia no se completa. Propagar ese
+    // vacio borraba la hora que ya habia y dejaba el dia habilitado sin
+    // horas, que el servidor ahora rechaza y por eso rompia el guardado.
+    // Se ignora: el valor real llega cuando el control queda completo.
+    if (!value) return;
     this.scheduleDays.update(days =>
       days.map((d, idx) =>
         // Escribir una hora enciende el día: si no, una fila divergente que
@@ -1094,9 +1116,34 @@ daysUntilHorizon(): number {
     return all.filter(a => !a.doctorId || a.doctorId === id);
   });
 
+  /** Elimina el bloqueo de verdad; si el servidor lo rechaza, el bloque sigue. */
   removeAbsence(id: string): void {
-    this.absences.update(abs => abs.filter(a => a.id !== id));
-    this.toast.show('Bloqueo Eliminado', 'Horario liberado para agendamiento.');
+    this.api.delete<{ ok: boolean }>(`/config/absences/${id}`).subscribe({
+      next: () => {
+        this.absences.update(abs => abs.filter(a => a.id !== id));
+        this.toast.show('Bloqueo Eliminado', 'Horario liberado para agendamiento.');
+      },
+      error: (err: Error) => this.toast.show('No se pudo eliminar el bloqueo', err.message),
+    });
+  }
+
+  /**
+   * Dias habilitados a los que les falta una hora, del payload ya armado. La
+   * misma regla que aplica el servidor: un dia habilitado sin inicio y fin no
+   * es un estado representable. Un dia apagado con las horas vacias es valido
+   * y no se reporta.
+   */
+  private incompleteDays(payloads: DaySchedule[][]): string[] {
+    const bad = new Set<string>();
+    for (const payload of payloads) {
+      for (const day of payload) {
+        if (!day.enabled) continue;
+        const hasBoth = !!day.startTime && !!day.endTime;
+        const ordered = hasBoth && day.startTime < day.endTime;
+        if (!hasBoth || !ordered) bad.add(day.day);
+      }
+    }
+    return [...bad];
   }
 
   /**
@@ -1117,18 +1164,40 @@ daysUntilHorizon(): number {
     }
     this.confirmedSave = false;
 
-    this.saving.set(true);
     const touched = this.touchedRows();
     const shown = this.scheduleDays();
 
+    // Se arma el payload antes de enviar, igual que lo haria el PUT, y se
+    // revisa lo que de verdad va a viajar. Importa revisar el payload y no la
+    // pantalla: una fila que no se toco conserva el valor que ya tenia ese
+    // medico, y si ese valor veio roto de antes el error sigue siendo real.
+    const payloads = ids.map(id => {
+      const current = this.schedulesByDoctor()[id] ?? [];
+      return shown.map(day => {
+        const own = current.find(d => d.dayOfWeek === day.dayOfWeek);
+        const keepOwn = !touched.has(day.dayOfWeek) && own;
+        return keepOwn ? own : day;
+      });
+    });
+
+    // El servidor ya rechaza un dia habilitado sin horas, pero responder 400
+    // despues de enviar esconde el motivo detras de un error generico y en
+    // modo grupado tapa el resto de los medicos. Aqui se dice que dia falta y
+    // que escribir, y no se sale a la red.
+    const problems = this.incompleteDays(payloads);
+    if (problems.length) {
+      this.toast.show(
+        `Faltan horas en ${problems.length === 1 ? 'un día' : `${problems.length} días`}`,
+        `${problems.join(', ')}: escriba la hora de inicio y de fin, o apague el día.`,
+      );
+      return;
+    }
+
+    this.saving.set(true);
+
     forkJoin(
-      ids.map(id => {
-        const current = this.schedulesByDoctor()[id] ?? [];
-        const payload = shown.map(day => {
-          const own = current.find(d => d.dayOfWeek === day.dayOfWeek);
-          const keepOwn = !touched.has(day.dayOfWeek) && own;
-          return keepOwn ? own : day;
-        });
+      payloads.map((payload, i) => {
+        const id = ids[i];
         return this.data.saveScheduleFor(id, payload).pipe(
           tap(days => this.schedulesByDoctor.update(all => ({ ...all, [id]: days }))),
         );

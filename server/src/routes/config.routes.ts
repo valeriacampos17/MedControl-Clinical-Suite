@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db/connection.js';
 import {
+  DAY_NAMES,
   dayNameToNumber,
   getDaySchedules,
   getWorkingDays,
@@ -11,6 +12,12 @@ import {
 } from '../services/schedule.js';
 
 export const configRouter = Router();
+
+/** Minutos desde medianoche, para comparar horas sin depender del texto. */
+function minutesOf(hhmm: string): number {
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(hhmm.trim());
+  return m ? Number(m[1]) * 60 + Number(m[2]) : Number.NaN;
+}
 
 configRouter.get('/working-days', (_req, res) => {
   res.json({ workingDays: getWorkingDays() });
@@ -89,8 +96,21 @@ configRouter.put('/schedules', (req, res) => {
       res.status(400).json({ error: `Hora de fin invalida: ${endTime} (se espera HH:MM)` });
       return;
     }
-    if (startTime && endTime && startTime >= endTime) {
+    // Comparar en minutos y no como texto: con HH:MM de 24 horas el orden
+    // alfabetico coincide con el cronologico, pero comparar strings depende de
+    // ese detalle y no de la regla de negocio.
+    if (startTime && endTime && minutesOf(startTime) >= minutesOf(endTime)) {
       res.status(400).json({ error: 'La hora de fin debe ser posterior a la de inicio' });
+      return;
+    }
+    // Un dia habilitado sin horas es un estado que el sistema no puede
+    // representar: whyBlocked lo daria por disponible y getAvailableSlots
+    // devolveria cero horarios, asi que se ve agendable y no hay nada que
+    // elegir. Se rechaza en la puerta en vez de fallar en silencio mas adelante.
+    if (s.enabled && !(startTime && endTime)) {
+      res.status(400).json({
+        error: `El dia ${DAY_NAMES[dayOfWeek]} esta habilitado pero no tiene hora de inicio y de fin`,
+      });
       return;
     }
     setDaySchedule(
@@ -158,6 +178,21 @@ configRouter.get('/absences', (_req, res) => {
       iconName: a.icon_name ?? 'event_busy',
     })),
   });
+});
+
+/**
+ * Elimina un bloqueo. Antes el boton de la interfaz solo lo sacaba de memoria,
+ * asi que se perdia al recargar y en realidad nunca se liberaba el horario.
+ */
+configRouter.delete('/absences/:id', (req, res) => {
+  const id = String(req.params.id);
+  const row = db.prepare('SELECT id FROM absences WHERE id = ?').get(id);
+  if (!row) {
+    res.status(404).json({ error: 'El bloqueo no existe' });
+    return;
+  }
+  db.prepare('DELETE FROM absences WHERE id = ?').run(id);
+  res.json({ ok: true, id });
 });
 
 interface OrganizationRow {

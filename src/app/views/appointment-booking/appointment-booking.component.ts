@@ -1,8 +1,11 @@
 import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
 import { BookableDay, ConsultationType, Patient } from '../../core/models/types';
+import { PickerItem, SelectionPickerComponent } from '../../shared/selection-picker/selection-picker.component';
 import { ButtonComponent } from '../../shared/button/button.component';
 import { BadgeComponent } from '../../shared/badge/badge.component';
 import { ModalComponent } from '../../shared/modal/modal.component';
@@ -16,6 +19,8 @@ interface DoctorOption {
   specialty: string;
   avatarUrl?: string;
 }
+
+const MONTH_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -40,12 +45,17 @@ function firstOfCurrentMonth(): Date {
 @Component({
   selector: 'app-appointment-booking',
   standalone: true,
-  imports: [ButtonComponent, BadgeComponent, ModalComponent, ToastComponent, NewPatientModalComponent],
+  imports: [ButtonComponent, BadgeComponent, ModalComponent, ToastComponent, NewPatientModalComponent, SelectionPickerComponent],
   template: `
     <div class="flex flex-col w-full">
-      <div class="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-6">
-        <div class="absolute -top-40 -left-20 w-96 h-96 rounded-full bg-[#86f2e4] opacity-20 blur-3xl pointer-events-none -z-10"></div>
-        <div class="absolute top-80 right-0 w-80 h-80 rounded-full bg-[#acedff] opacity-20 blur-3xl pointer-events-none -z-10"></div>
+      <!-- Sin overflow-hidden en este nivel: ese atributo crea un contexto de
+           scroll y anula el position:sticky del resumen. El recorte que necesitan
+           los circulos decorativos se hace aqui, en su propia capa. -->
+      <div class="relative w-full px-4 sm:px-6 lg:px-8 py-6">
+        <div class="absolute inset-0 overflow-hidden pointer-events-none -z-10" aria-hidden="true">
+          <div class="absolute -top-40 -left-20 w-96 h-96 rounded-full bg-[#86f2e4] opacity-20 blur-3xl"></div>
+          <div class="absolute top-80 right-0 w-80 h-80 rounded-full bg-[#acedff] opacity-20 blur-3xl"></div>
+        </div>
 
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-6 border-b border-[#eceef0]">
           <div>
@@ -65,82 +75,27 @@ function firstOfCurrentMonth(): Date {
                   <span class="w-7 h-7 rounded-full bg-[#006a61] text-white flex items-center justify-center text-[13px] font-bold">1</span>
                   <h2 class="text-[15px] font-bold text-[#191c1e]">Búsqueda &amp; Identificación del Paciente</h2>
                 </div>
-                <app-badge variant="success" size="sm">Completado</app-badge>
+                @if (selectedPatient()?.id) {
+                  <app-badge variant="success" size="sm">Completado</app-badge>
+                } @else {
+                  <app-badge variant="gray" size="sm">Pendiente</app-badge>
+                }
               </div>
 
-              @if (selectedPatient()?.id) {
-                <div class="p-4 rounded-xl bg-[#f2f4f6] border border-[#e0e3e5]">
-                  <div class="flex items-start gap-3.5">
-                    <div class="w-12 h-12 rounded-xl bg-[#006a61] text-white flex items-center justify-center text-[16px] font-bold shrink-0 ring-1 ring-[#c6c6cd]">
-                      {{ data.getInitials(selectedPatient()!.name) }}
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2 flex-wrap">
-                        <span class="text-[14px] font-bold text-[#191c1e] truncate">{{ selectedPatient()!.name }}</span>
-                        <span class="text-[11px] text-[#45464d]">{{ selectedPatient()!.age }} años ({{ selectedPatient()!.birthDate }})</span>
-                      </div>
-                      <p class="text-[12px] text-[#45464d] truncate mt-0.5">Expediente: {{ selectedPatient()!.id }} · CI: {{ selectedPatient()!.ci }}</p>
-                    </div>
-                    <button
-                      type="button"
-                      class="shrink-0 px-2.5 py-1 rounded-lg text-[#76777d] hover:bg-[#e6e8ea] transition-colors text-[12px] font-semibold"
-                      (click)="clearPatient()"
-                      title="Cambiar de paciente"
-                    >
-                      Cambiar
-                    </button>
-                  </div>
-                </div>
-              } @else {
-                <div class="p-4 rounded-xl bg-[#fffdf5] border border-[#fde68a]">
-                  <div class="flex items-center gap-2 mb-3">
-                    <span class="material-symbols-outlined text-[#b45309] text-[18px]">search</span>
-                    <span class="text-[12.5px] font-semibold text-[#92400e]">Seleccione o registre un paciente para continuar</span>
-                  </div>
-                  <div class="relative">
-                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#76777d] text-[18px] pointer-events-none" aria-hidden="true">search</span>
-                    <input
-                      type="text"
-                      placeholder="Buscar paciente por nombre o CI..."
-                      title="Buscar un paciente por nombre o CI para asignarlo al turno"
-                      class="w-full pl-9 pr-3 py-2 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61] transition-colors"
-                      [value]="searchPatientTerm()"
-                      (input)="onSearchPatient($event)"
-                      (focus)="showPatientDropdown.set(true)"
-                      (blur)="onBlurPatient()"
-                    />
-                  </div>
-                  @if (showPatientDropdown() && filteredPatients().length > 0) {
-                    <div class="absolute z-30 mt-1 w-full max-w-[calc(100%-2rem)] bg-white rounded-xl shadow-lg border border-[#e6e8ea] max-h-60 overflow-y-auto">
-                      @for (p of filteredPatients(); track p.id) {
-                        <button
-                          type="button"
-                          class="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[#f2f4f6] transition-colors first:rounded-t-xl last:rounded-b-xl"
-                          (mousedown)="handleSelectPatient(p.id)"
-                        >
-                          <div class="w-8 h-8 rounded-lg bg-[#006a61] text-white flex items-center justify-center text-[11px] font-bold ring-1 ring-[#eceef0] shrink-0">
-                            {{ data.getInitials(p.name) }}
-                          </div>
-                          <div class="flex flex-col min-w-0">
-                            <span class="text-[13px] font-semibold text-[#191c1e] truncate">{{ p.name }}</span>
-                            <span class="text-[11px] text-[#76777d]">CI: {{ p.ci }} · {{ p.age }} años</span>
-                          </div>
-                        </button>
-                      }
-                    </div>
-                  }
-                  @if (showPatientDropdown() && searchPatientTerm() && filteredPatients().length === 0) {
-                    <div class="absolute z-30 mt-1 w-full max-w-[calc(100%-2rem)] bg-white rounded-xl shadow-lg border border-[#e6e8ea] p-4 text-center">
-                      <span class="text-[12px] text-[#76777d]">No se encontraron pacientes con "{{ searchPatientTerm() }}"</span>
-                    </div>
-                  }
-                </div>
-              }
-              <div class="mt-3 flex items-center gap-2">
-                <app-button variant="outline" size="sm" icon="person_add" (click)="openNewPatientModal()" title="Abrir el formulario para registrar un nuevo paciente en el sistema">
-                  Registrar Nuevo Paciente
-                </app-button>
-              </div>
+              <app-selection-picker
+                icon="search"
+                noun="paciente"
+                placeholder="Buscar paciente por nombre o CI..."
+                hint="Seleccione o registre un paciente para continuar"
+                emptyMessage="No se encontraron pacientes con {term}"
+                [searchKeys]="['name', 'ci']"
+                [items]="patientItems()"
+                [selectedId]="selectedPatient()?.id ?? null"
+                secondaryLabel="Registrar Nuevo Paciente"
+                secondaryIcon="person_add"
+                (selectedChange)="onPickPatient($event)"
+                (secondaryClick)="openNewPatientModal()"
+              />
             </div>
 
             <div class="bg-white rounded-xl p-5 shadow-sm border border-[#e6e8ea]">
@@ -149,66 +104,24 @@ function firstOfCurrentMonth(): Date {
                   <span class="w-7 h-7 rounded-full bg-[#006a61] text-white flex items-center justify-center text-[13px] font-bold">2</span>
                   <h2 class="text-[15px] font-bold text-[#191c1e]">Especialidad &amp; Asignación Médica</h2>
                 </div>
-                <app-badge variant="teal" size="sm">Asignado</app-badge>
+                @if (selectedDoctorId()) {
+                  <app-badge variant="teal" size="sm">Asignado</app-badge>
+                } @else {
+                  <app-badge variant="gray" size="sm">Pendiente</app-badge>
+                }
               </div>
-              <div class="relative">
-                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#76777d] text-[18px] pointer-events-none" aria-hidden="true">stethoscope</span>
-                <input
-                  type="text"
-                  placeholder="Buscar médico por nombre o especialidad..."
-                  title="Buscar y asignar el médico responsable del turno"
-                  class="w-full pl-9 pr-3 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61] transition-colors"
-                  [value]="doctorSearchTerm()"
-                  (input)="onSearchDoctor($event)"
-                  (focus)="showDoctorDropdown.set(true)"
-                  (blur)="onBlurDoctor()"
-                />
-              </div>
-              @if (showDoctorDropdown() && filteredDoctors().length > 0) {
-                <div class="absolute z-30 mt-1 w-full max-w-[calc(100%-2rem)] bg-white rounded-xl shadow-lg border border-[#e6e8ea] max-h-60 overflow-y-auto">
-                  @for (d of filteredDoctors(); track d.id) {
-                    <button
-                      type="button"
-                      class="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[#f2f4f6] transition-colors first:rounded-t-xl last:rounded-b-xl"
-                      [class.bg-[#f2f4f6]]="selectedDoctorId() === d.id"
-                      (mousedown)="handleSelectDoctor(d)"
-                    >
-                      <div class="w-8 h-8 rounded-lg bg-[#006a61] text-white flex items-center justify-center text-[11px] font-bold ring-1 ring-[#eceef0] shrink-0">
-                        {{ data.getInitials(d.name) }}
-                      </div>
-                      <div class="flex flex-col min-w-0">
-                        <span class="text-[13px] font-semibold text-[#191c1e] truncate">{{ d.name }}</span>
-                        <span class="text-[11px] text-[#76777d]">{{ d.specialty }}</span>
-                      </div>
-                      @if (selectedDoctorId() === d.id) {
-                        <span class="material-symbols-outlined text-[#006a61] text-[16px] ml-auto shrink-0">check</span>
-                      }
-                    </button>
-                  }
-                </div>
-              }
-              @if (showDoctorDropdown() && doctorSearchTerm() && filteredDoctors().length === 0) {
-                <div class="absolute z-30 mt-1 w-full max-w-[calc(100%-2rem)] bg-white rounded-xl shadow-lg border border-[#e6e8ea] p-4 text-center">
-                  <span class="text-[12px] text-[#76777d]">No se encontraron médicos con "{{ doctorSearchTerm() }}"</span>
-                </div>
-              }
-              @if (selectedDoctor(); as doctor) {
-                <div class="p-3 rounded-xl bg-[#f2f4f6] border border-[#e0e3e5] flex items-center gap-3 mt-3">
-                  <div class="w-10 h-10 rounded-lg bg-[#006a61] text-white flex items-center justify-center text-[13px] font-bold shrink-0 ring-1 ring-[#c6c6cd]">
-                    {{ data.getInitials(doctor.name) }}
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="text-[13px] font-bold text-[#191c1e] truncate">{{ doctor.name }}</p>
-                    <p class="text-[11px] text-[#45464d] truncate">Especialidad: {{ doctor.specialty }}</p>
-                  </div>
-                  @if (doctorJornada(); as j) {
-                    <span class="text-[11px] text-[#45464d] shrink-0 text-right">
-                      Jornada<br />
-                      <span class="font-bold text-[#006a61]">{{ j.startTime }}–{{ j.endTime }}</span>
-                    </span>
-                  }
-                </div>
-              }
+
+              <app-selection-picker
+                icon="stethoscope"
+                noun="médico"
+                placeholder="Buscar médico por nombre o especialidad..."
+                hint="Seleccione el médico responsable de este turno"
+                emptyMessage="No se encontraron médicos"
+                [searchKeys]="['name', 'specialty']"
+                [items]="doctorItems()"
+                [selectedId]="selectedDoctorId()"
+                (selectedChange)="onPickDoctor($event)"
+              />
             </div>
 
             <div class="bg-white rounded-xl p-5 shadow-sm border border-[#e6e8ea]">
@@ -287,13 +200,60 @@ function firstOfCurrentMonth(): Date {
                 </div>
               } @else {
                 <div class="flex items-center justify-between mb-2">
-                  <button type="button" (click)="shiftMonth(-1)" class="p-1.5 rounded-lg hover:bg-[#f2f4f6]" title="Mes anterior">
+                  <button
+                    type="button"
+                    (click)="shiftMonth(-1)"
+                    [disabled]="isFirstProgramableMonth()"
+                    [class.cursor-not-allowed]="isFirstProgramableMonth()"
+                    [class.opacity-40]="isFirstProgramableMonth()"
+                    class="p-1.5 rounded-lg hover:bg-[#f2f4f6]"
+                    title="Mes anterior"
+                  >
                     <span class="material-symbols-outlined text-[18px]">chevron_left</span>
                   </button>
                   <span class="text-[13px] font-bold text-[#191c1e]">{{ visibleMonthLabel() }}</span>
-                  <button type="button" (click)="shiftMonth(1)" class="p-1.5 rounded-lg hover:bg-[#f2f4f6]" title="Mes siguiente">
+                  <button
+                    type="button"
+                    (click)="shiftMonth(1)"
+                    [disabled]="isLastProgramableMonth()"
+                    [class.cursor-not-allowed]="isLastProgramableMonth()"
+                    [class.opacity-40]="isLastProgramableMonth()"
+                    class="p-1.5 rounded-lg hover:bg-[#f2f4f6]"
+                    title="Mes siguiente"
+                  >
                     <span class="material-symbols-outlined text-[18px]">chevron_right</span>
                   </button>
+                </div>
+                <div class="flex gap-1.5 mb-3 overflow-x-auto pb-1">
+                  @for (m of programableMonths(); track m.key) {
+                    <button
+                      type="button"
+                      (click)="goToMonth(m.date)"
+                      [title]="m.label + ' — ' + availableDaysIn(m.key) + ' días con atención'"
+                      class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-colors shrink-0"
+                      [class.bg-[#006a61]]="m.key === visibleMonthKey()"
+                      [class.text-white]="m.key === visibleMonthKey()"
+                      [class.border-[#006a61]]="m.key === visibleMonthKey()"
+                      [class.bg-white]="m.key !== visibleMonthKey()"
+                      [class.text-[#45464d]]="m.key !== visibleMonthKey()"
+                      [class.border-[#e0e3e5]]="m.key !== visibleMonthKey()"
+                      [class.hover:border-[#006a61]]="m.key !== visibleMonthKey()"
+                      [class.hover:text-[#006a61]]="m.key !== visibleMonthKey()"
+                    >
+                      <span>{{ m.short }}</span>
+                      <span
+                        class="px-1.5 py-0.5 rounded-full text-[10px] leading-none"
+                        [class.bg-white/20]="m.key === visibleMonthKey()"
+                        [class.text-white]="m.key === visibleMonthKey()"
+                        [class.bg-[#f0fdfa]]="m.key !== visibleMonthKey() && availableDaysIn(m.key) > 0"
+                        [class.text-[#006a61]]="m.key !== visibleMonthKey() && availableDaysIn(m.key) > 0"
+                        [class.bg-[#f2f4f6]]="m.key !== visibleMonthKey() && availableDaysIn(m.key) === 0"
+                        [class.text-[#9a9ca1]]="m.key !== visibleMonthKey() && availableDaysIn(m.key) === 0"
+                      >
+                        {{ availableDaysIn(m.key) }}
+                      </span>
+                    </button>
+                  }
                 </div>
                 <div class="grid grid-cols-7 gap-1 mb-1">
                   @for (h of weekHeaders; track h) {
@@ -305,14 +265,18 @@ function firstOfCurrentMonth(): Date {
                     <button
                       type="button"
                       (click)="onSelectDate(cell)"
-                      [disabled]="!cell.bookable"
-                      [title]="cell.blockedDetail ?? (cell.bookable ? 'Cupos libres: ' + cell.remaining : '')"
+                      [disabled]="!cell.bookable || cell.outside"
+                      [title]="cell.outside
+                        ? 'Día del mes vecino, solo ocupa su columna'
+                        : cell.blockedDetail ?? (cell.bookable ? 'Cupos libres: ' + cell.remaining : '')"
                       class="aspect-square rounded-lg border text-[11px] font-semibold flex flex-col items-center justify-center transition-all leading-none"
                       [class]="selectedDate() === cell.date
                         ? 'bg-[#006a61] text-white border-[#006a61]'
-                        : cell.bookable
-                          ? 'bg-white text-[#191c1e] border-[#e0e3e5] hover:border-[#006a61]/50'
-                          : 'bg-[#f8f9fa] text-[#c2c5c9] border-[#f0f1f2] cursor-not-allowed'"
+                        : cell.outside
+                          ? 'bg-transparent text-[#c2c5c9] border-transparent cursor-not-allowed'
+                          : cell.bookable
+                            ? 'bg-white text-[#191c1e] border-[#e0e3e5] hover:border-[#006a61]/50'
+                            : 'bg-[#f8f9fa] text-[#c2c5c9] border-[#f0f1f2] cursor-not-allowed'"
                     >
                       <span>{{ cell.dayNumber }}</span>
                       @if (cell.bookable && cell.remaining <= 5) {
@@ -370,7 +334,12 @@ function firstOfCurrentMonth(): Date {
             </div>
           </div>
 
-          <div class="lg:col-span-5 flex flex-col gap-6">
+          <!-- sticky: el resumen y el boton quedan a la vista mientras se recorre
+                 el calendario y los horarios, que es la parte larga del formulario.
+                 El top son 64px del header fijo mas 24px de aire: con menos, el
+                 header lo tapa. self-start es necesario porque en un grid el
+                 item estiraria a toda la fila y no habria nada que anclar. -->
+            <div class="lg:col-span-5 flex flex-col gap-6 lg:sticky lg:top-[88px] self-start">
             <div class="bg-[#ffdad6]/40 border border-[#ba1a1a]/30 rounded-xl p-4 shadow-sm">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2 text-[#ba1a1a]">
@@ -415,7 +384,19 @@ function firstOfCurrentMonth(): Date {
                   {{ hint }}
                 </p>
               }
-              <app-button variant="primary" size="lg" icon="check_circle" [fullWidth]="true" [disabled]="!canConfirm()" (click)="showConfirmModal.set(true)">
+              <!-- El title solo aparece con el boton habilitado: un boton deshabilitado no
+                   recibe hover, y para ese caso esta el aviso de que falta, arriba. -->
+              <app-button
+                variant="primary"
+                size="lg"
+                icon="check_circle"
+                [fullWidth]="true"
+                [disabled]="!canConfirm()"
+                [title]="canConfirm()
+                  ? 'Confirma la cita con el paciente, el médico, el día y la hora que aparecen en este resumen.'
+                  : ''"
+                (click)="showConfirmModal.set(true)"
+              >
                 {{ saving() ? 'Agendando...' : 'Confirmar y Agendar Cita' }}
               </app-button>
             </div>
@@ -470,11 +451,8 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
   showNewPatientModal = signal(false);
   saving = signal(false);
 
-  searchPatientTerm = signal('');
-  showPatientDropdown = signal(false);
-  doctorSearchTerm = signal('');
-  showDoctorDropdown = signal(false);
-  selectedDoctorId = signal<string | null>(this.data.doctors()[0]?.id ?? null);
+  /** Arranca vacio como el paciente: asi ambos piden seleccion explicita. */
+  selectedDoctorId = signal<string | null>(null);
 
   // ---- disponibilidad ----
   consultationTypes = signal<ConsultationType[]>([]);
@@ -499,23 +477,35 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
 
   visibleMonth = signal<Date>(firstOfCurrentMonth());
 
+  /**
+   * Dias disponibles por clave de mes. Se cargan los cuatro meses de una vez al
+   * cambiar de medico, asi cambiar de mes no vuelve a pedir nada.
+   */
+  readonly daysByMonth = signal<Record<string, BookableDay[]>>({});
+
   private timer: ReturnType<typeof setInterval> | null = null;
 
-  readonly filteredPatients = computed(() => {
-    const term = this.searchPatientTerm().toLowerCase().trim();
-    if (!term) return this.data.patients();
-    return this.data.patients().filter(
-      (p) => p.name.toLowerCase().includes(term) || p.ci.toLowerCase().includes(term)
-    );
-  });
+  /** Pacientes en el formato que espera app-selection-picker. */
+  readonly patientItems = computed<PickerItem[]>(() =>
+    this.data.patients().map(p => ({
+      id: p.id,
+      title: p.name,
+      subtitle: `CI: ${p.ci} · ${p.age} años`,
+      detail: `Expediente: ${p.id} · Nac. ${p.birthDate}`,
+      search: { name: p.name, ci: p.ci },
+    })),
+  );
 
-  readonly filteredDoctors = computed<DoctorOption[]>(() => {
-    const term = this.doctorSearchTerm().toLowerCase().trim();
-    const doctors: DoctorOption[] = this.data.doctors();
-    if (!term) return doctors;
-    return doctors.filter(
-      (d) => d.name.toLowerCase().includes(term) || d.specialty.toLowerCase().includes(term)
-    );
+  /** Medicos en el mismo formato, con la jornada en la tercera linea. */
+  readonly doctorItems = computed<PickerItem[]>(() => {
+    const j = this.doctorJornada();
+    return this.data.doctors().map(d => ({
+      id: d.id,
+      title: d.name,
+      subtitle: `Especialidad: ${d.specialty}`,
+      detail: j ? `Jornada ${j.startTime}–${j.endTime}` : undefined,
+      search: { name: d.name, specialty: d.specialty },
+    }));
   });
 
   readonly selectedDoctor = computed<DoctorOption | null>(() => {
@@ -560,6 +550,45 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
     return `${MONTHS[m.getMonth()]} ${m.getFullYear()}`;
   });
 
+  /** 'YYYY-MM', con el mes en dos digitos. */
+  private monthKey(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  /**
+   * Meses en los que se puede agendar: el actual mas los tres siguientes, la
+   * misma ventana en que Configuración del Sistema permite marcar días. Mas
+   * alla no hay nada que reservar porque nadie puede programarlo.
+   */
+  readonly programableMonths = computed(() => {
+    const now = new Date();
+    const out: Array<{ date: Date; key: string; short: string; label: string }> = [];
+    for (let i = 0; i <= 3; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      out.push({ date: d, key: this.monthKey(d), short: MONTH_SHORT[d.getMonth()], label: `${MONTHS[d.getMonth()]} ${d.getFullYear()}` });
+    }
+    return out;
+  });
+
+  readonly visibleMonthKey = computed(() => this.monthKey(this.visibleMonth()));
+
+  /** Dias con atención de ese mes. Cero si el mes todavía no se consultó. */
+  availableDaysIn(key: string): number {
+    return (this.daysByMonth()[key] ?? []).filter(d => d.bookable).length;
+  }
+
+  isFirstProgramableMonth(): boolean {
+    return this.visibleMonthKey() === this.programableMonths()[0]?.key;
+  }
+
+  isLastProgramableMonth(): boolean {
+    return this.visibleMonthKey() === this.programableMonths()[this.programableMonths().length - 1]?.key;
+  }
+
+  goToMonth(d: Date): void {
+    this.visibleMonth.set(new Date(d.getFullYear(), d.getMonth(), 1));
+  }
+
   /** El medico no tiene ningun dia de la semana habilitado en su jornada. */
   readonly hasAnyBookableDay = computed(() => this.bookableDays().some(d => d.bookable));
 
@@ -573,24 +602,33 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
     const byDate = new Map(this.bookableDays().map(d => [d.date, d]));
     const today = todayStr();
 
-    const cells: BookableDay[] = [];
+    const cells: Array<BookableDay & { outside: boolean }> = [];
     for (let i = 0; i < 42; i++) {
       const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
       const date = toDateStr(d);
+      // outside = dia del mes vecino. Sirve para alinear las columnas, asi que
+      // se dibuja pero nunca se puede elegir.
+      const outside = d.getMonth() !== month.getMonth() || d.getFullYear() !== month.getFullYear();
       const known = byDate.get(date);
-      cells.push(
-        known ?? {
-          date,
-          dayOfWeek: ((d.getDay() + 6) % 7) + 1,
-          day: '',
-          dayNumber: d.getDate(),
-          monthLabel: MONTHS[d.getMonth()],
-          bookable: false,
-          blockedBy: date < today ? 'pasado' : 'jornada-cerrada',
-          blockedDetail: date < today ? 'Día pasado' : 'Sin datos de disponibilidad para esta fecha',
-          remaining: 0,
-        },
-      );
+      if (!outside && known) {
+        cells.push({ ...known, outside });
+        continue;
+      }
+      // Una vez que se entró al mes, la primera celda de fuera significa que el
+      // mes terminó: no hace falta agregar la fila final de días vacíos.
+      if (outside && cells.some(c => !c.outside)) break;
+      cells.push({
+        date,
+        dayOfWeek: ((d.getDay() + 6) % 7) + 1,
+        day: '',
+        dayNumber: d.getDate(),
+        monthLabel: MONTHS[d.getMonth()],
+        bookable: false,
+        blockedBy: date < today ? 'pasado' : 'jornada-cerrada',
+        blockedDetail: date < today ? 'Día pasado' : 'Sin datos de disponibilidad para esta fecha',
+        remaining: 0,
+        outside,
+      });
     }
     return cells;
   });
@@ -653,33 +691,73 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
       error: () => this.doctorJornada.set(null),
     });
 
-    this.loadDays(doctorId);
+    this.loadProgramableMonths(doctorId);
   }
 
-  private loadDays(doctorId: string): void {
+  /**
+   * Carga los cuatro meses de la ventana de una sola vez. Cuatro peticiones
+   * mensuales en vez de una: cada una cabe de sobra en el tope de rango del
+   * servidor y asi cambiar de mes ya no vuelve a pedir nada.
+   */
+  private loadProgramableMonths(doctorId: string): void {
     this.loadingDays.set(true);
     this.daysError.set(null);
     this.selectedDate.set(null);
     this.selectedTime.set(null);
     this.slots.set({ slots: [], startTime: '', endTime: '', totalSlots: 0, blockedDetail: null });
 
-    // Se pide el mes que se esta viendo, no una ventana fija: asi el calendario
-    // no se queda corto cuando se navega a un mes que todavia no se consulto.
-    const { from, to } = this.monthRange(this.visibleMonth());
+    const months = this.programableMonths();
+    forkJoin(
+      months.map(m => {
+        const { from, to } = this.monthRange(m.date);
+        return this.data.getBookableDays(doctorId, from, to).pipe(
+          map(days => ({ key: m.key, days })),
+          catchError(err => of({ key: m.key, days: [] as BookableDay[], error: err as Error })),
+        );
+      }),
+    ).subscribe(results => {
+      const byMonth: Record<string, BookableDay[]> = {};
+      let failure: Error | null = null;
+      for (const r of results) {
+        byMonth[r.key] = r.days;
+        if ('error' in r && r.error) failure = failure ?? r.error;
+      }
+      this.daysByMonth.set(byMonth);
+      this.loadingDays.set(false);
+      // bookableDays se deriva del mes visible, asi las demas partes de la
+      // pantalla siguen leyendo la misma senal de siempre.
+      this.syncVisibleMonth();
+
+      if (failure) {
+        this.daysError.set(failure.message);
+        this.toast.show('No se pudo consultar la disponibilidad', failure.message);
+        return;
+      }
+      // Preselecciona el primer dia con disponibilidad para no dejar la
+      // pantalla en blanco al abrirla.
+      const first = (byMonth[this.visibleMonthKey()] ?? []).find(d => d.bookable);
+      if (first) this.selectDate(first.date);
+    });
+  }
+
+  /** Vuelca en bookableDays el mes que se esta viendo. */
+  private syncVisibleMonth(): void {
+    this.bookableDays.set(this.daysByMonth()[this.visibleMonthKey()] ?? []);
+  }
+
+  /**
+   * Refresca un solo mes. Se usa tras agendar porque los cupos libres de ese
+   * dia ya no son los mismos.
+   */
+  private refreshMonth(month: Date): void {
+    const doctorId = this.selectedDoctorId();
+    if (!doctorId) return;
+    const key = this.monthKey(month);
+    const { from, to } = this.monthRange(month);
     this.data.getBookableDays(doctorId, from, to).subscribe({
       next: days => {
-        this.bookableDays.set(days);
-        this.loadingDays.set(false);
-        // Preselecciona el primer dia con disponibilidad para no dejar la
-        // pantalla en blanco al abrirla.
-        const first = days.find(d => d.bookable);
-        if (first) this.selectDate(first.date);
-      },
-      error: (err: Error) => {
-        this.bookableDays.set([]);
-        this.daysError.set(err.message);
-        this.loadingDays.set(false);
-        this.toast.show('No se pudo consultar la disponibilidad', err.message);
+        this.daysByMonth.update(all => ({ ...all, [key]: days }));
+        if (key === this.visibleMonthKey()) this.bookableDays.set(days);
       },
     });
   }
@@ -755,32 +833,32 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
   }
 
   shiftMonth(delta: number): void {
-    this.visibleMonth.update(m => new Date(m.getFullYear(), m.getMonth() + delta, 1));
-    const doctorId = this.selectedDoctorId();
-    if (doctorId) this.loadDays(doctorId);
+    const next = new Date(this.visibleMonth().getFullYear(), this.visibleMonth().getMonth() + delta, 1);
+    // No se sale de la ventana programable: mas alla no hay nada que agendar.
+    const first = this.programableMonths()[0];
+    const last = this.programableMonths()[this.programableMonths().length - 1];
+    if (delta < 0 && first && this.monthKey(next) < first.key) return;
+    if (delta > 0 && last && this.monthKey(next) > last.key) return;
+
+    this.visibleMonth.set(next);
+    // Los dias ya estan en cache: aqui solo se cambia que mes se ve.
+    this.syncVisibleMonth();
+    this.selectedDate.set(null);
+    this.selectedTime.set(null);
+    this.slots.set({ slots: [], startTime: '', endTime: '', totalSlots: 0, blockedDetail: null });
   }
 
   // ---- paciente / medico ----
 
-  onSearchPatient(event: Event): void {
-    this.searchPatientTerm.set((event.target as HTMLInputElement).value);
-    this.showPatientDropdown.set(true);
-  }
-
-  onBlurPatient(): void {
-    setTimeout(() => this.showPatientDropdown.set(false), 150);
-  }
-
-  handleSelectPatient(id: string): void {
+  /** El selector devuelve un id o null para "cambiar". */
+  onPickPatient(id: string | null): void {
+    if (!id) {
+      this.selectedPatient.set(null);
+      return;
+    }
     const patient = this.data.getPatient(id);
     if (!patient) return;
     this.selectedPatient.set(patient);
-    this.searchPatientTerm.set('');
-    this.showPatientDropdown.set(false);
-  }
-
-  clearPatient(): void {
-    this.selectedPatient.set(null);
   }
 
   openNewPatientModal(): void {
@@ -794,25 +872,16 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
   handlePatientCreated(patient: Patient): void {
     this.selectedPatient.set(patient);
     this.closeNewPatientModal();
-    this.searchPatientTerm.set('');
-    this.showPatientDropdown.set(false);
     this.toast.show('Paciente Registrado', `${patient.name} fue agregado y seleccionado para el turno.`);
   }
 
-  onSearchDoctor(event: Event): void {
-    this.doctorSearchTerm.set((event.target as HTMLInputElement).value);
-    this.showDoctorDropdown.set(true);
-  }
-
-  onBlurDoctor(): void {
-    setTimeout(() => this.showDoctorDropdown.set(false), 150);
-  }
-
-  handleSelectDoctor(doctor: DoctorOption): void {
-    this.selectedDoctorId.set(doctor.id);
-    this.doctorSearchTerm.set('');
-    this.showDoctorDropdown.set(false);
-    this.loadDoctorContext();
+  /** Al cambiar de medico se recarga su jornada y sus dias disponibles. */
+  onPickDoctor(id: string | null): void {
+    this.selectedDoctorId.set(id);
+    this.selectedDate.set(null);
+    this.selectedTime.set(null);
+    this.daysByMonth.set({});
+    if (id) this.loadDoctorContext();
   }
 
   // ---- confirmacion ----
@@ -847,6 +916,9 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
             `Cita reservada para ${patient.name} (${doctor.name}) el ${this.selectedDayLabel()} a las ${time}.`,
           );
           this.selectedTime.set(null);
+          // Los cupos libres de ese dia ya cambiaron: se refresca el mes para
+          // que el numero del calendario no quede viejo.
+          this.refreshMonth(new Date(`${date}T00:00:00`));
           this.selectDate(date);
         },
         error: (err: Error) => {
