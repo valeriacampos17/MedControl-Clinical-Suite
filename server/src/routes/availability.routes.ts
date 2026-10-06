@@ -3,7 +3,6 @@ import {
   getAvailableSlots,
   getBookableDays,
   getOpenDates,
-  normalizeTime,
 } from '../services/availability.js';
 import {
   getDoctorWorkingDates,
@@ -176,15 +175,4 @@ availabilityRouter.get('/slots', (req, res) => {
     return;
   }
   res.json(getAvailableSlots(doctorId, date, durationMinutes));
-});
-
-/** Normaliza un horario a HH:MM de 24 horas, util para el cliente. */
-availabilityRouter.get('/normalize-time', (req, res) => {
-  const time = req.query.time ? String(req.query.time) : '';
-  const normalized = normalizeTime(time);
-  if (!normalized) {
-    res.status(400).json({ error: `Hora invalida: ${time}` });
-    return;
-  }
-  res.json({ time, normalized });
 });

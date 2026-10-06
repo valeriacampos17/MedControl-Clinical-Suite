@@ -15,9 +15,6 @@ export function isoDayOfWeek(dateStr: string): number {
   return ((new Date(`${dateStr}T00:00:00`).getDay() + 6) % 7) + 1;
 }
 
-/** Tope de dias que se pueden recorrer al buscar dias habiles. */
-const MAX_SCAN_DAYS = 400;
-
 /**
  * Ultimo dia que se puede agendar: el mes actual mas tres siguientes.
  *
@@ -219,24 +216,6 @@ export function setWorkingDays(days: WorkingDay[]): void {
     const placeholders = days.map(() => '?').join(',');
     db.prepare(`DELETE FROM working_days WHERE date NOT IN (${placeholders})`).run(...days.map(d => d.date));
   }
-}
-
-/**
- * Devuelve hasta `count` dias habiles a partir de `fromDate`.
- *
- * Antes esto era un while sin tope: si no quedaban dias habiles por delante
- * entraba en bucle infinito y colgaba el proceso. Ahora se detiene al agotar
- * el horizonte de busqueda y devuelve los que haya aunque sean menos que
- * `count`.
- */
-export function getBusinessDays(fromDate: string, count: number): string[] {
-  const result: string[] = [];
-  let current = fromDate;
-  for (let scanned = 0; scanned < MAX_SCAN_DAYS && result.length < count; scanned++) {
-    if (isBusinessDay(current)) result.push(current);
-    current = addDays(current, 1);
-  }
-  return result;
 }
 
 /**
