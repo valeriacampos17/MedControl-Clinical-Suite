@@ -142,11 +142,11 @@ export class UsersManagementComponent {
   save(): void {
     const f = this.form();
     if (!f.name.trim() || !f.email.trim()) {
-      this.toast.show('Faltan Datos', 'Ingrese el nombre y correo del usuario.');
+      this.toast.show('Faltan Datos', 'Ingrese el nombre y correo del usuario.', 'warning');
       return;
     }
     if (this.data.emailTaken(f.email.trim())) {
-      this.toast.show('Correo Duplicado', 'Ya existe una cuenta con ese correo electrónico.');
+      this.toast.show('Correo Duplicado', 'Ya existe una cuenta con ese correo electrónico.', 'error');
       return;
     }
     this.data.addCatalogUser({ ...f, id: 'usr-' + Date.now().toString().slice(-6), name: f.name.trim(), email: f.email.trim() });

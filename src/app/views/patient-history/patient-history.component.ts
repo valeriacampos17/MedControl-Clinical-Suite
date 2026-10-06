@@ -591,7 +591,7 @@ export class PatientHistoryComponent {
     if (!patient) return;
     const meds = this.recipeMeds().filter((m) => m.name.trim() !== '');
     if (meds.length === 0) {
-      this.toast.show('Faltan Datos', 'Agregue al menos un medicamento con su nombre para emitir la receta.');
+      this.toast.show('Faltan Datos', 'Agregue al menos un medicamento con su nombre para emitir la receta.', 'warning');
       return;
     }
     const now = new Date();

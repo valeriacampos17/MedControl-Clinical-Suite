@@ -730,7 +730,7 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
 
       if (failure) {
         this.daysError.set(failure.message);
-        this.toast.show('No se pudo consultar la disponibilidad', failure.message);
+        this.toast.show('No se pudo consultar la disponibilidad', failure.message, 'error');
         return;
       }
       // Preselecciona el primer dia con disponibilidad para no dejar la
@@ -799,7 +799,7 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
 
   onSelectDate(day: BookableDay): void {
     if (!day.bookable) {
-      this.toast.show('Día no disponible', day.blockedDetail ?? 'Ese día no tiene atención.');
+      this.toast.show('Día no disponible', day.blockedDetail ?? 'Ese día no tiene atención.', 'warning');
       return;
     }
     this.selectDate(day.date);
@@ -923,7 +923,7 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
         },
         error: (err: Error) => {
           this.saving.set(false);
-          this.toast.show('No se pudo agendar', err.message);
+          this.toast.show('No se pudo agendar', err.message, 'error');
           // El horario puede haberse tomado mientras tanto: se recarga la rejilla.
           if (date) this.selectDate(date);
         },

@@ -137,7 +137,7 @@ export class DiagnosesManagementComponent {
   save(): void {
     const f = this.form();
     if (!f.code.trim() || !f.description.trim()) {
-      this.toast.show('Faltan Datos', 'Ingrese el código y la descripción del diagnóstico.');
+      this.toast.show('Faltan Datos', 'Ingrese el código y la descripción del diagnóstico.', 'warning');
       return;
     }
     if (this.editing()) {
