@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { db } from '../db/connection.js';
-import { classifyTriage } from '../services/triage.js';
 
 export const catalogsRouter = Router();
 
@@ -235,28 +234,4 @@ catalogsRouter.get('/triage/rules', (_req, res) => {
     FROM triage_auto_rules ORDER BY id
   `).all();
   res.json({ triageRules: rows });
-});
-
-catalogsRouter.post('/triage/classify', (req, res) => {
-  const body = req.body ?? {};
-  const vitals = {
-    systolic: body.systolic ?? null,
-    diastolic: body.diastolic ?? null,
-    pulse: body.pulse ?? null,
-    temp: body.temp ?? null,
-    spo2: body.spo2 ?? null,
-    weight: body.weight ?? null,
-    height: body.height ?? null,
-    notes: body.notes ?? '',
-  };
-  const result = classifyTriage(vitals);
-  res.json({ triage: result });
-});
-
-catalogsRouter.get('/consultation-types', (_req, res) => {
-  const rows = db.prepare(`
-    SELECT id, title, duration_minutes AS durationMinutes, price, note, suggested
-    FROM consultation_types ORDER BY suggested DESC, id
-  `).all();
-  res.json({ consultationTypes: rows });
 });

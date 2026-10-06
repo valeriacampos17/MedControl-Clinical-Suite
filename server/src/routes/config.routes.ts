@@ -5,7 +5,6 @@ import {
   dayNameToNumber,
   getDaySchedules,
   getWorkingDays,
-  getBusinessDays,
   outsideHorizon,
   toggleWorkingDay,
   setWorkingDays,
@@ -22,16 +21,6 @@ function minutesOf(hhmm: string): number {
 
 configRouter.get('/working-days', (_req, res) => {
   res.json({ workingDays: getWorkingDays() });
-});
-
-configRouter.get('/working-days/business-days', (req, res) => {
-  const from = String(req.query.from ?? '');
-  const count = Number(req.query.count ?? 10);
-  if (!from) {
-    res.status(400).json({ error: 'El parámetro from es requerido' });
-    return;
-  }
-  res.json({ days: getBusinessDays(from, count) });
 });
 
 configRouter.post('/working-days/toggle', (req, res) => {
@@ -363,22 +352,37 @@ configRouter.delete('/alert-rules/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+/**
+ * El CHECK de la tabla es ('admin','doctor'). Antes un PUT sin role caia en
+ * el default 'medico' y devolvia 500 por violar esa restriccion; ahora se
+ * reporta como lo que es, un error del cliente.
+ */
+function parseRole(value: unknown): 'admin' | 'doctor' | null {
+  return value === 'admin' || value === 'doctor' ? value : null;
+}
+
 configRouter.post('/users', (req, res) => {
   const body = req.body ?? {};
-  if (!body.name || !body.email || !body.role) {
-    res.status(400).json({ error: 'name, email y role son requeridos' });
+  const role = parseRole(body.role);
+  if (!body.name || !body.email || !role) {
+    res.status(400).json({ error: 'name, email y role son requeridos; role debe ser admin o doctor' });
     return;
   }
   const id = body.id ?? 'USR-' + Date.now().toString().slice(-6);
   db.prepare('INSERT INTO catalog_users (id, name, email, role, doctor_id, active) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(id, String(body.name), String(body.email), String(body.role), body.doctorId ?? null, body.active === false ? 0 : 1);
-  res.status(201).json({ user: { id, name: body.name, email: body.email, role: body.role, doctorId: body.doctorId ?? undefined, active: body.active !== false } });
+    .run(id, String(body.name), String(body.email), role, body.doctorId ?? null, body.active === false ? 0 : 1);
+  res.status(201).json({ user: { id, name: body.name, email: body.email, role, doctorId: body.doctorId ?? undefined, active: body.active !== false } });
 });
 
 configRouter.put('/users/:id', (req, res) => {
   const body = req.body ?? {};
+  const role = parseRole(body.role);
+  if (!role) {
+    res.status(400).json({ error: 'role es requerido y debe ser admin o doctor' });
+    return;
+  }
   db.prepare('UPDATE catalog_users SET name = ?, email = ?, role = ?, doctor_id = ?, active = ? WHERE id = ?')
-    .run(String(body.name ?? ''), String(body.email ?? ''), String(body.role ?? 'medico'), body.doctorId ?? null, body.active === false ? 0 : 1, req.params.id);
+    .run(String(body.name ?? ''), String(body.email ?? ''), role, body.doctorId ?? null, body.active === false ? 0 : 1, req.params.id);
   res.json({ ok: true });
 });
 

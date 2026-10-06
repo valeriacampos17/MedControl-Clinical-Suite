@@ -283,4 +283,25 @@ CREATE INDEX IF NOT EXISTS idx_appointments_patient ON appointments(patient_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_doctor ON appointments(doctor_id);
 CREATE INDEX IF NOT EXISTS idx_consultations_patient ON consultations(patient_id);
 CREATE INDEX IF NOT EXISTS idx_exam_orders_patient ON exam_orders(patient_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_day_schedules_global ON day_schedules(doctor_id, day_of_week);
+
+-- (No esta uq_day_schedules_global: era exactamente idx_day_schedules_doctor_day
+--  de mas arriba. Tener los dos solo encarecia cada escritura de horarios.)
+
+CREATE INDEX IF NOT EXISTS idx_consultations_date ON consultations(date);
+
+CREATE INDEX IF NOT EXISTS idx_prescriptions_patient_date
+  ON prescriptions(patient_id, date);
+CREATE INDEX IF NOT EXISTS idx_prescriptions_consultation_date
+  ON prescriptions(consultation_id, date);
+CREATE INDEX IF NOT EXISTS idx_prescriptions_date ON prescriptions(date);
+
+CREATE INDEX IF NOT EXISTS idx_exam_orders_consultation_date
+  ON exam_orders(consultation_id, date);
+CREATE INDEX IF NOT EXISTS idx_exam_orders_date ON exam_orders(date);
+
+CREATE INDEX IF NOT EXISTS idx_exam_order_items_order
+  ON exam_order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_prescription_medications_rx
+  ON prescription_medications(prescription_id);
+
+CREATE INDEX IF NOT EXISTS idx_absences_range ON absences(start_date, end_date);
