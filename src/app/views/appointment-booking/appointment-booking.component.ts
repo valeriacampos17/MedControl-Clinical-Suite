@@ -26,7 +26,9 @@ const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
-const WEEK_HEADERS = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'];
+// A tres letras y en el mismo tamano que usa Configuracion del Sistema, para
+// que las dos rejillas se lean igual.
+const WEEK_HEADERS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 function todayStr(): string {
   const d = new Date();
@@ -165,7 +167,7 @@ function firstOfCurrentMonth(): Date {
               }
             </div>
 
-            <div class="bg-white rounded-xl p-5 shadow-sm border border-[#e6e8ea]">
+            <div class="bg-white rounded-xl p-5 lg:p-6 shadow-sm border border-[#e6e8ea]">
               <div class="flex items-center justify-between pb-3 mb-3 border-b border-[#eceef0]">
                 <div class="flex items-center gap-2.5">
                   <span class="w-7 h-7 rounded-full bg-[#006a61] text-white flex items-center justify-center text-[13px] font-bold">4</span>
@@ -199,30 +201,50 @@ function firstOfCurrentMonth(): Date {
                   <span class="text-[12.5px] text-[#92400e]">No hay días para mostrar en este mes.</span>
                 </div>
               } @else {
-                <div class="flex items-center justify-between mb-2">
-                  <button
-                    type="button"
-                    (click)="shiftMonth(-1)"
-                    [disabled]="isFirstProgramableMonth()"
-                    [class.cursor-not-allowed]="isFirstProgramableMonth()"
-                    [class.opacity-40]="isFirstProgramableMonth()"
-                    class="p-1.5 rounded-lg hover:bg-[#f2f4f6]"
-                    title="Mes anterior"
-                  >
-                    <span class="material-symbols-outlined text-[18px]">chevron_left</span>
-                  </button>
-                  <span class="text-[13px] font-bold text-[#191c1e]">{{ visibleMonthLabel() }}</span>
-                  <button
-                    type="button"
-                    (click)="shiftMonth(1)"
-                    [disabled]="isLastProgramableMonth()"
-                    [class.cursor-not-allowed]="isLastProgramableMonth()"
-                    [class.opacity-40]="isLastProgramableMonth()"
-                    class="p-1.5 rounded-lg hover:bg-[#f2f4f6]"
-                    title="Mes siguiente"
-                  >
-                    <span class="material-symbols-outlined text-[18px]">chevron_right</span>
-                  </button>
+                <div class="flex items-center mb-2">
+                  <!--
+                    Flechas, etiqueta y "Hoy" van agrupados. Antes las flechas
+                    eran hijas directas de un justify-between y la etiqueta
+                    quedaba centrada por el espacio sobrante; al sumar "Hoy" ese
+                    reparto se habria roto, asi que el grupo se cierra como en
+                    Configuracion del Sistema. El justify-between tambien se
+                    fue: con un solo hijo no repartia nada.
+                  -->
+                  <div class="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      (click)="shiftMonth(-1)"
+                      [disabled]="isCurrentMonth()"
+                      [class.cursor-not-allowed]="isCurrentMonth()"
+                      [class.opacity-40]="isCurrentMonth()"
+                      class="p-1.5 rounded-lg hover:bg-[#f2f4f6]"
+                      title="Mes anterior"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+                    </button>
+                    <span class="text-[13px] font-bold text-[#191c1e]">{{ visibleMonthLabel() }}</span>
+                    <button
+                      type="button"
+                      (click)="shiftMonth(1)"
+                      [disabled]="isLastProgramableMonth()"
+                      [class.cursor-not-allowed]="isLastProgramableMonth()"
+                      [class.opacity-40]="isLastProgramableMonth()"
+                      class="p-1.5 rounded-lg hover:bg-[#f2f4f6]"
+                      title="Mes siguiente"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+                    </button>
+                    @if (!isCurrentMonth()) {
+                      <button
+                        type="button"
+                        (click)="goToCurrentMonth()"
+                        class="ml-1 px-2 py-1 rounded-lg text-[11px] font-bold bg-[#f2f4f6] text-[#45464d] border border-[#e0e3e5] hover:bg-[#e8eaec]"
+                        title="Volver al mes en curso"
+                      >
+                        Hoy
+                      </button>
+                    }
+                  </div>
                 </div>
                 <div class="flex gap-1.5 mb-3 overflow-x-auto pb-1">
                   @for (m of programableMonths(); track m.key) {
@@ -257,7 +279,7 @@ function firstOfCurrentMonth(): Date {
                 </div>
                 <div class="grid grid-cols-7 gap-1 mb-1">
                   @for (h of weekHeaders; track h) {
-                    <span class="text-center text-[10px] font-bold uppercase text-[#76777d]">{{ h }}</span>
+                    <span class="text-center text-[11px] font-bold uppercase text-[#76777d]">{{ h }}</span>
                   }
                 </div>
                 <div class="grid grid-cols-7 gap-1">
@@ -269,7 +291,7 @@ function firstOfCurrentMonth(): Date {
                       [title]="cell.outside
                         ? 'Día del mes vecino, solo ocupa su columna'
                         : cell.blockedDetail ?? (cell.bookable ? 'Cupos libres: ' + cell.remaining : '')"
-                      class="aspect-square rounded-lg border text-[11px] font-semibold flex flex-col items-center justify-center transition-all leading-none"
+                      class="aspect-square rounded-lg border text-[12px] font-bold flex flex-col items-center justify-center transition-all leading-none"
                       [class]="selectedDate() === cell.date
                         ? 'bg-[#006a61] text-white border-[#006a61]'
                         : cell.outside
@@ -285,7 +307,20 @@ function firstOfCurrentMonth(): Date {
                     </button>
                   }
                 </div>
-                <p class="mt-2 text-[10.5px] text-[#76777d]">El número chico es la cantidad de cupos restantes. Los días en gris no tienen atención.</p>
+                <!--
+                  Leyenda con muestras de color, igual que en Configuracion del
+                  Sistema. Se conserva la nota del numero chico porque en la
+                  agenda si aporta informacion: son los cupos que quedan.
+                -->
+                <div class="flex items-center gap-3 flex-wrap mt-3 text-[11px] text-[#76777d]">
+                  <span class="inline-flex items-center gap-1.5">
+                    <span class="w-3 h-3 rounded bg-white border border-[#d8dbde]"></span>Con atención
+                  </span>
+                  <span class="inline-flex items-center gap-1.5">
+                    <span class="w-3 h-3 rounded bg-[#f8f9fa] border border-[#f0f1f2]"></span>Sin atención
+                  </span>
+                  <span class="ml-auto">El número chico son los cupos que quedan.</span>
+                </div>
 
                 <div class="mt-4 pt-4 border-t border-[#eceef0]">
                   @if (!selectedDate()) {
@@ -577,8 +612,19 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
     return (this.daysByMonth()[key] ?? []).filter(d => d.bookable).length;
   }
 
-  isFirstProgramableMonth(): boolean {
+  /**
+   * El primer mes programable es siempre el mes en curso, asi que esto vale
+   * tanto para saber si ya se esta en el mes actual (y esconder "Hoy") como
+   * para bloquear la flecha hacia atras. Se deja un solo metodo para que las
+   * dos cosas no puedan empezar a discrepar.
+   */
+  isCurrentMonth(): boolean {
     return this.visibleMonthKey() === this.programableMonths()[0]?.key;
+  }
+
+  /** Vuelve al mes en curso, igual que el boton de Configuracion del Sistema. */
+  goToCurrentMonth(): void {
+    this.goToMonth(this.programableMonths()[0].date);
   }
 
   isLastProgramableMonth(): boolean {
