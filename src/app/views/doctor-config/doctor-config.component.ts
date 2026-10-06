@@ -1044,7 +1044,8 @@ daysUntilHorizon(): number {
           `Se usaron los días de la semana que ${this.whoLabel()} tiene habilitados.`,
         );
       },
-      error: () => {
+      error: err => {
+        console.error('[doctor-config] mark-from-schedule falló', err);
         this.markingSchedule.set(false);
         this.loadScope();
         this.toast.show('No se pudieron marcar los días', this.failureHint(ids), 'error');

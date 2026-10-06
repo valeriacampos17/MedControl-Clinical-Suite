@@ -98,14 +98,22 @@ export function unmarkDoctorWorkingDate(doctorId: string, date: string): void {
 export function setDoctorWorkingDates(doctorId: string, dates: DoctorWorkingDate[]): DoctorWorkingDate[] {
   if (!doctorId) return [];
   const valid = dates.filter(d => ISO_DATE.test(d.date));
-  const del = db.prepare('DELETE FROM doctor_working_dates WHERE doctor_id = ?');
   const insert = db.prepare(
     'INSERT OR REPLACE INTO doctor_working_dates (doctor_id, date, note) VALUES (?, ?, ?)',
   );
-  db.transaction(() => {
-    del.run(doctorId);
-    for (const d of valid) insert.run(doctorId, d.date, d.note ?? null);
-  })();
+  // Sin db.transaction(): en una replica embebida la escritura se delega al
+  // primario y el COMMIT falla, asi que la "transaccion" no protege nada.
+  // Se escribe primero y se borra al final: si algo interrumpe a mitad quedan
+  // fechas de mas, que se ven y se pueden quitar, y ninguna se pierde.
+  for (const d of valid) insert.run(doctorId, d.date, d.note ?? null);
+  if (valid.length === 0) {
+    db.prepare('DELETE FROM doctor_working_dates WHERE doctor_id = ?').run(doctorId);
+  } else {
+    const placeholders = valid.map(() => '?').join(',');
+    db.prepare(
+      `DELETE FROM doctor_working_dates WHERE doctor_id = ? AND date NOT IN (${placeholders})`,
+    ).run(doctorId, ...valid.map(d => d.date));
+  }
   return getDoctorWorkingDates(doctorId);
 }
 
@@ -129,13 +137,13 @@ export function markFromSchedule(doctorId: string, horizonDays: number = 60): nu
   );
   let marked = 0;
   const today = new Date();
-  db.transaction(() => {
-    for (let i = 0; i < horizonDays; i++) {
-      const date = addDays(toDateStr(today), i);
-      if (!enabled.has(isoDayOfWeek(date))) continue;
-      marked += Number(insert.run(doctorId, date).changes);
-    }
-  })();
+  // INSERT OR IGNORE: es idempotente, un marcado a medias se completa al
+  // volver a apretar el boton. No hace falta (ni sirve) una transaccion.
+  for (let i = 0; i < horizonDays; i++) {
+    const date = addDays(toDateStr(today), i);
+    if (!enabled.has(isoDayOfWeek(date))) continue;
+    marked += Number(insert.run(doctorId, date).changes);
+  }
   return marked;
 }
 
@@ -201,12 +209,16 @@ export function toggleWorkingDay(date: string): void {
 }
 
 export function setWorkingDays(days: WorkingDay[]): void {
-  const del = db.prepare('DELETE FROM working_days');
-  const insert = db.prepare('INSERT INTO working_days (date, note) VALUES (?, ?)');
-  db.transaction(() => {
-    del.run();
-    for (const d of days) insert.run(d.date, d.note ?? null);
-  })();
+  const insert = db.prepare('INSERT OR REPLACE INTO working_days (date, note) VALUES (?, ?)');
+  // Igual que setDoctorWorkingDates: sin transaccion, y escribiendo antes de
+  // borrar. Un fallo a mitad deja dias de mas, nunca la tabla vacia.
+  for (const d of days) insert.run(d.date, d.note ?? null);
+  if (days.length === 0) {
+    db.prepare('DELETE FROM working_days').run();
+  } else {
+    const placeholders = days.map(() => '?').join(',');
+    db.prepare(`DELETE FROM working_days WHERE date NOT IN (${placeholders})`).run(...days.map(d => d.date));
+  }
 }
 
 /**
@@ -282,16 +294,19 @@ export function ensureDaySchedule(doctorId: string): void {
     .get(doctorId) as { n: number };
   if (existing.n > 0) return;
 
-  const insert = db.prepare(
+  // Un solo INSERT con las siete filas: es atomico por si mismo, y asi no
+  // depende de db.transaction(), que en replica embebida no puede commitear.
+  const tuples: string[] = [];
+  const values: unknown[] = [];
+  for (let dayOfWeek = 1; dayOfWeek <= 7; dayOfWeek++) {
+    const workday = dayOfWeek <= 5;
+    tuples.push('(?, ?, ?, ?, ?, ?)');
+    values.push(doctorId, dayOfWeek, workday ? 1 : 0, workday ? '08:00' : null, workday ? '16:00' : null, workday ? 20 : 0);
+  }
+  db.prepare(
     `INSERT OR IGNORE INTO day_schedules (doctor_id, day_of_week, enabled, start_time, end_time, total_capacity)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-  );
-  db.transaction(() => {
-    for (let dayOfWeek = 1; dayOfWeek <= 7; dayOfWeek++) {
-      const workday = dayOfWeek <= 5;
-      insert.run(doctorId, dayOfWeek, workday ? 1 : 0, workday ? '08:00' : null, workday ? '16:00' : null, workday ? 20 : 0);
-    }
-  })();
+     VALUES ${tuples.join(', ')}`,
+  ).run(...values);
 }
 
 /** Jornada de un medico para un dia de la semana puntual, o null si no la tiene. */

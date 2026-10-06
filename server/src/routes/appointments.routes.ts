@@ -88,37 +88,26 @@ appointmentsRouter.post('/', (req, res) => {
     return;
   }
 
-  // Se valida y se guarda en la misma transaccion, asi dos reservas
-  // simultaneas sobre el mismo horario no pueden colarse.
-  let saved = false;
-  let createdId = '';
-  let rejectionMessage = '';
-  let rejectionReason = '';
-
-  db.transaction(() => {
-    const verdict = assertBookable({
-      doctorId: data.doctorId,
-      date: data.date,
-      time,
-      durationMinutes: data.durationMinutes,
-    });
-    if (!verdict.ok) {
-      rejectionMessage = verdict.message;
-      rejectionReason = verdict.reason;
-      return;
-    }
-    createdId = 'APT-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
-    db.prepare(`
-      INSERT INTO appointments (id, date, time, duration_minutes, patient_id, doctor_id, reason, status, consultation_type_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
-    `).run(createdId, data.date, time, data.durationMinutes, data.patientId, data.doctorId, data.reason, data.consultationTypeId ?? null);
-    saved = true;
-  })();
-
-  if (!saved) {
-    res.status(409).json({ error: rejectionMessage, reason: rejectionReason });
+  // Sin db.transaction(): en una replica embebida de libsql la escritura se
+  // delega al primario, el COMMIT falla y el error original queda tapado por el
+  // ROLLBACK. La validacion y el INSERT son sincronicos, sin un await en el
+  // medio, asi que ninguna otra peticion se cuela entre los dos en este proceso.
+  const verdict = assertBookable({
+    doctorId: data.doctorId,
+    date: data.date,
+    time,
+    durationMinutes: data.durationMinutes,
+  });
+  if (!verdict.ok) {
+    res.status(409).json({ error: verdict.message, reason: verdict.reason });
     return;
   }
+
+  const createdId = 'APT-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+  db.prepare(`
+    INSERT INTO appointments (id, date, time, duration_minutes, patient_id, doctor_id, reason, status, consultation_type_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+  `).run(createdId, data.date, time, data.durationMinutes, data.patientId, data.doctorId, data.reason, data.consultationTypeId ?? null);
 
   const row = db.prepare('SELECT * FROM appointments WHERE id = ?').get(createdId) as AppointmentRow;
   res.status(201).json({ appointment: toAppointment(row) });

@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type NextFunction, type Request, type Response } from 'express';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -74,6 +74,18 @@ if (fs.existsSync(distDir)) {
     res.sendFile(path.join(distDir, 'index.html'));
   });
 }
+
+// Sin esto Express responde con su HTML generico y el mensaje del error nunca
+// llega al cliente: el 500 de produccion era imposible de leer desde la app.
+// El stack completo igual va a stderr, que es lo que Render muestra en Logs.
+// Express identifica un middleware de error por su aridad: hay que declarar
+// el cuarto argumento aunque no se use.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('[medcontrol-server] error no atendido:', err);
+  const message = err instanceof Error ? err.message : 'Error interno del servidor';
+  res.status(500).json({ error: message });
+});
 
 app.listen(PORT, () => {
   console.log(`[medcontrol-server] API + frontend en http://localhost:${PORT}`);
