@@ -6,8 +6,9 @@ import { TriageManagementComponent } from './tabs/triage-management.component';
 import { OrganizationManagementComponent } from './tabs/organization-management.component';
 import { AlertsManagementComponent } from './tabs/alerts-management.component';
 import { UsersManagementComponent } from './tabs/users-management.component';
+import { DoctorsManagementComponent } from './tabs/doctors-management.component';
 
-type ConfigTab = 'exams' | 'medications' | 'diagnoses' | 'triage' | 'organization' | 'alerts' | 'users';
+type ConfigTab = 'exams' | 'medications' | 'diagnoses' | 'triage' | 'organization' | 'alerts' | 'users' | 'doctors';
 
 @Component({
   selector: 'app-configuration',
@@ -20,6 +21,7 @@ type ConfigTab = 'exams' | 'medications' | 'diagnoses' | 'triage' | 'organizatio
     OrganizationManagementComponent,
     AlertsManagementComponent,
     UsersManagementComponent,
+    DoctorsManagementComponent,
   ],
   template: `
     <div class="flex flex-col w-full">
@@ -69,6 +71,9 @@ type ConfigTab = 'exams' | 'medications' | 'diagnoses' | 'triage' | 'organizatio
           @case ('users') {
             <app-users-management />
           }
+          @case ('doctors') {
+            <app-doctors-management />
+          }
         }
       </div>
     </div>
@@ -82,6 +87,7 @@ export class ConfigurationComponent {
     { id: 'medications', label: 'Medicamentos', icon: 'medication' },
     { id: 'diagnoses', label: 'Diagnósticos CIE-10', icon: 'event_note' },
     { id: 'triage', label: 'Triajes', icon: 'monitor_heart' },
+    { id: 'doctors', label: 'Médicos', icon: 'stethoscope' },
     { id: 'organization', label: 'Organización', icon: 'apartment' },
     { id: 'alerts', label: 'Alertas', icon: 'notifications_active' },
     { id: 'users', label: 'Usuarios', icon: 'manage_accounts' },

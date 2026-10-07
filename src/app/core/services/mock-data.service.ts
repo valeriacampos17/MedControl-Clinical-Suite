@@ -1199,4 +1199,38 @@ export class MockDataService {
       this.api.put<{ ok: boolean }>(`/config/users/${id}`, { ...user }).subscribe();
     }
   }
+
+  addDoctor(doctor: DoctorSummary, onCreated?: (result: { doctor: DoctorSummary }) => void): void {
+    this.doctors.update((list) => [...list, doctor]);
+    this.api.post<{ doctor: DoctorSummary }>('/doctors', { ...doctor }).subscribe({
+      next: (r) => {
+        this.doctors.update((list) => list.map((d) => (d.id === doctor.id ? { ...d, ...r.doctor } : d)));
+        onCreated?.(r);
+      },
+      error: () => this.doctors.update((list) => list.filter((d) => d.id !== doctor.id)),
+    });
+  }
+
+  updateDoctor(doctor: DoctorSummary): void {
+    this.doctors.update((list) => list.map((d) => (d.id === doctor.id ? { ...doctor } : d)));
+    this.api.put<{ ok: boolean }>(`/doctors/${doctor.id}`, { ...doctor }).subscribe();
+  }
+
+  toggleDoctorActive(id: string): void {
+    const doctor = this.doctors().find((d) => d.id === id);
+    if (!doctor) return;
+    const next = { ...doctor, activeToday: !doctor.activeToday };
+    this.updateDoctor(next);
+  }
+
+  deleteDoctor(id: string, onError?: (err: unknown) => void): void {
+    const removed = this.doctors().find((d) => d.id === id);
+    this.doctors.update((list) => list.filter((d) => d.id !== id));
+    this.api.delete<{ ok: boolean }>(`/doctors/${id}`).subscribe({
+      error: (err) => {
+        if (removed) this.doctors.update((list) => [...list, removed]);
+        onError?.(err);
+      },
+    });
+  }
 }
