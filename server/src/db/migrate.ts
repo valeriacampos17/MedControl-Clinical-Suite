@@ -1,6 +1,9 @@
+import { randomBytes } from 'node:crypto';
+import bcrypt from 'bcryptjs';
 import { db, loadSchema } from './connection.js';
 
 const ADD_ORGANIZATION_SLOGAN = `ALTER TABLE organization_settings ADD COLUMN slogan TEXT`;
+const ADD_MUST_CHANGE_PASSWORD = `ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0`;
 
 /**
  * PRAGMA y DDL se arman por interpolacion, asi que todo identificador que
@@ -111,6 +114,7 @@ export function copyRows(
 export function migrate(): void {
   loadSchema();
   migrateColumn('organization_settings', 'slogan', ADD_ORGANIZATION_SLOGAN);
+  migrateColumn('users', 'must_change_password', ADD_MUST_CHANGE_PASSWORD);
 
   // Era el mismo predicado que idx_day_schedules_doctor_day, solo que duplicado.
   dropIndexIfExists('uq_day_schedules_global');
@@ -120,6 +124,34 @@ export function migrate(): void {
   // coincide con NULL.
   if (tableExists('day_schedules')) {
     db.exec('DELETE FROM day_schedules WHERE doctor_id IS NULL');
+  }
+
+  // users y catalog_users nacieron separadas: el login leia users y el CRUD
+  // escribia catalog_users, asi que las personas creadas desde la pantalla no
+  // podian entrar y users acumulaba filas que nadie usaba. Se funden en users
+  // y se elimina el duplicado.
+  if (tableExists('catalog_users')) {
+    const known = new Set(
+      (db.prepare('SELECT email FROM users').all() as { email: string }[])
+        .map((r) => String(r.email).toLowerCase().trim()),
+    );
+    copyRows(
+      'catalog_users',
+      'users',
+      ['id', 'name', 'email', 'role', 'doctor_id', 'active', 'password_hash'],
+      // Estas cuentas nunca tuvieron password: se les da un hash inutilizable y
+      // se las marca para forzar cambio. Ninguna persona conocio el password
+      // (el catalogo no lo guardaba), asi que hasta que exista un "reset" no
+      // podran entrar; no es una regresion, ya no podian entrar antes.
+      { password_hash: () => bcrypt.hashSync(randomBytes(24).toString('hex'), 10) },
+    );
+    for (const row of db.prepare('SELECT email FROM catalog_users').all() as { email: string }[]) {
+      const email = String(row.email).toLowerCase().trim();
+      if (!known.has(email)) {
+        db.prepare('UPDATE users SET must_change_password = 1 WHERE lower(email) = ?').run(email);
+      }
+    }
+    dropTableIfExists('catalog_users');
   }
 }
 

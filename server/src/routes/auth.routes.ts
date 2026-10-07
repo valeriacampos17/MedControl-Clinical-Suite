@@ -15,6 +15,8 @@ interface UserRow {
   role: 'admin' | 'doctor';
   doctor_id: string | null;
   avatar_url: string | null;
+  active: number;
+  must_change_password: number;
 }
 
 function toDto(u: UserRow): AppUser {
@@ -24,7 +26,8 @@ function toDto(u: UserRow): AppUser {
     email: u.email,
     role: u.role,
     doctorId: u.doctor_id ?? undefined,
-    active: true,
+    active: Boolean(u.active),
+    mustChangePassword: u.must_change_password === 1,
   };
 }
 
@@ -46,7 +49,11 @@ authRouter.post('/login', (req, res) => {
     role: user.role,
     doctorId: user.doctor_id ?? undefined,
   });
-  res.json({ token, user: toDto(user) });
+  res.json({
+    token,
+    user: toDto(user),
+    mustChangePassword: user.must_change_password === 1,
+  });
 });
 
 authRouter.get('/me', requireAuth, (req, res) => {
@@ -55,5 +62,28 @@ authRouter.get('/me', requireAuth, (req, res) => {
     res.status(404).json({ error: 'Usuario no encontrado' });
     return;
   }
-  res.json({ user: toDto(user) });
+  res.json({
+    user: toDto(user),
+    mustChangePassword: user.must_change_password === 1,
+  });
+});
+
+authRouter.post('/change-password', requireAuth, (req, res) => {
+  const { currentPassword, newPassword } = req.body ?? {};
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.auth!.sub) as UserRow | undefined;
+  if (!user) {
+    res.status(404).json({ error: 'Usuario no encontrado' });
+    return;
+  }
+  if (!currentPassword || !bcrypt.compareSync(String(currentPassword), user.password_hash)) {
+    res.status(400).json({ error: 'La contraseña actual no es correcta' });
+    return;
+  }
+  if (typeof newPassword !== 'string' || newPassword.length < 8) {
+    res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres' });
+    return;
+  }
+  db.prepare('UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?')
+    .run(bcrypt.hashSync(newPassword, 10), user.id);
+  res.json({ ok: true });
 });

@@ -53,5 +53,11 @@ export const routes: Routes = [
     data: { breadcrumb: [{ label: 'Pacientes', route: 'pacientes-y-historial-clinico' }, { label: 'Nueva Consulta' }] as BreadcrumbSegment[] },
     loadComponent: () => import('./views/consulta/consulta.component').then(m => m.ConsultaComponent),
   },
+  {
+    path: 'cambiar-contrasena',
+    canActivate: [authGuard],
+    data: { breadcrumb: [{ label: 'Cambiar Contraseña' }] as BreadcrumbSegment[] },
+    loadComponent: () => import('./views/cambiar-contrasena/cambiar-contrasena.component').then(m => m.CambiarContrasenaComponent),
+  },
   { path: '**', redirectTo: 'dashboard-de-citas' },
 ];

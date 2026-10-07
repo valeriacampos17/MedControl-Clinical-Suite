@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { randomBytes } from 'node:crypto';
+import bcrypt from 'bcryptjs';
 import { db } from '../db/connection.js';
 import {
   DAY_NAMES,
@@ -368,10 +370,23 @@ configRouter.post('/users', (req, res) => {
     res.status(400).json({ error: 'name, email y role son requeridos; role debe ser admin o doctor' });
     return;
   }
+  // La contraseña es efímera: se genera, se entrega UNA vez en esta respuesta y
+  // la cuenta queda marcada para forzar su cambio en el primer login.
+  const tempPassword = randomBytes(12).toString('base64url');
   const id = body.id ?? 'USR-' + Date.now().toString().slice(-6);
-  db.prepare('INSERT INTO catalog_users (id, name, email, role, doctor_id, active) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(id, String(body.name), String(body.email), role, body.doctorId ?? null, body.active === false ? 0 : 1);
-  res.status(201).json({ user: { id, name: body.name, email: body.email, role, doctorId: body.doctorId ?? undefined, active: body.active !== false } });
+  const dto = {
+    id,
+    name: String(body.name),
+    email: String(body.email),
+    role,
+    doctorId: String(body.doctorId ?? '').trim() || undefined,
+    active: body.active !== false,
+  };
+  db.prepare(`
+    INSERT INTO users (id, name, email, password_hash, role, doctor_id, active, must_change_password)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+  `).run(id, dto.name, dto.email, bcrypt.hashSync(tempPassword, 10), role, dto.doctorId ?? null, dto.active ? 1 : 0);
+  res.status(201).json({ user: dto, tempPassword });
 });
 
 configRouter.put('/users/:id', (req, res) => {
@@ -381,25 +396,29 @@ configRouter.put('/users/:id', (req, res) => {
     res.status(400).json({ error: 'role es requerido y debe ser admin o doctor' });
     return;
   }
-  db.prepare('UPDATE catalog_users SET name = ?, email = ?, role = ?, doctor_id = ?, active = ? WHERE id = ?')
+  const result = db.prepare('UPDATE users SET name = ?, email = ?, role = ?, doctor_id = ?, active = ? WHERE id = ?')
     .run(String(body.name ?? ''), String(body.email ?? ''), role, body.doctorId ?? null, body.active === false ? 0 : 1, req.params.id);
+  if (result.changes === 0) {
+    res.status(404).json({ error: 'Usuario no encontrado' });
+    return;
+  }
   res.json({ ok: true });
 });
 
 configRouter.delete('/users/:id', (req, res) => {
-  db.prepare('DELETE FROM catalog_users WHERE id = ?').run(req.params.id);
+  db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
 
 configRouter.get('/users', (_req, res) => {
-  const rows = db.prepare('SELECT * FROM catalog_users ORDER BY id').all() as Array<{
+  const rows = db.prepare('SELECT * FROM users ORDER BY id').all() as {
     id: string;
     name: string;
     email: string;
     role: string;
     doctor_id: string | null;
     active: number;
-  }>;
+  }[];
   res.json({
     users: rows.map((u) => ({
       id: u.id,

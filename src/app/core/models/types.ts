@@ -16,6 +16,7 @@ export interface User {
   email: string;
   role: UserRole;
   doctorId?: string;
+  mustChangePassword?: boolean;
   avatarUrl?: string;
 }
 

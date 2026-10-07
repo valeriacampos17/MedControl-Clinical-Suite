@@ -130,7 +130,7 @@ export class LoginComponent {
 
   private async restore(): Promise<void> {
     const restored = await this.auth.restoreSession();
-    if (restored) this.router.navigate(['/dashboard-de-citas']);
+    if (restored) this.router.navigate([this.auth.mustChangePassword() ? '/cambiar-contrasena' : '/dashboard-de-citas']);
   }
 
   async handleLogin(): Promise<void> {
@@ -140,7 +140,7 @@ export class LoginComponent {
     const success = await this.auth.login(this.email, this.password);
     this.loading.set(false);
     if (success) {
-      this.router.navigate(['/dashboard-de-citas']);
+      this.router.navigate([this.auth.mustChangePassword() ? '/cambiar-contrasena' : '/dashboard-de-citas']);
     } else {
       this.error.set(this.auth.loginError() || 'Correo o contraseña incorrectos');
     }

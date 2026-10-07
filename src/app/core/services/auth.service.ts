@@ -17,13 +17,15 @@ export class AuthService {
   readonly isAdmin = computed(() => this.currentUser()?.role === 'admin');
   readonly isDoctor = computed(() => this.currentUser()?.role === 'doctor');
   readonly loginError = signal('');
+  readonly mustChangePassword = signal(false);
 
   async login(email: string, password: string): Promise<boolean> {
     this.loginError.set('');
     try {
-      const res = (await firstValueFrom(this.api.post<{ token: string; user: User }>('/auth/login', { email, password }))) as { token: string; user: User };
+      const res = (await firstValueFrom(this.api.post<{ token: string; user: User; mustChangePassword?: boolean }>('/auth/login', { email, password }))) as { token: string; user: User; mustChangePassword?: boolean };
       storeToken(res.token);
       this.currentUser.set(res.user);
+      this.mustChangePassword.set(res.mustChangePassword === true || res.user.mustChangePassword === true);
       await this.data.initialize();
       return true;
     } catch (err) {
@@ -37,13 +39,15 @@ export class AuthService {
     const token = getStoredToken();
     if (!token) return false;
     try {
-      const res = (await firstValueFrom(this.api.get<{ user: User }>('/auth/me'))) as { user: User };
+      const res = (await firstValueFrom(this.api.get<{ user: User; mustChangePassword?: boolean }>('/auth/me'))) as { user: User; mustChangePassword?: boolean };
       this.currentUser.set(res.user);
+      this.mustChangePassword.set(res.mustChangePassword === true || res.user.mustChangePassword === true);
       await this.data.initialize();
       return true;
     } catch {
       clearToken();
       this.currentUser.set(null);
+      this.mustChangePassword.set(false);
       this.data.reset?.();
       return false;
     }
@@ -52,7 +56,14 @@ export class AuthService {
   logout(): void {
     clearToken();
     this.currentUser.set(null);
+    this.mustChangePassword.set(false);
     this.router.navigate(['/login']);
+  }
+
+  /** Marca la contraseña como ya cambiada (POST /auth/change-password OK). */
+  confirmPasswordChanged(): void {
+    this.mustChangePassword.set(false);
+    this.currentUser.update((u) => (u ? { ...u, mustChangePassword: false } : u));
   }
 
   getDoctorId(): string | null {
