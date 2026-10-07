@@ -64,24 +64,24 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
           <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
             <div class="flex items-start sm:items-center gap-4 sm:gap-5 min-w-0">
               <div class="relative shrink-0">
-                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-[#006a61] text-white flex items-center justify-center text-[22px] sm:text-[26px] font-bold shadow-sm ring-2 ring-[#eceef0]">
-                  @if (data.selectedDoctorId() === null) {
-                    <span class="material-symbols-outlined text-[30px] sm:text-[36px]">group</span>
-                  } @else if (data.selectedDoctor().avatarUrl) {
-                    <img [src]="data.selectedDoctor().avatarUrl" [alt]="data.selectedDoctor().name" class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover ring-2 ring-[#eceef0]" />
-                  } @else {
-                    <span>{{ data.getInitials(data.selectedDoctor().name) }}</span>
-                  }
-                </div>
+<div class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-[#006a61] text-white flex items-center justify-center text-[22px] sm:text-[26px] font-bold shadow-sm ring-2 ring-[#eceef0]">
+                    @if (headerDoctor().id === 'all') {
+                      <span class="material-symbols-outlined text-[30px] sm:text-[36px]">group</span>
+                    } @else if (headerDoctor().avatarUrl) {
+                      <img [src]="headerDoctor().avatarUrl" [alt]="headerDoctor().name" class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover ring-2 ring-[#eceef0]" />
+                    } @else {
+                      <span>{{ data.getInitials(headerDoctor().name) }}</span>
+                    }
+                  </div>
                 <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-xs">
                   <span class="w-3.5 h-3.5 rounded-full bg-[#006a61] animate-pulse"></span>
                 </span>
               </div>
               <div class="flex flex-col min-w-0">
                 <div class="flex flex-wrap items-center gap-2 mb-1">
-                  <h1 class="text-[20px] sm:text-[22px] font-bold text-[#191c1e] tracking-tight truncate">
-                    {{ data.selectedDoctor().name }}
-                  </h1>
+<h1 class="text-[20px] sm:text-[22px] font-bold text-[#191c1e] tracking-tight truncate">
+                      {{ headerDoctor().name }}
+                    </h1>
                   <app-badge [variant]="activeConsultation() ? 'teal' : 'neutral'" [dot]="true" [pulse]="activeConsultation()">{{ activeConsultation() ? 'En Consultorio (Atendiendo Citas)' : 'En Consultorio (Sin Citas Activas)' }}</app-badge>
                 </div>
                 <p class="text-[13px] text-[#45464d] truncate">
@@ -958,11 +958,31 @@ export class DashboardComponent {
   auth = inject(AuthService);
   toast = inject(ToastService);
 
+  /** Doctor a mostrar en el encabezado. Si el usuario logueado es doctor sin
+   *  perfil vinculado (doctor_id nulo), muestra su propio nombre en lugar de
+   *  'Todos los Médicos' o un medico ajeno. */
+  readonly headerDoctor = computed(() => {
+    if (this.auth.isDoctor() && !this.auth.getDoctorId()) {
+      const user = this.auth.currentUser();
+      if (user) {
+        return {
+          id: 'self',
+          name: user.name,
+          shortName: user.name,
+          specialty: 'Medicina General',
+          activeToday: true,
+          avatarUrl: '',
+        };
+      }
+    }
+    return this.data.selectedDoctor();
+  });
+
   doctorRoleLabel = computed(() => {
-    if (this.data.selectedDoctorId() === null) {
+    if (this.headerDoctor().id === 'all') {
       return 'Equipo Médico MedControl';
     }
-    const doctor = this.data.selectedDoctor();
+    const doctor = this.headerDoctor();
     return `Especialista en ${doctor.specialty} | Equipo Médico MedControl`;
   });
 
@@ -1046,14 +1066,7 @@ export class DashboardComponent {
   }
 
   constructor() {
-    if (this.auth.isDoctor()) {
-      const doctorId = this.auth.getDoctorId();
-      if (doctorId) {
-        this.data.selectedDoctorId.set(doctorId);
-      }
-    } else {
-      this.data.selectedDoctorId.set(null);
-    }
+    this.data.selectedDoctorId.set(this.auth.isDoctor() ? this.auth.getDoctorId() : null);
     this.refreshOpenDates();
   }
 
