@@ -17,7 +17,7 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 class="text-[16px] font-bold text-[#191c1e]">Usuarios y Roles del Sistema</h2>
-          <p class="text-[12px] text-[#45464d]">Cuentas con acceso al sistema y su rol (admin o médico)</p>
+          <p class="text-[12px] text-[#45464d]">Cuentas de administradores y médicos (los médicos se crean desde el tab Médicos)</p>
         </div>
         <app-button variant="primary" size="md" icon="person_add" (click)="openNew()">Nuevo Usuario</app-button>
       </div>
@@ -93,24 +93,28 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
             <span class="text-[12px] font-bold text-[#191c1e]">Correo Electrónico *</span>
             <input type="email" [value]="form().email" (input)="onInput('email', $event)" class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]" placeholder="usuario@medcontrol.com" />
           </label>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          @if (editing() && form().role === 'doctor') {
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="flex flex-col gap-1.5">
+                <span class="text-[12px] font-bold text-[#191c1e]">Rol</span>
+                <div class="px-3.5 py-2.5 rounded-lg border border-[#e0e3e5] bg-[#f7f9fb] text-[13px] text-[#76777d] flex items-center gap-2">
+                  <app-badge variant="outline" size="sm">Médico</app-badge>
+                  <span class="text-[11px]">Cuenta gestionada desde el tab Médicos</span>
+                </div>
+              </div>
+              <div class="flex flex-col gap-1.5">
+                <span class="text-[12px] font-bold text-[#191c1e]">Perfil Médico</span>
+                <div class="px-3.5 py-2.5 rounded-lg border border-[#e0e3e5] bg-[#f7f9fb] text-[13px] text-[#191c1e]">{{ linkedDoctorName(form().doctorId) }}</div>
+              </div>
+            </div>
+          } @else {
             <label class="flex flex-col gap-1.5">
               <span class="text-[12px] font-bold text-[#191c1e]">Rol *</span>
               <select [value]="form().role" (change)="onSelect('role', $event)" class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]">
-                <option value="doctor">Médico</option>
                 <option value="admin">Administrador</option>
               </select>
             </label>
-            <label class="flex flex-col gap-1.5">
-              <span class="text-[12px] font-bold text-[#191c1e]">Perfil Médico <span class="font-normal text-[#76777d]">(requerido para rol Médico)</span></span>
-              <select [value]="form().doctorId ?? ''" (change)="onSelectDoctor($event)" class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]">
-                <option value="">Sin vínculo</option>
-                @for (d of data.doctors(); track d.id) {
-                  <option [value]="d.id">{{ d.name }}</option>
-                }
-              </select>
-            </label>
-          </div>
+          }
         </div>
         <div modal-footer class="flex items-center justify-end gap-2.5">
           <app-button variant="light" size="md" (click)="close()">Cancelar</app-button>
@@ -161,7 +165,7 @@ export class UsersManagementComponent {
 
   readonly showModal = signal(false);
   readonly editing = signal(false);
-  readonly form = signal<AppUser>({ id: '', name: '', email: '', role: 'doctor', doctorId: undefined, active: true });
+  readonly form = signal<AppUser>({ id: '', name: '', email: '', role: 'admin', doctorId: undefined, active: true });
   readonly credentials = signal<{ name: string; email: string; password: string } | null>(null);
 
   private update(key: string, value: unknown): void {
@@ -176,14 +180,14 @@ export class UsersManagementComponent {
     this.update(key, (event.target as HTMLSelectElement).value);
   }
 
-  onSelectDoctor(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    this.update('doctorId', value || undefined);
+  linkedDoctorName(doctorId: string | undefined): string {
+    if (!doctorId) return 'Sin vínculo';
+    return this.data.doctors().find((d) => d.id === doctorId)?.name ?? 'Sin vínculo';
   }
 
   openNew(): void {
     this.editing.set(false);
-    this.form.set({ id: '', name: '', email: '', role: 'doctor', doctorId: undefined, active: true });
+    this.form.set({ id: '', name: '', email: '', role: 'admin', doctorId: undefined, active: true });
     this.showModal.set(true);
   }
 
@@ -216,10 +220,6 @@ export class UsersManagementComponent {
     }
     if (this.data.emailTaken(f.email.trim(), this.editing() ? f.id : undefined)) {
       this.toast.show('Correo Duplicado', 'Ya existe una cuenta con ese correo electrónico.', 'error');
-      return;
-    }
-    if (f.role === 'doctor' && !f.doctorId) {
-      this.toast.show('Falta Perfil Médico', 'Seleccione el perfil médico vinculado a esta cuenta.', 'warning');
       return;
     }
     if (this.editing()) {
