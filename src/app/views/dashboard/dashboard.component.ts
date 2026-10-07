@@ -46,7 +46,11 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                   ? 'bg-[#006a61] text-white border-[#006a61] shadow-sm'
                   : 'bg-white text-[#45464d] border-[#e0e3e5] hover:border-[#006a61] hover:text-[#006a61]'"
               >
-              <img [src]="doc.avatarUrl" [alt]="doc.name" class="w-5 h-5 rounded-full object-cover ring-1 ring-current/20" />
+              @if (doc.avatarUrl) {
+                <img [src]="doc.avatarUrl" [alt]="doc.name" class="w-5 h-5 rounded-full object-cover ring-1 ring-current/20" />
+              } @else {
+                <span class="w-5 h-5 rounded-full bg-[#006a61]/15 text-[#006a61] flex items-center justify-center text-[9px] font-bold">{{ data.getInitials(doc.name) }}</span>
+              }
                 <span>{{ doc.shortName }}</span>
                 @if (doc.activeToday) {
                   <span class="w-1.5 h-1.5 rounded-full bg-[#006a61]"></span>
@@ -63,8 +67,10 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                 <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-[#006a61] text-white flex items-center justify-center text-[22px] sm:text-[26px] font-bold shadow-sm ring-2 ring-[#eceef0]">
                   @if (data.selectedDoctorId() === null) {
                     <span class="material-symbols-outlined text-[30px] sm:text-[36px]">group</span>
-                  } @else {
+                  } @else if (data.selectedDoctor().avatarUrl) {
                     <img [src]="data.selectedDoctor().avatarUrl" [alt]="data.selectedDoctor().name" class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover ring-2 ring-[#eceef0]" />
+                  } @else {
+                    <span>{{ data.getInitials(data.selectedDoctor().name) }}</span>
                   }
                 </div>
                 <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-xs">
@@ -258,7 +264,11 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                               {{ data.getInitials(patient?.name ?? '') }}
                             </div>
                             @if (data.selectedDoctorId() === null && doctor) {
+                              @if (doctor.avatarUrl) {
                               <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
+                            } @else {
+                              <span class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white bg-[#006a61] text-white shadow-sm flex items-center justify-center text-[10px] font-bold">{{ data.getInitials(doctor.name) }}</span>
+                            }
                             }
                           </div>
                           <div class="min-w-0">
@@ -302,7 +312,11 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                                 {{ data.getInitials(patient?.name ?? '') }}
                               </div>
                               @if (data.selectedDoctorId() === null && doctor) {
-                                <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
+                                @if (doctor.avatarUrl) {
+                              <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
+                            } @else {
+                              <span class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white bg-[#006a61] text-white shadow-sm flex items-center justify-center text-[10px] font-bold">{{ data.getInitials(doctor.name) }}</span>
+                            }
                               }
                             </div>
                             <div class="min-w-0">
@@ -374,7 +388,11 @@ Triage
                                 {{ data.getInitials(patient?.name ?? '') }}
                               </div>
                               @if (data.selectedDoctorId() === null && doctor) {
-                                <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
+                                @if (doctor.avatarUrl) {
+                              <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
+                            } @else {
+                              <span class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white bg-[#006a61] text-white shadow-sm flex items-center justify-center text-[10px] font-bold">{{ data.getInitials(doctor.name) }}</span>
+                            }
                               }
                             </div>
                             <div class="min-w-0">
@@ -441,7 +459,11 @@ Triage
                               {{ data.getInitials(patient?.name ?? '') }}
                             </div>
                             @if (data.selectedDoctorId() === null && doctor) {
+                              @if (doctor.avatarUrl) {
                               <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
+                            } @else {
+                              <span class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white bg-[#006a61] text-white shadow-sm flex items-center justify-center text-[10px] font-bold">{{ data.getInitials(doctor.name) }}</span>
+                            }
                             }
                           </div>
                           <div class="min-w-0">
@@ -486,7 +508,11 @@ Triage
                               {{ data.getInitials(patient?.name ?? '') }}
                             </div>
                             @if (data.selectedDoctorId() === null && doctor) {
+                              @if (doctor.avatarUrl) {
                               <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
+                            } @else {
+                              <span class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white bg-[#006a61] text-white shadow-sm flex items-center justify-center text-[10px] font-bold">{{ data.getInitials(doctor.name) }}</span>
+                            }
                             }
                           </div>
                           <div class="min-w-0">
@@ -551,7 +577,11 @@ Triage
                               {{ data.getInitials(patient?.name ?? '') }}
                             </div>
                             @if (data.selectedDoctorId() === null && doctor) {
+                              @if (doctor.avatarUrl) {
                               <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
+                            } @else {
+                              <span class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white bg-[#006a61] text-white shadow-sm flex items-center justify-center text-[10px] font-bold">{{ data.getInitials(doctor.name) }}</span>
+                            }
                             }
                           </div>
                           <div class="min-w-0">

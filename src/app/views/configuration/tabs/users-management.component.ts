@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { MockDataService } from '../../../core/services/mock-data.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { AppUser } from '../../../core/models/types';
 import { ButtonComponent } from '../../../shared/button/button.component';
@@ -29,7 +30,7 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
               <th class="px-4 py-3 font-bold">Correo</th>
               <th class="px-4 py-3 font-bold">Rol</th>
               <th class="px-4 py-3 font-bold">Estado</th>
-              <th class="px-4 py-3 font-bold text-right">Red de Acción</th>
+              <th class="px-4 py-3 font-bold text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -44,13 +45,29 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
                   <app-badge variant="outline" size="sm">{{ user.active ? 'Activo' : 'Inactivo' }}</app-badge>
                 </td>
                 <td class="px-4 py-3 text-right">
-                  <button
-                    class="p-1.5 rounded-lg text-[#006a61] hover:bg-[#86f2e4]/20 transition-colors"
-                    title="Activar / Desactivar"
-                    (click)="toggle(user.id)"
-                  >
-                    <span class="material-symbols-outlined text-[18px]">{{ user.active ? 'toggle_on' : 'toggle_off' }}</span>
-                  </button>
+                  <div class="inline-flex items-center gap-1.5">
+                    <button
+                      class="p-1.5 rounded-lg text-[#006a61] hover:bg-[#86f2e4]/20 transition-colors"
+                      title="Editar"
+                      (click)="edit(user)"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">edit</span>
+                    </button>
+                    <button
+                      class="p-1.5 rounded-lg text-[#006a61] hover:bg-[#86f2e4]/20 transition-colors"
+                      title="Activar / Desactivar"
+                      (click)="toggle(user.id)"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">{{ user.active ? 'toggle_on' : 'toggle_off' }}</span>
+                    </button>
+                    <button
+                      class="p-1.5 rounded-lg text-[#ba1a1a] hover:bg-[#ffdad6]/40 transition-colors"
+                      title="Eliminar"
+                      (click)="remove(user)"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">delete</span>
+                    </button>
+                  </div>
                 </td>
               </tr>
             }
@@ -60,8 +77,8 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
 
       <app-modal
         [isOpen]="showModal()"
-        title="Nuevo Usuario"
-        subtitle="Registre una cuenta con acceso al sistema"
+        [title]="editing() ? 'Editar Usuario' : 'Nuevo Usuario'"
+        [subtitle]="editing() ? 'Actualice los datos de la cuenta' : 'Registre una cuenta con acceso al sistema'"
         icon="person_add"
         [maxWidth]="'md'"
         [footerTemplate]="true"
@@ -97,7 +114,7 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
         </div>
         <div modal-footer class="flex items-center justify-end gap-2.5">
           <app-button variant="light" size="md" (click)="close()">Cancelar</app-button>
-          <app-button variant="primary" size="md" icon="check" (click)="save()">Crear Usuario</app-button>
+          <app-button variant="primary" size="md" icon="check" (click)="save()">{{ editing() ? 'Guardar Cambios' : 'Crear Usuario' }}</app-button>
         </div>
       </app-modal>
 
@@ -137,11 +154,13 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
 })
 export class UsersManagementComponent {
   data = inject(MockDataService);
+  auth = inject(AuthService);
   toast = inject(ToastService);
 
   users = computed(() => this.data.getCatalogUsers());
 
   readonly showModal = signal(false);
+  readonly editing = signal(false);
   readonly form = signal<AppUser>({ id: '', name: '', email: '', role: 'doctor', doctorId: undefined, active: true });
   readonly credentials = signal<{ name: string; email: string; password: string } | null>(null);
 
@@ -163,7 +182,14 @@ export class UsersManagementComponent {
   }
 
   openNew(): void {
+    this.editing.set(false);
     this.form.set({ id: '', name: '', email: '', role: 'doctor', doctorId: undefined, active: true });
+    this.showModal.set(true);
+  }
+
+  edit(user: AppUser): void {
+    this.editing.set(true);
+    this.form.set({ ...user, name: user.name, email: user.email, role: user.role, doctorId: user.doctorId, active: user.active });
     this.showModal.set(true);
   }
 
@@ -188,21 +214,27 @@ export class UsersManagementComponent {
       this.toast.show('Faltan Datos', 'Ingrese el nombre y correo del usuario.', 'warning');
       return;
     }
-    if (this.data.emailTaken(f.email.trim())) {
+    if (this.data.emailTaken(f.email.trim(), this.editing() ? f.id : undefined)) {
       this.toast.show('Correo Duplicado', 'Ya existe una cuenta con ese correo electrónico.', 'error');
       return;
     }
-    this.data.addCatalogUser(
-      { ...f, id: 'usr-' + Date.now().toString().slice(-6), name: f.name.trim(), email: f.email.trim() },
-      (r) => {
-        this.credentials.set({
-          name: r.user.name,
-          email: r.user.email,
-          password: r.tempPassword ?? '',
-        });
-        this.toast.show('Usuario Creado', `La contraseña temporal se muestra una sola vez.`, 'info');
-      },
-    );
+    if (this.editing()) {
+      const updated = { ...f, name: f.name.trim(), email: f.email.trim() };
+      this.data.updateCatalogUser(updated);
+      this.toast.show('Usuario Actualizado', `${updated.name} fue actualizado.`);
+    } else {
+      this.data.addCatalogUser(
+        { ...f, id: 'usr-' + Date.now().toString().slice(-6), name: f.name.trim(), email: f.email.trim() },
+        (r) => {
+          this.credentials.set({
+            name: r.user.name,
+            email: r.user.email,
+            password: r.tempPassword ?? '',
+          });
+          this.toast.show('Usuario Creado', `La contraseña temporal se muestra una sola vez.`, 'info');
+        },
+      );
+    }
     this.close();
   }
 
@@ -210,5 +242,17 @@ export class UsersManagementComponent {
     this.data.toggleCatalogUserActive(id);
     const user = this.data.getCatalogUsers().find((u) => u.id === id);
     this.toast.show('Acceso Actualizado', user ? `${user.name} ${user.active ? 'habilitado' : 'deshabilitado'}.` : '');
+  }
+
+  remove(user: AppUser): void {
+    if (this.auth.currentUser()?.id === user.id) {
+      this.toast.show('No se puede eliminar', 'No puede eliminar la cuenta con la que está conectado.', 'error');
+      return;
+    }
+    this.data.deleteCatalogUser(user.id, (err) => {
+      const message = err instanceof Error ? err.message : 'El usuario no se pudo eliminar';
+      this.toast.show('No se pudo eliminar', message, 'error');
+    });
+    this.toast.show('Usuario Eliminado', `${user.name} fue eliminado.`);
   }
 }

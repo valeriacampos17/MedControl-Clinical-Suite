@@ -27,13 +27,22 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
               <th class="px-4 py-3 font-bold">Nombre</th>
               <th class="px-4 py-3 font-bold">Especialidad</th>
               <th class="px-4 py-3 font-bold">Estado</th>
-              <th class="px-4 py-3 font-bold text-right">Red de Acción</th>
+              <th class="px-4 py-3 font-bold text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
             @for (doctor of doctors(); track doctor.id) {
               <tr class="border-b border-[#eceef0] hover:bg-[#f7f9fb]/60">
-                <td class="px-4 py-3 font-semibold text-[#191c1e]">{{ doctor.name }}</td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-2.5">
+                    @if (doctor.avatarUrl) {
+                      <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="w-9 h-9 rounded-full object-cover ring-1 ring-[#eceef0]" />
+                    } @else {
+                      <span class="w-9 h-9 rounded-full bg-[#006a61]/10 text-[#006a61] flex items-center justify-center text-[12px] font-bold">{{ data.getInitials(doctor.name) }}</span>
+                    }
+                    <span class="font-semibold text-[#191c1e]">{{ doctor.name }}</span>
+                  </div>
+                </td>
                 <td class="px-4 py-3 text-[#45464d]">{{ doctor.specialty }}</td>
                 <td class="px-4 py-3">
                   <app-badge variant="outline" size="sm">{{ doctor.activeToday ? 'Activo' : 'Inactivo' }}</app-badge>
@@ -79,6 +88,35 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
         (dismiss)="close()"
       >
         <div class="flex flex-col gap-4">
+          <div class="flex items-center justify-center">
+            <input #avatarFile type="file" hidden accept="image/*" (change)="onAvatarFile($event)" />
+            <div class="relative">
+              <button
+                type="button"
+                (click)="avatarFile.click()"
+                title="Clic para subir foto"
+                class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-[#006a61] text-white flex items-center justify-center shadow-sm ring-2 ring-[#eceef0] overflow-hidden cursor-pointer hover:opacity-90 transition"
+              >
+                @if (form().avatarUrl) {
+                  <img [src]="form().avatarUrl" [alt]="form().name || 'Médico'" class="w-full h-full object-cover" />
+                } @else if (form().name) {
+                  <span class="text-[20px] sm:text-[24px] font-bold">{{ data.getInitials(form().name) }}</span>
+                } @else {
+                  <span class="material-symbols-outlined text-[28px] sm:text-[32px]">person</span>
+                }
+              </button>
+              @if (form().avatarUrl) {
+                <button
+                  type="button"
+                  (click)="clearAvatar()"
+                  title="Quitar foto"
+                  class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[#ba1a1a] text-white flex items-center justify-center shadow-md hover:bg-[#991111] transition-colors"
+                >
+                  <span class="material-symbols-outlined text-[14px]">close</span>
+                </button>
+              }
+            </div>
+          </div>
           <label class="flex flex-col gap-1.5">
             <span class="text-[12px] font-bold text-[#191c1e]">Nombre *</span>
             <input type="text" [value]="form().name" (input)="onInput('name', $event)" class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]" placeholder="Dra. María Pérez" />
@@ -119,6 +157,38 @@ export class DoctorsManagementComponent {
 
   onInput(key: string, event: Event): void {
     this.update(key, (event.target as HTMLInputElement).value);
+  }
+
+  clearAvatar(): void {
+    this.update('avatarUrl', '');
+  }
+
+  onAvatarFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      this.toast.show('Formato no válido', 'Seleccione una imagen (JPG, PNG o WebP).', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 256;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        this.update('avatarUrl', canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
   }
 
   openNew(): void {

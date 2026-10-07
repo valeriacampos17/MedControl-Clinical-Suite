@@ -140,6 +140,7 @@ export class MockDataService {
       shortName: 'Todos',
       specialty: 'Medicina General',
       activeToday: true,
+      avatarUrl: '',
     };
   });
 
@@ -1198,6 +1199,22 @@ export class MockDataService {
     if (user) {
       this.api.put<{ ok: boolean }>(`/config/users/${id}`, { ...user }).subscribe();
     }
+  }
+
+  updateCatalogUser(user: AppUser): void {
+    this.catalogUsers.update((list) => list.map((u) => (u.id === user.id ? { ...user } : u)));
+    this.api.put<{ ok: boolean }>(`/config/users/${user.id}`, { ...user }).subscribe();
+  }
+
+  deleteCatalogUser(id: string, onError?: (err: unknown) => void): void {
+    const removed = this.catalogUsers().find((u) => u.id === id);
+    this.catalogUsers.update((list) => list.filter((u) => u.id !== id));
+    this.api.delete<{ ok: boolean }>(`/config/users/${id}`).subscribe({
+      error: (err) => {
+        if (removed) this.catalogUsers.update((list) => [...list, removed]);
+        onError?.(err);
+      },
+    });
   }
 
   addDoctor(doctor: DoctorSummary, onCreated?: (result: { doctor: DoctorSummary }) => void): void {

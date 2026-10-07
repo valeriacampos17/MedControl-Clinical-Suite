@@ -62,7 +62,11 @@ import { DaySchedule } from '../../core/models/types';
                         ? 'bg-[#006a61] text-white border-[#006a61] shadow-sm'
                         : 'bg-white text-[#45464d] border-[#e0e3e5] hover:border-[#006a61] hover:text-[#006a61]'"
                     >
-                      <img [src]="doc.avatarUrl" [alt]="doc.name" class="w-5 h-5 rounded-full object-cover ring-1 ring-current/20" />
+                      @if (doc.avatarUrl) {
+  <img [src]="doc.avatarUrl" [alt]="doc.name" class="w-5 h-5 rounded-full object-cover ring-1 ring-current/20" />
+} @else {
+  <span class="w-5 h-5 rounded-full bg-[#006a61]/15 text-[#006a61] flex items-center justify-center text-[9px] font-bold">{{ data.getInitials(doc.name) }}</span>
+}
                       <span>{{ doc.shortName }}</span>
                     </button>
                   }
