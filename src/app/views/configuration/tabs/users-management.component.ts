@@ -102,7 +102,7 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
               </select>
             </label>
             <label class="flex flex-col gap-1.5">
-              <span class="text-[12px] font-bold text-[#191c1e]">Perfil Médico (si aplica)</span>
+              <span class="text-[12px] font-bold text-[#191c1e]">Perfil Médico <span class="font-normal text-[#76777d]">(requerido para rol Médico)</span></span>
               <select [value]="form().doctorId ?? ''" (change)="onSelectDoctor($event)" class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]">
                 <option value="">Sin vínculo</option>
                 @for (d of data.doctors(); track d.id) {
@@ -216,6 +216,10 @@ export class UsersManagementComponent {
     }
     if (this.data.emailTaken(f.email.trim(), this.editing() ? f.id : undefined)) {
       this.toast.show('Correo Duplicado', 'Ya existe una cuenta con ese correo electrónico.', 'error');
+      return;
+    }
+    if (f.role === 'doctor' && !f.doctorId) {
+      this.toast.show('Falta Perfil Médico', 'Seleccione el perfil médico vinculado a esta cuenta.', 'warning');
       return;
     }
     if (this.editing()) {

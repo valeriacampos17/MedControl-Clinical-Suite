@@ -131,10 +131,56 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
               <input type="text" [value]="form().shortName" (input)="onInput('shortName', $event)" class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]" placeholder="Dra. Pérez" />
             </label>
           </div>
+          @if (!editing()) {
+            <div class="border-t border-[#e6e8ea] pt-4">
+              <label class="flex items-center justify-between gap-3 cursor-pointer">
+                <span class="text-[12px] font-bold text-[#191c1e]">Habilitar inicio de sesión</span>
+                <input type="checkbox" [checked]="withAccount()" (change)="onToggleAccount($event)" class="w-4 h-4 accent-[#006a61]" />
+              </label>
+              @if (withAccount()) {
+                <label class="flex flex-col gap-1.5 mt-3">
+                  <span class="text-[12px] font-bold text-[#191c1e]">Correo Electrónico para la cuenta *</span>
+                  <input type="email" [value]="email()" (input)="onEmail($event)" class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]" placeholder="usuario@medcontrol.com" />
+                </label>
+              }
+              <p class="text-[12px] text-[#76777d] mt-2">Al crear el médico se generará también su cuenta de acceso. La contraseña temporal se mostrará una sola vez.</p>
+            </div>
+          }
         </div>
         <div modal-footer class="flex items-center justify-end gap-2.5">
           <app-button variant="light" size="md" (click)="close()">Cancelar</app-button>
           <app-button variant="primary" size="md" icon="check" (click)="save()">{{ editing() ? 'Guardar Cambios' : 'Crear Médico' }}</app-button>
+        </div>
+      </app-modal>
+
+      <app-modal
+        [isOpen]="!!credentials()"
+        title="Contraseña temporal"
+        subtitle="Guárdela ahora: solo se muestra una sola vez"
+        icon="key"
+        [maxWidth]="'sm'"
+        (dismiss)="credentials.set(null)"
+      >
+        <div class="flex flex-col gap-4">
+          <div class="p-3 rounded-lg bg-[#f2f4f6] border border-[#e0e3e5]">
+            <div class="text-[12px] font-semibold text-[#45464d]">{{ credentials()?.name }} <span class="normal-case text-[#76777d]">· {{ credentials()?.email }}</span></div>
+            <div class="mt-2 flex items-center justify-between gap-2">
+              <code class="font-mono text-[15px] font-bold text-[#006a61] tracking-wide break-all">{{ credentials()?.password }}</code>
+              <button
+                class="shrink-0 p-2 rounded-lg text-[#006a61] hover:bg-[#86f2e4]/20 transition-colors"
+                title="Copiar contraseña"
+                (click)="copyCredentials()"
+              >
+                <span class="material-symbols-outlined text-[18px]">content_copy</span>
+              </button>
+            </div>
+          </div>
+          <p class="text-[12px] text-[#76777d]">
+            Este usuario deberá cambiar la contraseña en su primer inicio de sesión.
+          </p>
+        </div>
+        <div modal-footer class="flex items-center justify-end gap-2.5">
+          <app-button variant="primary" size="md" (click)="credentials.set(null)">Entendido</app-button>
         </div>
       </app-modal>
       <app-toast />
@@ -149,6 +195,9 @@ export class DoctorsManagementComponent {
 
   readonly showModal = signal(false);
   readonly editing = signal(false);
+  readonly withAccount = signal(true);
+  readonly email = signal('');
+  readonly credentials = signal<{ name: string; email: string; password: string } | null>(null);
   readonly form = signal<DoctorSummary>({ id: '', name: '', shortName: '', specialty: 'Medicina General', activeToday: true, avatarUrl: '' });
 
   private update(key: string, value: unknown): void {
@@ -157,6 +206,25 @@ export class DoctorsManagementComponent {
 
   onInput(key: string, event: Event): void {
     this.update(key, (event.target as HTMLInputElement).value);
+  }
+
+  onEmail(event: Event): void {
+    this.email.set((event.target as HTMLInputElement).value);
+  }
+
+  onToggleAccount(event: Event): void {
+    this.withAccount.set((event.target as HTMLInputElement).checked);
+  }
+
+  async copyCredentials(): Promise<void> {
+    const password = this.credentials()?.password;
+    if (!password) return;
+    try {
+      await navigator.clipboard.writeText(password);
+      this.toast.show('Contraseña copiada', 'Péguela en un lugar seguro antes de cerrar esta ventana.');
+    } catch {
+      this.toast.show('No se pudo copiar', 'Copie la contraseña manualmente antes de cerrar.', 'error');
+    }
   }
 
   clearAvatar(): void {
@@ -194,6 +262,9 @@ export class DoctorsManagementComponent {
   openNew(): void {
     this.editing.set(false);
     this.form.set({ id: '', name: '', shortName: '', specialty: 'Medicina General', activeToday: true, avatarUrl: '' });
+    this.withAccount.set(true);
+    this.email.set('');
+    this.credentials.set(null);
     this.showModal.set(true);
   }
 
@@ -216,18 +287,40 @@ export class DoctorsManagementComponent {
     if (this.editing()) {
       this.data.updateDoctor({ ...f, name: f.name.trim(), specialty: f.specialty.trim() || 'Medicina General' });
       this.toast.show('Médico Actualizado', `${f.name.trim()} fue actualizado.`);
-    } else {
-      const name = f.name.trim();
-      this.data.addDoctor(
-        {
-          id: 'doc-' + Date.now().toString().slice(-6),
-          name,
-          shortName: f.shortName.trim() || name,
-          specialty: f.specialty.trim() || 'Medicina General',
-          activeToday: true,
-          avatarUrl: '',
+      this.close();
+      return;
+    }
+    const name = f.name.trim();
+    const doctorId = 'doc-' + Date.now().toString().slice(-6);
+    const email = this.email().trim();
+    if (this.withAccount()) {
+      if (!/^\S+@\S+\.\S+$/.test(email)) {
+        this.toast.show('Falta Correo', 'Ingrese un correo válido para la cuenta de acceso.', 'warning');
+        return;
+      }
+      if (this.data.emailTaken(email)) {
+        this.toast.show('Correo Duplicado', 'Ya existe una cuenta con ese correo electrónico.', 'error');
+        return;
+      }
+    }
+    this.data.addDoctor(
+      {
+        id: doctorId,
+        name,
+        shortName: f.shortName.trim() || name,
+        specialty: f.specialty.trim() || 'Medicina General',
+        activeToday: true,
+        avatarUrl: '',
+      },
+      this.withAccount() ? undefined : (r) => this.toast.show('Médico Creado', `${r.doctor.name} aparecerá en Ver Médico.`),
+    );
+    if (this.withAccount()) {
+      this.data.addCatalogUser(
+        { id: 'usr-' + Date.now().toString().slice(-6), name, email, role: 'doctor', doctorId, active: true },
+        (r) => {
+          this.credentials.set({ name: r.user.name, email: r.user.email, password: r.tempPassword ?? '' });
+          this.toast.show('Médico Creado', 'Perfil y cuenta de acceso creados. Guarde la contraseña temporal.', 'info');
         },
-        (r) => this.toast.show('Médico Creado', `${r.doctor.name} aparecerá en Ver Médico.`),
       );
     }
     this.close();
