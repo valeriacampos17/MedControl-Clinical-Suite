@@ -262,4 +262,5 @@ export interface AppUser {
   role: 'admin' | 'doctor';
   doctorId?: string;
   active: boolean;
+  mustChangePassword?: boolean;
 }

@@ -100,6 +100,37 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
           <app-button variant="primary" size="md" icon="check" (click)="save()">Crear Usuario</app-button>
         </div>
       </app-modal>
+
+      <app-modal
+        [isOpen]="!!credentials()"
+        title="Contraseña temporal"
+        subtitle="Guárdela ahora: solo se muestra una sola vez"
+        icon="key"
+        [maxWidth]="'sm'"
+        (dismiss)="credentials.set(null)"
+      >
+        <div class="flex flex-col gap-4">
+          <div class="p-3 rounded-lg bg-[#f2f4f6] border border-[#e0e3e5]">
+            <div class="text-[12px] font-semibold text-[#45464d]">{{ credentials()?.name }} <span class="normal-case text-[#76777d]">· {{ credentials()?.email }}</span></div>
+            <div class="mt-2 flex items-center justify-between gap-2">
+              <code class="font-mono text-[15px] font-bold text-[#006a61] tracking-wide break-all">{{ credentials()?.password }}</code>
+              <button
+                class="shrink-0 p-2 rounded-lg text-[#006a61] hover:bg-[#86f2e4]/20 transition-colors"
+                title="Copiar contraseña"
+                (click)="copyCredentials()"
+              >
+                <span class="material-symbols-outlined text-[18px]">content_copy</span>
+              </button>
+            </div>
+          </div>
+          <p class="text-[12px] text-[#76777d]">
+            Este usuario deberá cambiar la contraseña en su primer inicio de sesión.
+          </p>
+        </div>
+        <div modal-footer class="flex items-center justify-end gap-2.5">
+          <app-button variant="primary" size="md" (click)="credentials.set(null)">Entendido</app-button>
+        </div>
+      </app-modal>
       <app-toast />
     </div>
   `,
@@ -112,6 +143,7 @@ export class UsersManagementComponent {
 
   readonly showModal = signal(false);
   readonly form = signal<AppUser>({ id: '', name: '', email: '', role: 'doctor', doctorId: undefined, active: true });
+  readonly credentials = signal<{ name: string; email: string; password: string } | null>(null);
 
   private update(key: string, value: unknown): void {
     this.form.update((f) => ({ ...f, [key]: value as never }));
@@ -139,6 +171,17 @@ export class UsersManagementComponent {
     this.showModal.set(false);
   }
 
+  async copyCredentials(): Promise<void> {
+    const password = this.credentials()?.password;
+    if (!password) return;
+    try {
+      await navigator.clipboard.writeText(password);
+      this.toast.show('Contraseña copiada', 'Péguela en un lugar seguro antes de cerrar esta ventana.');
+    } catch {
+      this.toast.show('No se pudo copiar', 'Copie la contraseña manualmente antes de cerrar.', 'error');
+    }
+  }
+
   save(): void {
     const f = this.form();
     if (!f.name.trim() || !f.email.trim()) {
@@ -149,8 +192,17 @@ export class UsersManagementComponent {
       this.toast.show('Correo Duplicado', 'Ya existe una cuenta con ese correo electrónico.', 'error');
       return;
     }
-    this.data.addCatalogUser({ ...f, id: 'usr-' + Date.now().toString().slice(-6), name: f.name.trim(), email: f.email.trim() });
-    this.toast.show('Usuario Creado', `${f.name} ahora puede acceder al sistema.`);
+    this.data.addCatalogUser(
+      { ...f, id: 'usr-' + Date.now().toString().slice(-6), name: f.name.trim(), email: f.email.trim() },
+      (r) => {
+        this.credentials.set({
+          name: r.user.name,
+          email: r.user.email,
+          password: r.tempPassword ?? '',
+        });
+        this.toast.show('Usuario Creado', `La contraseña temporal se muestra una sola vez.`, 'info');
+      },
+    );
     this.close();
   }
 

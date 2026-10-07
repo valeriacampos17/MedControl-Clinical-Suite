@@ -361,12 +361,6 @@ export function seed(): void {
   ];
   for (const a of alertRules) insertAlertRule.run(...a);
 
-  const insertCatalogUser = db.prepare('INSERT INTO catalog_users (id, name, email, role, doctor_id, active) VALUES (?, ?, ?, ?, ?, 1)');
-  insertCatalogUser.run('usr-001', 'Administradora Central', 'admin@medcontrol.com', 'admin', null);
-  insertCatalogUser.run('usr-002', 'Dra. Noemí Aguirre', 'aguirre@medcontrol.com', 'doctor', 'doc-aguirre');
-  insertCatalogUser.run('usr-003', 'Dr. Jorge Mawad', 'mawad@medcontrol.com', 'doctor', 'doc-mawad');
-  insertCatalogUser.run('usr-004', 'Dra. Sandra Muñoz', 'munoz@medcontrol.com', 'doctor', 'doc-munoz');
-
   const insertConsultationType = db.prepare('INSERT INTO consultation_types (id, title, duration_minutes, price, note, suggested) VALUES (?, ?, ?, ?, ?, ?)');
   insertConsultationType.run('primera', 'Primera Consulta', 45, '$75.000 Particular', 'Evaluación médica completa', 1);
   insertConsultationType.run('control', 'Control / Seguimiento', 30, '$45.000 Particular', 'Control de tratamiento', 0);

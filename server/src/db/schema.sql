@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS users (
   role          TEXT NOT NULL CHECK (role IN ('admin','doctor')),
   doctor_id     TEXT,
   avatar_url    TEXT,
-  active        INTEGER NOT NULL DEFAULT 1
+  active        INTEGER NOT NULL DEFAULT 1,
+  must_change_password INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS doctors (
@@ -267,15 +268,6 @@ CREATE TABLE IF NOT EXISTS alert_rules (
   action_label TEXT NOT NULL,
   route        TEXT,
   active       INTEGER NOT NULL DEFAULT 1
-);
-
-CREATE TABLE IF NOT EXISTS catalog_users (
-  id         TEXT PRIMARY KEY,
-  name       TEXT NOT NULL,
-  email      TEXT NOT NULL UNIQUE,
-  role       TEXT NOT NULL CHECK (role IN ('admin','doctor')),
-  doctor_id  TEXT,
-  active     INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(date);

@@ -1181,10 +1181,13 @@ export class MockDataService {
     return this.catalogUsers().some((u) => u.email.toLowerCase() === email.toLowerCase() && u.id !== ignoreId);
   }
 
-  addCatalogUser(user: AppUser): void {
+  addCatalogUser(user: AppUser, onCreated?: (result: { user: AppUser; tempPassword?: string }) => void): void {
     this.catalogUsers.update((list) => [...list, user]);
-    this.api.post<{ user: AppUser }>('/config/users', { ...user }).subscribe({
-      next: (r) => this.catalogUsers.update((list) => list.map((u) => (u.id === user.id ? { ...r.user } : u))),
+    this.api.post<{ user: AppUser; tempPassword?: string }>('/config/users', { ...user }).subscribe({
+      next: (r) => {
+        this.catalogUsers.update((list) => list.map((u) => (u.id === user.id ? { ...r.user } : u)));
+        onCreated?.(r);
+      },
       error: () => this.catalogUsers.update((list) => list.filter((u) => u.id !== user.id)),
     });
   }
