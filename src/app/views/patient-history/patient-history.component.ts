@@ -11,6 +11,7 @@ import { ModalComponent } from '../../shared/modal/modal.component';
 import { ToastComponent } from '../../shared/toast/toast.component';
 import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-timeline/clinical-history-timeline.component';
 import { NewPatientModalComponent } from '../../shared/new-patient-modal/new-patient-modal.component';
+import { formatDateDisplay, formatTimeDisplay } from '../../core/utils/date-utils';
 
 @Component({
   selector: 'app-patient-history',
@@ -156,7 +157,7 @@ import { NewPatientModalComponent } from '../../shared/new-patient-modal/new-pat
             </div>
             <div class="mt-2">
               @if (latestConsultation(); as lastConsult) {
-                <span class="text-[20px] font-extrabold text-[#191c1e] block truncate">{{ lastConsult.date }}</span>
+                <span class="text-[20px] font-extrabold text-[#191c1e] block truncate">{{ formatDate(lastConsult.date) }}</span>
                 <p class="text-[12px] text-[#45464d] font-medium truncate">{{ lastConsult.type }} · {{ lastConsult.doctorName }}</p>
               } @else {
                 <span class="text-[18px] font-bold text-[#76777d] block">Sin consultas</span>
@@ -320,7 +321,7 @@ import { NewPatientModalComponent } from '../../shared/new-patient-modal/new-pat
                       <p class="text-[11px] text-[#76777d] mt-2 italic">"{{ rx.notes }}"</p>
                     }
                     <div class="mt-2 pt-2 border-t border-[#e0e3e5] text-[11px] text-[#76777d] flex items-center justify-between">
-                      <span>Emitida: {{ rx.date }} {{ rx.time }}</span>
+                      <span>Emitida: {{ formatDate(rx.date) }} {{ formatTime(rx.time) }}</span>
                       <span>{{ rx.doctorName }}</span>
                     </div>
                   </div>
@@ -465,6 +466,14 @@ export class PatientHistoryComponent {
   data = inject(MockDataService);
   toast = inject(ToastService);
 
+  formatDate(value: string): string {
+    return formatDateDisplay(value);
+  }
+
+  formatTime(value: string): string {
+    return formatTimeDisplay(value);
+  }
+
   selectedPatient = signal<Patient | null>(null);
 
   readonly patientPrescriptions = computed(() => {
@@ -595,17 +604,14 @@ export class PatientHistoryComponent {
       return;
     }
     const now = new Date();
-    const day = String(now.getDate()).padStart(2, '0');
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const year = now.getFullYear();
     const prescription: Prescription = {
       id: 'RX-' + Date.now(),
       patientId: patient.id,
       patientName: patient.name,
       ci: patient.ci,
       doctorName: this.data.doctor.name,
-      date: `${day}/${month}/${year}`,
-      time: now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+      date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
+      time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
       meds: meds.map((m) => ({ ...m })),
       notes: this.recipeNotes(),
       status: 'Emitida Hoy',

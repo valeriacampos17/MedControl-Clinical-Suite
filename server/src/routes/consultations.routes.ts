@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { db } from '../db/connection.js';
+import { toIsoDate, toIsoTime } from '../services/dates.js';
 
 export const consultationsRouter = Router();
 
@@ -84,6 +85,12 @@ consultationsRouter.post('/', (req, res) => {
     res.status(404).json({ error: 'Paciente no encontrado' });
     return;
   }
+  const date = toIsoDate(data.date);
+  const time = toIsoTime(data.time);
+  if (!date || !time) {
+    res.status(400).json({ error: `La fecha (${data.date}) o la hora (${data.time}) no tienen un formato valido` });
+    return;
+  }
   const id = 'CONS-' + new Date().getTime();
   const doctorId = (req.auth?.doctorId) ?? null;
   db.prepare(`
@@ -93,8 +100,8 @@ consultationsRouter.post('/', (req, res) => {
     id,
     data.patientId,
     doctorId,
-    data.date,
-    data.time,
+    date,
+    time,
     data.type,
     data.chiefComplaint ?? null,
     data.historyOfPresentIllness ?? null,

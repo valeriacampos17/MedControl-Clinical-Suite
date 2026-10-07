@@ -2,6 +2,7 @@ import { Component, Input, computed, inject, signal, OnChanges, SimpleChanges } 
 import { FormsModule } from '@angular/forms';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { Consultation, ExamOrder, Prescription } from '../../core/models/types';
+import { formatDateDisplay, formatTimeDisplay } from '../../core/utils/date-utils';
 import { BadgeComponent } from '../badge/badge.component';
 
 @Component({
@@ -62,7 +63,7 @@ import { BadgeComponent } from '../badge/badge.component';
                       : 'bg-[#f8fafc] border-[#d7d9dc] text-[#45464d] hover:border-[#006a61] hover:text-[#006a61]'"
                   >
                     <span class="w-1.5 h-1.5 rounded-full" [class]="isSel ? 'bg-white' : 'bg-[#76777d]'"></span>
-                    <span>{{ c.date }}</span>
+                    <span>{{ formatDate(c.date) }}</span>
                     @if (idx === 0) {
                       <span class="text-[9px] font-bold" [class]="isSel ? 'text-white' : 'text-[#006a61]'">(Última)</span>
                     }
@@ -122,7 +123,7 @@ import { BadgeComponent } from '../badge/badge.component';
                       <span class="px-2 py-0.5 rounded bg-[#f2f4f6] text-[11px] font-bold text-[#45464d] group-hover:bg-[#006a61] group-hover:text-white transition-colors">
                         Atención #{{ count - idx }}
                       </span>
-                      <span class="text-[14px] font-bold text-[#191c1e]">{{ c.date }} · {{ c.time }}</span>
+                      <span class="text-[14px] font-bold text-[#191c1e]">{{ formatDate(c.date) }} · {{ formatTime(c.time) }}</span>
                       <span class="px-2.5 py-0.5 rounded-full bg-[#86f2e4]/30 text-[#006f66] text-[11px] font-bold">
                         {{ c.type }}
                       </span>
@@ -149,7 +150,7 @@ import { BadgeComponent } from '../badge/badge.component';
                         <span class="px-2.5 py-0.5 rounded bg-[#006a61] text-white text-[11px] font-bold shadow-xs">
                           Atención #{{ count - idx }} (Desplegada)
                         </span>
-                        <span class="text-[15px] font-bold text-[#191c1e]">{{ c.date }} · {{ c.time }}</span>
+                        <span class="text-[15px] font-bold text-[#191c1e]">{{ formatDate(c.date) }} · {{ formatTime(c.time) }}</span>
                         <span class="px-2.5 py-0.5 rounded-full bg-[#86f2e4]/30 text-[#006f66] text-[11px] font-bold">
                           {{ c.type }}
                         </span>
@@ -372,7 +373,7 @@ import { BadgeComponent } from '../badge/badge.component';
                   @for (c of patientConsultations(); track c.id; let idx = $index; let count = $count) {
                     <tr class="hover:bg-[#f8fafc] transition-colors cursor-pointer" (click)="scrollToConsultation(c.id); activeTab.set('consultas')">
                       <td class="p-3 font-bold text-[#006a61]">#{{ count - idx }}</td>
-                      <td class="p-3 font-bold text-[#191c1e] whitespace-nowrap">{{ c.date }} <span class="text-[11px] font-normal text-[#76777d] block">{{ c.time }}</span></td>
+                      <td class="p-3 font-bold text-[#191c1e] whitespace-nowrap">{{ formatDate(c.date) }} <span class="text-[11px] font-normal text-[#76777d] block">{{ formatTime(c.time) }}</span></td>
                       <td class="p-3 font-extrabold whitespace-nowrap" [class]="c.vitals?.systolic && c.vitals!.systolic >= 140 ? 'text-[#ba1a1a]' : 'text-[#191c1e]'">
                         {{ c.vitals?.systolic }}/{{ c.vitals?.diastolic }}
                       </td>
@@ -405,6 +406,14 @@ export class ClinicalHistoryTimelineComponent implements OnChanges {
   @Input() compact: boolean = false;
 
   private data = inject(MockDataService);
+
+  formatDate(value: string): string {
+    return formatDateDisplay(value);
+  }
+
+  formatTime(value: string): string {
+    return formatTimeDisplay(value);
+  }
 
   activeTab = signal<'consultas' | 'triaje'>('consultas');
   expandedConsultationId = signal<string | null>(null);

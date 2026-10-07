@@ -3,6 +3,7 @@ import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Prescription, PrescriptionMedication, ExamOrder } from '../../core/models/types';
+import { formatDateDisplay, formatTimeDisplay } from '../../core/utils/date-utils';
 import { ButtonComponent } from '../../shared/button/button.component';
 import { BadgeComponent } from '../../shared/badge/badge.component';
 import { ModalComponent } from '../../shared/modal/modal.component';
@@ -56,7 +57,7 @@ import { ToastComponent } from '../../shared/toast/toast.component';
                       <app-badge [variant]="order.priority === 'urgencia' ? 'error' : 'info'" size="sm">{{ order.priority === 'urgencia' ? 'Urgencia' : 'Rutina' }}</app-badge>
                       <app-badge variant="outline" size="sm">{{ order.status === 'pending' ? 'Pendiente' : order.status === 'in-progress' ? 'En Proceso' : 'Finalizada' }}</app-badge>
                     </div>
-                    <p class="text-[12px] text-[#45464d] mt-0.5">Orden #{{ order.id }} · Emitida: {{ order.date }} {{ order.time }} por {{ order.doctorName }}</p>
+                    <p class="text-[12px] text-[#45464d] mt-0.5">Orden #{{ order.id }} · Emitida: {{ formatDate(order.date) }} {{ formatTime(order.time) }} por {{ order.doctorName }}</p>
                     <div class="flex items-center gap-2 mt-2 flex-wrap">
                       @for (item of order.items; track item.examId) {
                         <span class="px-2 py-0.5 rounded bg-[#f2f4f6] text-[11px] font-semibold text-[#191c1e] border border-[#e0e3e5]">{{ item.name }}</span>
@@ -106,7 +107,7 @@ import { ToastComponent } from '../../shared/toast/toast.component';
                       <span class="text-[12px] text-[#76777d]">CI: {{ rx.ci }}</span>
                       <app-badge [variant]="rx.status === 'Finalizada' ? 'neutral' : 'teal'" size="sm">{{ rx.status }}</app-badge>
                     </div>
-                    <p class="text-[12px] text-[#45464d] mt-0.5">Receta #{{ rx.id }} · Emitida: {{ rx.date }} {{ rx.time }} por {{ rx.doctorName }}</p>
+                    <p class="text-[12px] text-[#45464d] mt-0.5">Receta #{{ rx.id }} · Emitida: {{ formatDate(rx.date) }} {{ formatTime(rx.time) }} por {{ rx.doctorName }}</p>
                     <div class="flex items-center gap-2 mt-2 flex-wrap">
                       @for (med of rx.meds; track med.id) {
                         <span class="px-2 py-0.5 rounded bg-[#f2f4f6] text-[11px] font-semibold text-[#191c1e] border border-[#e0e3e5]" title="{{ med.dose }} · {{ med.frequency }} · {{ med.duration }}">{{ med.name }}</span>
@@ -212,6 +213,14 @@ export class RecetasComponent {
   toast = inject(ToastService);
   data = inject(MockDataService);
 
+  formatDate(value: string): string {
+    return formatDateDisplay(value);
+  }
+
+  formatTime(value: string): string {
+    return formatTimeDisplay(value);
+  }
+
   examOrders = computed(() => this.data.getExamOrders());
   prescriptions = computed(() => this.data.getPrescriptions());
   medicationCatalog = computed(() => this.data.medicationCatalog());
@@ -264,17 +273,14 @@ export class RecetasComponent {
       return;
     }
     const now = new Date();
-    const day = String(now.getDate()).padStart(2, '0');
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const year = now.getFullYear();
     const prescription: Prescription = {
       id: 'RX-' + Date.now(),
       patientId: patient.id,
       patientName: patient.name,
       ci: patient.ci,
       doctorName: this.data.doctor.name,
-      date: `${day}/${month}/${year}`,
-      time: now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+      date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
+      time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
       meds: meds.map((m) => ({ ...m })),
       notes: this.emitNotes(),
       status: 'Emitida Hoy',
@@ -408,7 +414,7 @@ export class RecetasComponent {
     </div>
     <div class="grid">
       <div class="field"><div class="lbl">Receta N°</div><div class="val">${this.esc(rx.id)}</div></div>
-      <div class="field"><div class="lbl">Emitida</div><div class="val">${this.esc(rx.date)} · ${this.esc(rx.time)}</div></div>
+      <div class="field"><div class="lbl">Emitida</div><div class="val">${this.esc(this.formatDate(rx.date))} · ${this.esc(this.formatTime(rx.time))}</div></div>
       <div class="field"><div class="lbl">Paciente</div><div class="val">${this.esc(rx.patientName)}</div></div>
       <div class="field"><div class="lbl">Documento</div><div class="val">${this.esc(rx.ci)}</div></div>
       <div class="field"><div class="lbl">Médico Prescriptor</div><div class="val">${this.esc(rx.doctorName)}</div></div>
@@ -446,7 +452,7 @@ export class RecetasComponent {
     </div>
     <div class="grid">
       <div class="field"><div class="lbl">Orden N°</div><div class="val">${this.esc(order.id)}</div></div>
-      <div class="field"><div class="lbl">Emitida</div><div class="val">${this.esc(order.date)} · ${this.esc(order.time)}</div></div>
+      <div class="field"><div class="lbl">Emitida</div><div class="val">${this.esc(this.formatDate(order.date))} · ${this.esc(this.formatTime(order.time))}</div></div>
       <div class="field"><div class="lbl">Paciente</div><div class="val">${this.esc(order.patientName)}</div></div>
       <div class="field"><div class="lbl">Médico Solicitante</div><div class="val">${this.esc(order.doctorName)}</div></div>
       <div class="field"><div class="lbl">Prioridad</div><div class="val">${order.priority === 'urgencia' ? 'URGENCIA' : 'RUTINA'}</div></div>

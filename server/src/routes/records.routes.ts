@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db/connection.js';
+import { toIsoDate, toIsoTime } from '../services/dates.js';
 
 export const recordsRouter = Router();
 
@@ -73,6 +74,12 @@ recordsRouter.post('/prescriptions', (req, res) => {
     return;
   }
   const id = 'RX-' + new Date().getTime();
+  const isoDate = toIsoDate(date);
+  const isoTime = toIsoTime(time);
+  if (!isoDate || !isoTime) {
+    res.status(400).json({ error: `La fecha (${date}) o la hora (${time}) no tienen un formato valido` });
+    return;
+  }
   const patientName = patientNameOf(String(patientId));
   db.prepare(`
     INSERT INTO prescriptions (id, patient_id, doctor_id, consultation_id, patient_name, ci, date, time, notes, status)
@@ -84,8 +91,8 @@ recordsRouter.post('/prescriptions', (req, res) => {
     consultationId ? String(consultationId) : null,
     patientName,
     ci ? String(ci) : null,
-    String(date),
-    String(time),
+    isoDate,
+    isoTime,
     notes ? String(notes) : null,
     String(status ?? 'Vigente en Farmacia'),
   );
@@ -154,25 +161,31 @@ recordsRouter.post('/exam-orders', (req, res) => {
   const { consultationId, patientId, date, time, priority, notes, items } = body;
   if (!consultationId || !patientId || !date || !time || !Array.isArray(items)) {
     res.status(400).json({ error: 'consultationId, patientId, date, time e items son requeridos' });
-    return;
-  }
-  const id = 'ORD-' + new Date().getTime();
-  db.prepare(`
-    INSERT INTO exam_orders (id, consultation_id, patient_id, doctor_id, patient_name, doctor_name, date, time, priority, notes, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    id,
-    String(consultationId),
-    String(patientId),
-    req.auth?.doctorId ?? null,
-    patientNameOf(String(patientId)),
-    doctorNameOf(req.auth?.doctorId ?? null),
-    String(date),
-    String(time),
-    String(priority ?? 'rutina'),
-    notes ? String(notes) : null,
-    String(body.status ?? 'pending'),
-  );
+return;
+    }
+    const id = 'ORD-' + new Date().getTime();
+    const isoDate = toIsoDate(date);
+    const isoTime = toIsoTime(time);
+    if (!isoDate || !isoTime) {
+      res.status(400).json({ error: `La fecha (${date}) o la hora (${time}) no tienen un formato valido` });
+      return;
+    }
+    db.prepare(`
+      INSERT INTO exam_orders (id, consultation_id, patient_id, doctor_id, patient_name, doctor_name, date, time, priority, notes, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id,
+      String(consultationId),
+      String(patientId),
+      req.auth?.doctorId ?? null,
+      patientNameOf(String(patientId)),
+      doctorNameOf(req.auth?.doctorId ?? null),
+      isoDate,
+      isoTime,
+      String(priority ?? 'rutina'),
+      notes ? String(notes) : null,
+      String(body.status ?? 'pending'),
+    );
   const insertItem = db.prepare('INSERT INTO exam_order_items (order_id, exam_id, name, category, fasting, preparation) VALUES (?, ?, ?, ?, ?, ?)');
   for (const it of items) {
     insertItem.run(id, String(it.examId ?? ''), String(it.name ?? ''), String(it.category ?? 'laboratorio'), it.fasting ? 1 : 0, it.preparation ?? null);

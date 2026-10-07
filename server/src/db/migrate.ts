@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { db, loadSchema } from './connection.js';
+import { toIsoDate, toIsoTime } from '../services/dates.js';
 
 const ADD_ORGANIZATION_SLOGAN = `ALTER TABLE organization_settings ADD COLUMN slogan TEXT`;
 const ADD_MUST_CHANGE_PASSWORD = `ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0`;
@@ -153,6 +154,26 @@ export function migrate(): void {
     }
     dropTableIfExists('catalog_users');
   }
+
+  migrateDatesToIso();
+}
+
+const LEGACY_DMY = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
+const LEGACY_AMPM = /^\d{1,2}:\d{2}\s*[AP]M$/i;
+
+/**
+ * Fechas y horas en ISO 8601. Consultas, recetas y ordenes de examen nacieron
+ * en el formato local (DD/MM/YYYY y 'h:mm AM/PM'); appointments, el calendario
+ * y las jornadas ya eran ISO. Se reescriben las filas viejas sin tocar las
+ * que ya estan en el formato nuevo, asi rerrellar es un no-op.
+ */
+function migrateDatesToIso(): void {
+  for (const table of ['consultations', 'prescriptions', 'exam_orders']) {
+    convertIf(table, 'date', LEGACY_DMY, (v) => toIsoDate(v) ?? v);
+    convertIf(table, 'time', LEGACY_AMPM, (v) => toIsoTime(v) ?? v);
+  }
+  convertIf('absences', 'start_date', LEGACY_DMY, (v) => toIsoDate(v) ?? v);
+  convertIf('absences', 'end_date', LEGACY_DMY, (v) => toIsoDate(v) ?? v);
 }
 
 export function isSeeded(): boolean {
