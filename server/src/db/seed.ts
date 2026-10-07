@@ -69,6 +69,7 @@ export function seed(): void {
   insertDoctor.run('doc-aguirre', 'Dra. Noemí Aguirre', 'Dra. Aguirre', 'Medicina General', 'assets/images/doctors/doctor-aguirre.jpeg');
   insertDoctor.run('doc-mawad', 'Dr. Jorge Mawad', 'Dr. Mawad', 'Medicina General', 'assets/images/doctors/doctor-mawad.jpeg');
   insertDoctor.run('doc-munoz', 'Dra. Sandra Muñoz', 'Dra. Muñoz', 'Medicina General', 'assets/images/doctors/doctor-munoz.webp');
+  insertDoctor.run('doc-nereida', 'Dra. Nereida', 'Dra. Nereida', 'Medicina General', null);
 
   const insertPatient = db.prepare(`
     INSERT INTO patients (id, ci, name, birth_date, age, phone, email, address, insurance, blood_type, allergies, chronic_conditions, consent_signed)
