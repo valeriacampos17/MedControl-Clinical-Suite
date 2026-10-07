@@ -155,7 +155,7 @@ export function seed(): void {
   `);
   const consultations = [
     {
-      id: 'CONS-2024-1014', patientId: 'MED-0001', doctorId: 'doc-aguirre', date: '14/10/2024', time: '10:15 AM',
+      id: 'CONS-2024-1014', patientId: 'MED-0001', doctorId: 'doc-aguirre', date: '2024-10-14', time: '10:15',
       type: 'Control Cardiológico',
       chiefComplaint: 'Control rutinario de hipertensión arterial y revisión de exámenes de laboratorio.',
       history: 'Paciente de 58 años con antecedente de HTA y dislipidemia en tratamiento continuo. Refiere sentirse estable sin dolor torácico, palpitaciones ni disnea de esfuerzo. Buena adherencia al tratamiento.',
@@ -166,7 +166,7 @@ export function seed(): void {
       notes: 'Se adjuntan resultados de laboratorio. Parámetros metabólicos estables. Paciente firma consentimiento de telemonitoreo.',
     },
     {
-      id: 'CONS-2024-0618', patientId: 'MED-0001', doctorId: 'doc-aguirre', date: '18/06/2024', time: '09:30 AM',
+      id: 'CONS-2024-0618', patientId: 'MED-0001', doctorId: 'doc-aguirre', date: '2024-06-18', time: '09:30',
       type: 'Primera Consulta',
       chiefComplaint: 'Cefalea holocraneana leve y registro de presión elevada en domicilio.',
       history: 'Paciente acude por presentar dolor de cabeza pulsátil ocasional en región occipital. Refiere tomas de PA en farmacia con valores de 145/90 mmHg.',
@@ -177,7 +177,7 @@ export function seed(): void {
       notes: 'Se solicita ecocardiograma transtorácico de control.',
     },
     {
-      id: 'CONS-2024-0115', patientId: 'MED-0001', doctorId: 'doc-mawad', date: '15/01/2024', time: '11:30 AM',
+      id: 'CONS-2024-0115', patientId: 'MED-0001', doctorId: 'doc-mawad', date: '2024-01-15', time: '11:30',
       type: 'Ingreso Preventivo',
       chiefComplaint: 'Evaluación inicial por antecedentes familiares de hipertensión y dislipidemia.',
       history: 'Paciente acude a control de salud preventivo. Refiere madre hipertensa. Asintomática en el momento del examen.',
@@ -188,7 +188,7 @@ export function seed(): void {
       notes: 'Primera consulta en la clínica. Se abre expediente HCE-MED-0001.',
     },
     {
-      id: 'CONS-2024-0920', patientId: 'MED-0002', doctorId: 'doc-mawad', date: '20/09/2024', time: '11:00 AM',
+      id: 'CONS-2024-0920', patientId: 'MED-0002', doctorId: 'doc-mawad', date: '2024-09-20', time: '11:00',
       type: 'Chequeo General',
       chiefComplaint: 'Chequeo preventivo anual por antecedentes familiares de diabetes.',
       history: 'Paciente masculino de 42 años asintomático. Solicita evaluación médica general y exámenes de rutina.',
@@ -199,7 +199,7 @@ export function seed(): void {
       notes: 'Paciente sin factores de riesgo agudos.',
     },
     {
-      id: 'CONS-2024-0915', patientId: 'MED-0005', doctorId: 'doc-munoz', date: '15/09/2024', time: '08:45 AM',
+      id: 'CONS-2024-0915', patientId: 'MED-0005', doctorId: 'doc-munoz', date: '2024-09-15', time: '08:45',
       type: 'Control de Arritmia',
       chiefComplaint: 'Evaluación de palpitaciones esporádicas y cansancio.',
       history: 'Paciente de 42 años refiere episodios breves de palpitaciones en reposo, asociados a estrés laboral.',
