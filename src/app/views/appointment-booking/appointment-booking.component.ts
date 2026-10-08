@@ -67,6 +67,12 @@ function firstOfCurrentMonth(): Date {
             </div>
             <p class="text-[13px] text-[#45464d] mt-1">Los horarios salen de los días abiertos y de la jornada de cada médico</p>
           </div>
+          <div class="flex items-center gap-2.5 shrink-0">
+            <app-button variant="light" icon="arrow_back" (click)="goBack()">Regresar</app-button>
+            <app-button variant="primary" icon="event_available" [disabled]="!canConfirm()" (click)="showConfirmModal.set(true)">
+              Guardar Cita
+            </app-button>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -931,6 +937,14 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
   }
 
   // ---- confirmacion ----
+
+  goBack(): void {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      this.nav.navigate('dashboard-de-citas');
+    }
+  }
 
   handleConfirmBooking(): void {
     const patient = this.selectedPatient();
