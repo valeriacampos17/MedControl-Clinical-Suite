@@ -1,6 +1,7 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { NavigationService } from '../../core/services/navigation.service';
 import { AuthService } from '../../core/services/auth.service';
+import { OnboardingService, type SetupTask } from '../../core/services/onboarding.service';
 import { NavRoute } from '../../core/models/types';
 
 @Component({
@@ -84,39 +85,84 @@ import { NavRoute } from '../../core/models/types';
           <div class="relative">
             <button
               type="button"
-              (click)="showNotifications.set(!showNotifications())"
+              (click)="toggleNotifications()"
               aria-label="Notificaciones y alertas"
               class="relative p-2 rounded-lg text-[#45464d] hover:bg-[#eceef0] hover:text-[#191c1e] transition-colors"
             >
               <span class="material-symbols-outlined text-[22px]">notifications</span>
-              <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#ba1a1a] ring-2 ring-white"></span>
+              @if (auth.isDoctor() ? setupPending() : true) {
+                <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#ba1a1a] ring-2 ring-white"></span>
+              }
             </button>
 
             @if (showNotifications()) {
               <div class="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-2xl border border-[#eceef0] p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
                 <div class="flex items-center justify-between pb-2 mb-2 border-b border-[#eceef0]">
                   <span class="text-[13px] font-bold text-[#191c1e]">Notificaciones Clínicas</span>
-                  <span class="text-[10px] bg-[#ffdad6] text-[#ba1a1a] font-bold px-1.5 py-0.5 rounded">2 Nuevas</span>
+                  @if (auth.isDoctor()) {
+                    <span
+                      class="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                      [class.bg-[#ffdad6]]="setupPending()"
+                      [class.text-[#ba1a1a]]="setupPending()"
+                      [class.bg-[#f2f4f6]]="!setupPending()"
+                      [class.text-[#76777d]]="!setupPending()"
+                    >
+                      {{ setupPending() ? setupCount() + (setupCount() === 1 ? ' Pendiente' : ' Pendientes') : 'Al día' }}
+                    </span>
+                  } @else {
+                    <span class="text-[10px] bg-[#ffdad6] text-[#ba1a1a] font-bold px-1.5 py-0.5 rounded">2 Nuevas</span>
+                  }
                 </div>
-                <div class="flex flex-col gap-2 max-h-64 overflow-y-auto">
-                  <div class="p-2 bg-[#f2f4f6] rounded-lg text-left">
-                    <p class="text-[12px] font-semibold text-[#191c1e]">Alergia confirmada - Juan Pérez</p>
-                    <p class="text-[11px] text-[#45464d]">Reportada reacción anafiláctica a Penicilina.</p>
-                    <span class="text-[10px] text-[#76777d]">Hace 12 min</span>
-                  </div>
-                  <div class="p-2 bg-[#f2f4f6] rounded-lg text-left">
-                    <p class="text-[12px] font-semibold text-[#191c1e]">Cancelación de Turno 16:00</p>
-                    <p class="text-[11px] text-[#45464d]">Slot liberado reasignado a lista prioritaria.</p>
-                    <span class="text-[10px] text-[#76777d]">Hace 35 min</span>
-                  </div>
+                <div class="flex flex-col gap-2 max-h-80 overflow-y-auto">
+                  @if (auth.isDoctor()) {
+                    @if (setupPending()) {
+                      <div class="text-[11px] font-bold text-[#76777d] uppercase tracking-wider px-1 pt-1">
+                        Para comenzar a operar
+                      </div>
+                      @for (task of onboarding.tasks(); track task.id) {
+                        <button
+                          type="button"
+                          (click)="onSetupTaskClick(task)"
+                          class="w-full p-2 bg-[#fff4e5] rounded-lg text-left hover:bg-[#ffe8cc] transition-colors text-start"
+                        >
+                          <span class="flex items-center gap-1.5 text-[12px] font-bold text-[#92400e]">
+                            <span class="material-symbols-outlined text-[16px]">build_circle</span>
+                            <span>{{ task.title }}</span>
+                          </span>
+                          <span class="text-[11px] text-[#78350f] mt-0.5 block leading-snug">{{ task.description }}</span>
+                          <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-[#006a61] mt-1">
+                            Ir a configurar
+                            <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+                          </span>
+                        </button>
+                      }
+                    } @else {
+                      <div class="p-3 text-[13px] text-[#76777d] text-center">
+                        No tienes pendientes de configuración. Tu horario y días están al día.
+                      </div>
+                    }
+                  } @else {
+                    <div class="p-2 bg-[#f2f4f6] rounded-lg text-left">
+                      <p class="text-[12px] font-semibold text-[#191c1e]">Alergia confirmada - Juan Pérez</p>
+                      <p class="text-[11px] text-[#45464d]">Reportada reacción anafiláctica a Penicilina.</p>
+                      <span class="text-[10px] text-[#76777d]">Hace 12 min</span>
+                    </div>
+                    <div class="p-2 bg-[#f2f4f6] rounded-lg text-left">
+                      <p class="text-[12px] font-semibold text-[#191c1e]">Cancelación de Turno 16:00</p>
+                      <p class="text-[11px] text-[#45464d]">Slot liberado reasignado a lista prioritaria.</p>
+                      <span class="text-[10px] text-[#76777d]">Hace 35 min</span>
+                    </div>
+                  }
                 </div>
-                <button
-                  type="button"
-                  (click)="onAlertsClick()"
-                  class="w-full mt-2 pt-2 border-t border-[#eceef0] text-center text-[12px] text-[#006a61] font-semibold hover:underline"
-                >
-                  Ver centro de alertas completo
-                </button>
+                @if (auth.isAdmin()) {
+                  <button
+                    type="button"
+                    (click)="onAlertsClick()"
+                    class="w-full mt-2 pt-2 border-t border-[#eceef0] text-center text-[12px] text-[#006a61] font-semibold hover:underline"
+                  >
+                    Ver centro de alertas completo
+                  </button>
+                }
               </div>
             }
           </div>
@@ -196,11 +242,55 @@ import { NavRoute } from '../../core/models/types';
 export class HeaderComponent {
   nav = inject(NavigationService);
   auth = inject(AuthService);
+  onboarding = inject(OnboardingService);
 
   searchQuery = signal('');
   showNotifications = signal(false);
   showUserMenu = signal(false);
   showSearchDropdown = signal(false);
+
+  setupPending = signal(false);
+  setupCount = signal(0);
+  private taskSubscription: { unsubscribe(): void } | null = null;
+
+  /** Refresca las tareas cuando cambia el usuario (login, restore, logout). */
+  private readonly userChangeEffect = effect(() => {
+    this.auth.isDoctor();
+    this.auth.getDoctorId();
+    this.refreshSetupTasks();
+  });
+
+  private refreshSetupTasks(force = false): void {
+    const doctorId = this.auth.getDoctorId();
+    if (!this.auth.isDoctor() || !doctorId) {
+      this.onboarding.clear();
+      this.setupPending.set(false);
+      this.setupCount.set(0);
+      return;
+    }
+    if (!force && this.onboarding.pendingCount() > 0) {
+      this.setupPending.set(true);
+      this.setupCount.set(this.onboarding.pendingCount());
+      return;
+    }
+    this.taskSubscription?.unsubscribe();
+    this.taskSubscription = this.onboarding.refresh(doctorId).subscribe({
+      next: (tasks) => {
+        this.setupPending.set(tasks.length > 0);
+        this.setupCount.set(tasks.length);
+      },
+      error: () => {
+        this.setupPending.set(false);
+        this.setupCount.set(0);
+      },
+    });
+  }
+
+  toggleNotifications(): void {
+    const open = !this.showNotifications();
+    this.showNotifications.set(open);
+    if (open) this.refreshSetupTasks(true);
+  }
 
   searchResults = signal([
     { name: 'Juan Pérez Morales', rut: '14.892.401-2', age: '58 años', route: 'pacientes-y-historial-clinico' as NavRoute },
@@ -223,6 +313,11 @@ export class HeaderComponent {
   onAlertsClick(): void {
     this.showNotifications.set(false);
     this.nav.navigate('notificaciones-y-alertas');
+  }
+
+  onSetupTaskClick(task: SetupTask): void {
+    this.showNotifications.set(false);
+    this.nav.navigate(task.route);
   }
 
   onConfigClick(): void {
