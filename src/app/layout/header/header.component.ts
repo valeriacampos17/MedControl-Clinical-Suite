@@ -1,6 +1,7 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { NavigationService } from '../../core/services/navigation.service';
 import { AuthService } from '../../core/services/auth.service';
+import { MockDataService } from '../../core/services/mock-data.service';
 import { OnboardingService, type SetupTask } from '../../core/services/onboarding.service';
 import { NavRoute } from '../../core/models/types';
 
@@ -173,11 +174,11 @@ import { NavRoute } from '../../core/models/types';
               (click)="showUserMenu.set(!showUserMenu())"
               class="flex items-center gap-2.5 pl-1 rounded-lg hover:bg-[#f2f4f6] p-1 transition-colors"
             >
-              @if (auth.currentUser()?.avatarUrl) {
+              @if (loggedAvatar()) {
                 <img
                   [alt]="auth.currentUser()?.name ?? ''"
                   class="w-8 h-8 rounded-full object-cover ring-1 ring-[#c6c6cd]"
-                  [src]="auth.currentUser()?.avatarUrl"
+                  [src]="loggedAvatar()"
                 />
               } @else {
                 <div class="w-8 h-8 rounded-full bg-[#006a61] text-white flex items-center justify-center text-[12px] font-bold ring-1 ring-[#c6c6cd]">
@@ -243,6 +244,18 @@ export class HeaderComponent {
   nav = inject(NavigationService);
   auth = inject(AuthService);
   onboarding = inject(OnboardingService);
+  data = inject(MockDataService);
+
+  /** Avatar del usuario logueado: para médicos usa la foto de su perfil médico
+   *  (tabla doctors), con fallback a la foto de la cuenta de usuario. */
+  readonly loggedAvatar = computed(() => {
+    if (this.auth.isDoctor()) {
+      const doctorId = this.auth.getDoctorId();
+      const doctor = doctorId ? this.data.doctors().find((d) => d.id === doctorId) : undefined;
+      if (doctor?.avatarUrl) return doctor.avatarUrl;
+    }
+    return this.auth.currentUser()?.avatarUrl ?? null;
+  });
 
   searchQuery = signal('');
   showNotifications = signal(false);
