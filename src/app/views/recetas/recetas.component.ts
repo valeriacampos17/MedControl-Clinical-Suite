@@ -111,18 +111,22 @@ import { PickerItem, SelectionPickerComponent } from '../../shared/selection-pic
         (dismiss)="closeEmitModal()"
       >
         <div class="flex flex-col gap-4">
-          <label class="flex flex-col gap-1.5">
+          <div class="flex flex-col gap-1.5">
             <span class="text-[12px] font-bold text-[#191c1e]">Paciente *</span>
-            <select
-              class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
-              [value]="emitPatientId()"
-              (change)="emitPatientId.set(($any($event.target)).value)"
-            >
-              @for (p of data.patients(); track p.id) {
-                <option [value]="p.id">{{ p.name }} · CI: {{ p.ci }}</option>
-              }
-            </select>
-          </label>
+            <app-selection-picker
+              icon="search"
+              noun="paciente"
+              placeholder="Buscar paciente por nombre o CI..."
+              hint="Busque y seleccione el paciente que recibirá la receta"
+              emptyMessage="No se encontraron pacientes con {term}"
+              [searchKeys]="['name', 'ci']"
+              [items]="patientItems()"
+              [selectedId]="emitPatientId()"
+              [quickAccess]="recentPatientItems()"
+              quickAccessLabel="Acceso rápido · atendidos recientemente:"
+              (selectedChange)="emitPatientId.set($event)"
+            />
+          </div>
 
           <div class="flex items-center justify-between">
             <span class="text-[11px] font-bold text-[#191c1e] uppercase tracking-wider">Medicamentos</span>
@@ -383,16 +387,16 @@ export class RecetasComponent {
   }
 
   readonly showEmitModal = signal(false);
-  readonly emitPatientId = signal<string>('');
+  readonly emitPatientId = signal<string | null>(null);
   readonly emitNotes = signal('');
   readonly emitMeds = signal<PrescriptionMedication[]>([
     { id: 'med-init', name: '', dose: '', frequency: '', duration: '' },
   ]);
 
   openEmitModal(): void {
-    // Si el filtro ya apunta a un paciente, la receta sale emitida a ese.
-    const fallback = this.data.patients()[0];
-    this.emitPatientId.set(this.filterPatientId() ?? fallback?.id ?? '');
+    // Con filtro activo la receta sale emitida a ese paciente; sin filtro el
+    // picker arranca vacío y hay que escoger (misma convención que Agenda).
+    this.emitPatientId.set(this.filterPatientId());
     this.emitMeds.set([{ id: 'med-init', name: '', dose: '', frequency: '', duration: '' }]);
     this.emitNotes.set('');
     this.showEmitModal.set(true);
@@ -420,7 +424,8 @@ export class RecetasComponent {
   }
 
   saveEmittedRecipe(): void {
-    const patient = this.data.getPatient(this.emitPatientId());
+    const pid = this.emitPatientId();
+    const patient = pid ? this.data.getPatient(pid) : undefined;
     if (!patient) {
       this.toast.show('Faltan Datos', 'Seleccione un paciente para emitir la receta.', 'warning');
       return;
