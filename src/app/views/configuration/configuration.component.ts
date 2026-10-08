@@ -1,4 +1,5 @@
-import { Component, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { AuthService } from '../../core/services/auth.service';
 import { ExamsManagementComponent } from './tabs/exams-management.component';
 import { MedicationsManagementComponent } from './tabs/medications-management.component';
 import { DiagnosesManagementComponent } from './tabs/diagnoses-management.component';
@@ -34,7 +35,7 @@ type ConfigTab = 'exams' | 'medications' | 'diagnoses' | 'triage' | 'organizatio
         </div>
 
         <div class="flex items-center gap-1.5 overflow-x-auto pb-2 mb-6">
-          @for (tab of tabs; track tab.id) {
+          @for (tab of tabs(); track tab.id) {
             <button
               type="button"
               class="shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-[13px] font-semibold transition-colors"
@@ -80,16 +81,21 @@ type ConfigTab = 'exams' | 'medications' | 'diagnoses' | 'triage' | 'organizatio
   `,
 })
 export class ConfigurationComponent {
+  auth = inject(AuthService);
+
   readonly activeTab = signal<ConfigTab>('exams');
 
-  readonly tabs: { id: ConfigTab; label: string; icon: string }[] = [
-    { id: 'exams', label: 'Exámenes', icon: 'science' },
-    { id: 'medications', label: 'Medicamentos', icon: 'medication' },
-    { id: 'diagnoses', label: 'Diagnósticos CIE-10', icon: 'event_note' },
-    { id: 'triage', label: 'Triajes', icon: 'monitor_heart' },
-    { id: 'doctors', label: 'Médicos', icon: 'stethoscope' },
-    { id: 'organization', label: 'Organización', icon: 'apartment' },
-    { id: 'alerts', label: 'Alertas', icon: 'notifications_active' },
-    { id: 'users', label: 'Usuarios', icon: 'manage_accounts' },
-  ];
+  readonly tabs = computed<{ id: ConfigTab; label: string; icon: string }[]>(() => {
+    const all: { id: ConfigTab; label: string; icon: string; adminOnly?: boolean }[] = [
+      { id: 'exams', label: 'Exámenes', icon: 'science' },
+      { id: 'medications', label: 'Medicamentos', icon: 'medication' },
+      { id: 'diagnoses', label: 'Diagnósticos CIE-10', icon: 'event_note' },
+      { id: 'triage', label: 'Triajes', icon: 'monitor_heart' },
+      { id: 'doctors', label: 'Médicos', icon: 'stethoscope', adminOnly: true },
+      { id: 'organization', label: 'Organización', icon: 'apartment', adminOnly: true },
+      { id: 'alerts', label: 'Alertas', icon: 'notifications_active' },
+      { id: 'users', label: 'Usuarios', icon: 'manage_accounts', adminOnly: true },
+    ];
+    return this.auth.isAdmin() ? all : all.filter((t) => !t.adminOnly);
+  });
 }

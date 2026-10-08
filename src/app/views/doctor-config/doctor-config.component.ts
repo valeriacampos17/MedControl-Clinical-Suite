@@ -3,6 +3,7 @@ import { forkJoin } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { NavigationService } from '../../core/services/navigation.service';
 import { ApiService } from '../../core/services/api.service';
+import { AuthService } from '../../core/services/auth.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ButtonComponent } from '../../shared/button/button.component';
@@ -34,6 +35,7 @@ import { DaySchedule } from '../../core/models/types';
 
         <div class="flex flex-col gap-6">
           <!-- Medico a configurar: por defecto el grupo completo. -->
+          @if (auth.isAdmin()) {
           <div class="bg-white rounded-xl p-4 lg:px-5 shadow-sm border border-[#e6e8ea]">
             <div class="flex flex-col gap-2">
               <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -79,6 +81,7 @@ import { DaySchedule } from '../../core/models/types';
               }
             </div>
           </div>
+          }
 
           <!-- Un solo card: dias a laborar y jornadas, uno al lado del otro. -->
           <div class="bg-white rounded-xl p-5 lg:p-6 shadow-sm border border-[#e6e8ea]">
@@ -427,6 +430,7 @@ export class DoctorConfigComponent implements OnInit {
   nav = inject(NavigationService);
   data = inject(MockDataService);
   api = inject(ApiService);
+  auth = inject(AuthService);
   toast = inject(ToastService);
 
   scheduleDays = signal<DaySchedule[]>([...this.data.schedule()]);
@@ -458,6 +462,10 @@ export class DoctorConfigComponent implements OnInit {
 
   /** Jornada de un solo medico, para cuando el scope es individual. */
   ngOnInit(): void {
+    const doctorId = this.auth.getDoctorId();
+    if (this.auth.isDoctor() && doctorId) {
+      this.scope.set(doctorId);
+    }
     this.loadScope();
   }
 
