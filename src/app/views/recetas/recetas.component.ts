@@ -2,7 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Prescription, PrescriptionMedication, ExamOrder } from '../../core/models/types';
+import { Patient, Prescription, PrescriptionMedication, ExamOrder } from '../../core/models/types';
 import { formatDateDisplay, formatTimeDisplay } from '../../core/utils/date-utils';
 import { ButtonComponent } from '../../shared/button/button.component';
 import { BadgeComponent } from '../../shared/badge/badge.component';
@@ -47,108 +47,54 @@ import { PickerItem, SelectionPickerComponent } from '../../shared/selection-pic
 
         <div class="flex items-center gap-3 mb-4">
           <span class="w-8 h-8 rounded-lg bg-[#acedff]/30 text-[#1e3a5f] flex items-center justify-center shrink-0">
-            <span class="material-symbols-outlined text-[20px]">biotech</span>
+            <span class="material-symbols-outlined text-[20px]">description</span>
           </span>
           <div>
-            <h2 class="text-[16px] font-bold text-[#191c1e]">Órdenes de Exámenes</h2>
-            <p class="text-[12px] text-[#45464d]">Órdenes emitidas desde el módulo de atención del paciente</p>
+            <h2 class="text-[16px] font-bold text-[#191c1e]">Documentos por Paciente</h2>
+            <p class="text-[12px] text-[#45464d]">Órdenes de exámenes y recetas médicas agrupadas por paciente</p>
           </div>
         </div>
 
-        @if (filteredExamOrders().length === 0) {
+        @if (patientDocRows().length === 0) {
           <div class="p-8 text-center flex flex-col items-center bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
-            <span class="material-symbols-outlined text-[32px] text-[#76777d] mb-2">science</span>
+            <span class="material-symbols-outlined text-[32px] text-[#76777d] mb-2">folder_open</span>
             @if (filterPatientId()) {
-              <p class="text-[13px] text-[#45464d]">No hay órdenes de exámenes para {{ selectedFilterPatient()?.name ?? 'este paciente' }}.</p>
-              <p class="text-[12px] text-[#76777d] mt-1">Cambie el filtro para ver todas las órdenes.</p>
+              <p class="text-[13px] text-[#45464d]">No hay documentos (órdenes ni recetas) para {{ selectedFilterPatient()?.name ?? 'este paciente' }}.</p>
+              <p class="text-[12px] text-[#76777d] mt-1">Cambie el filtro para ver todos los documentos.</p>
             } @else {
-              <p class="text-[13px] text-[#45464d]">Aún no hay órdenes de exámenes registradas.</p>
-              <p class="text-[12px] text-[#76777d] mt-1">Las órdenes se generan al guardar una consulta en "Nueva Consulta".</p>
-            }
-          </div>
-        } @else {
-          <div class="grid grid-cols-1 gap-4 mb-8">
-            @for (order of filteredExamOrders(); track order.id) {
-              <div class="bg-white rounded-xl p-5 shadow-sm border border-[#e6e8ea] flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div class="flex items-start gap-3.5">
-                  <div class="w-10 h-10 rounded-xl bg-[#acedff]/30 text-[#004e5c] flex items-center justify-center shrink-0">
-                    <span class="material-symbols-outlined text-[22px]">biotech</span>
-                  </div>
-                  <div>
-                    <div class="flex items-center gap-2 flex-wrap">
-                      <span class="text-[15px] font-bold text-[#191c1e]">{{ order.patientName }}</span>
-                      <app-badge [variant]="order.priority === 'urgencia' ? 'error' : 'info'" size="sm">{{ order.priority === 'urgencia' ? 'Urgencia' : 'Rutina' }}</app-badge>
-                      <app-badge variant="outline" size="sm">{{ order.status === 'pending' ? 'Pendiente' : order.status === 'in-progress' ? 'En Proceso' : 'Finalizada' }}</app-badge>
-                    </div>
-                    <p class="text-[12px] text-[#45464d] mt-0.5">Orden #{{ order.id }} · Emitida: {{ formatDate(order.date) }} {{ formatTime(order.time) }} por {{ order.doctorName }}</p>
-                    <div class="flex items-center gap-2 mt-2 flex-wrap">
-                      @for (item of order.items; track item.examId) {
-                        <span class="px-2 py-0.5 rounded bg-[#f2f4f6] text-[11px] font-semibold text-[#191c1e] border border-[#e0e3e5]">{{ item.name }}</span>
-                      }
-                    </div>
-                    @if (order.notes) {
-                      <p class="text-[12px] text-[#76777d] mt-2 italic">"{{ order.notes }}"</p>
-                    }
-                  </div>
-                </div>
-                <div class="flex items-center gap-2 self-end md:self-center">
-                  <app-button variant="light" size="sm" icon="picture_as_pdf" (click)="handleDownloadExamOrder(order.id)">Ver PDF</app-button>
-                  <app-button variant="outline" size="sm" icon="print" (click)="handlePrintExamOrder(order.id)">Imprimir</app-button>
-                </div>
-              </div>
-            }
-          </div>
-        }
-
-        <div class="flex items-center gap-3 mb-4 mt-8">
-          <span class="w-8 h-8 rounded-lg bg-[#006a61]/10 text-[#006a61] flex items-center justify-center shrink-0">
-            <span class="material-symbols-outlined text-[20px]">prescriptions</span>
-          </span>
-          <div>
-            <h2 class="text-[16px] font-bold text-[#191c1e]">Recetas Médicas</h2>
-            <p class="text-[12px] text-[#45464d]">Recetas electrónicas emitidas</p>
-          </div>
-        </div>
-
-        @if (filteredPrescriptions().length === 0) {
-          <div class="p-8 text-center flex flex-col items-center bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
-            <span class="material-symbols-outlined text-[32px] text-[#76777d] mb-2">prescriptions</span>
-            @if (filterPatientId()) {
-              <p class="text-[13px] text-[#45464d]">No hay recetas médicas para {{ selectedFilterPatient()?.name ?? 'este paciente' }}.</p>
-              <p class="text-[12px] text-[#76777d] mt-1">Cambie el filtro para ver todas las recetas.</p>
-            } @else {
-              <p class="text-[13px] text-[#45464d]">Aún no hay recetas médicas registradas.</p>
-              <p class="text-[12px] text-[#76777d] mt-1">Use "Emitir Nueva Receta" para prescribir medicamentos a un paciente.</p>
+              <p class="text-[13px] text-[#45464d]">Aún no hay órdenes de exámenes ni recetas médicas registradas.</p>
+              <p class="text-[12px] text-[#76777d] mt-1">Las órdenes se generan al guardar una consulta y las recetas con "Emitir Nueva Receta".</p>
             }
           </div>
         } @else {
           <div class="grid grid-cols-1 gap-4">
-            @for (rx of filteredPrescriptions(); track rx.id) {
+            @for (row of patientDocRows(); track row.patient.id) {
               <div class="bg-white rounded-xl p-5 shadow-sm border border-[#e6e8ea] flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div class="flex items-start gap-3.5">
-                  <div class="w-10 h-10 rounded-xl bg-[#006a61]/10 text-[#006a61] flex items-center justify-center shrink-0">
-                    <span class="material-symbols-outlined text-[22px]">prescriptions</span>
+                  <div class="w-10 h-10 rounded-xl bg-[#006a61] text-white flex items-center justify-center text-[13px] font-bold shrink-0">
+                    {{ data.getInitials(row.patient.name) }}
                   </div>
                   <div>
                     <div class="flex items-center gap-2 flex-wrap">
-                      <span class="text-[15px] font-bold text-[#191c1e]">{{ rx.patientName }}</span>
-                      <span class="text-[12px] text-[#76777d]">CI: {{ rx.ci }}</span>
-                      <app-badge [variant]="rx.status === 'Finalizada' ? 'neutral' : 'teal'" size="sm">{{ rx.status }}</app-badge>
-                    </div>
-                    <p class="text-[12px] text-[#45464d] mt-0.5">Receta #{{ rx.id }} · Emitida: {{ formatDate(rx.date) }} {{ formatTime(rx.time) }} por {{ rx.doctorName }}</p>
-                    <div class="flex items-center gap-2 mt-2 flex-wrap">
-                      @for (med of rx.meds; track med.id) {
-                        <span class="px-2 py-0.5 rounded bg-[#f2f4f6] text-[11px] font-semibold text-[#191c1e] border border-[#e0e3e5]" title="{{ med.dose }} · {{ med.frequency }} · {{ med.duration }}">{{ med.name }}</span>
+                      <span class="text-[15px] font-bold text-[#191c1e]">{{ row.patient.name }}</span>
+                      <span class="text-[12px] text-[#76777d]">CI: {{ row.patient.ci }}</span>
+                      @if (row.orders.length > 0) {
+                        <app-badge variant="info" size="sm">{{ row.orders.length }} {{ row.orders.length === 1 ? 'orden' : 'órdenes' }}</app-badge>
+                      }
+                      @if (row.recipes.length > 0) {
+                        <app-badge variant="teal" size="sm">{{ row.recipes.length }} {{ row.recipes.length === 1 ? 'receta' : 'recetas' }}</app-badge>
                       }
                     </div>
-                    @if (rx.notes) {
-                      <p class="text-[12px] text-[#76777d] mt-2 italic">"{{ rx.notes }}"</p>
-                    }
+                    <p class="text-[12px] text-[#45464d] mt-0.5">Último documento: {{ formatDate(row.lastDate) }} {{ formatTime(row.lastTime) }}</p>
                   </div>
                 </div>
                 <div class="flex items-center gap-2 self-end md:self-center">
-                  <app-button variant="light" size="sm" icon="picture_as_pdf" (click)="handleDownloadPrescription(rx.id)">Ver PDF</app-button>
-                  <app-button variant="outline" size="sm" icon="print" (click)="handlePrintPrescription(rx.id)">Imprimir</app-button>
+                  @if (row.orders.length > 0) {
+                    <app-button variant="light" size="sm" icon="biotech" (click)="openDocModal(row.patient, 'order')">Ver Órdenes</app-button>
+                  }
+                  @if (row.recipes.length > 0) {
+                    <app-button variant="outline" size="sm" icon="prescriptions" (click)="openDocModal(row.patient, 'recipe')">Ver Recetas</app-button>
+                  }
                 </div>
               </div>
             }
@@ -232,6 +178,83 @@ import { PickerItem, SelectionPickerComponent } from '../../shared/selection-pic
           <app-button variant="primary" size="md" icon="check" (click)="saveEmittedRecipe()">Guardar Receta</app-button>
         </div>
       </app-modal>
+
+      <app-modal
+        [isOpen]="docModal() !== null"
+        [title]="docModal()?.kind === 'order' ? 'Órdenes de Exámenes' : 'Recetas Médicas'"
+        [subtitle]="docSubtitle()"
+        [icon]="docModal()?.kind === 'order' ? 'biotech' : 'prescriptions'"
+        maxWidth="lg"
+        [footerTemplate]="true"
+        (dismiss)="closeDocModal()"
+      >
+        <div class="flex flex-col gap-4">
+          @if (docModal()?.kind === 'order') {
+            @for (order of modalOrders(); track order.id) {
+              <div class="bg-white rounded-xl p-5 shadow-sm border border-[#e6e8ea] flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="flex items-start gap-3.5">
+                  <div class="w-10 h-10 rounded-xl bg-[#acedff]/30 text-[#004e5c] flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-[22px]">biotech</span>
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="text-[15px] font-bold text-[#191c1e]">{{ order.patientName }}</span>
+                      <app-badge [variant]="order.priority === 'urgencia' ? 'error' : 'info'" size="sm">{{ order.priority === 'urgencia' ? 'Urgencia' : 'Rutina' }}</app-badge>
+                      <app-badge variant="outline" size="sm">{{ order.status === 'pending' ? 'Pendiente' : order.status === 'in-progress' ? 'En Proceso' : 'Finalizada' }}</app-badge>
+                    </div>
+                    <p class="text-[12px] text-[#45464d] mt-0.5">Orden #{{ order.id }} · Emitida: {{ formatDate(order.date) }} {{ formatTime(order.time) }} por {{ order.doctorName }}</p>
+                    <div class="flex items-center gap-2 mt-2 flex-wrap">
+                      @for (item of order.items; track item.examId) {
+                        <span class="px-2 py-0.5 rounded bg-[#f2f4f6] text-[11px] font-semibold text-[#191c1e] border border-[#e0e3e5]">{{ item.name }}</span>
+                      }
+                    </div>
+                    @if (order.notes) {
+                      <p class="text-[12px] text-[#76777d] mt-2 italic">"{{ order.notes }}"</p>
+                    }
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 self-end md:self-center">
+                  <app-button variant="light" size="sm" icon="picture_as_pdf" (click)="handleDownloadExamOrder(order.id)">Ver PDF</app-button>
+                  <app-button variant="outline" size="sm" icon="print" (click)="handlePrintExamOrder(order.id)">Imprimir</app-button>
+                </div>
+              </div>
+            }
+          } @else {
+            @for (rx of modalRecipes(); track rx.id) {
+              <div class="bg-white rounded-xl p-5 shadow-sm border border-[#e6e8ea] flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="flex items-start gap-3.5">
+                  <div class="w-10 h-10 rounded-xl bg-[#006a61]/10 text-[#006a61] flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-[22px]">prescriptions</span>
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="text-[15px] font-bold text-[#191c1e]">{{ rx.patientName }}</span>
+                      <span class="text-[12px] text-[#76777d]">CI: {{ rx.ci }}</span>
+                      <app-badge [variant]="rx.status === 'Finalizada' ? 'neutral' : 'teal'" size="sm">{{ rx.status }}</app-badge>
+                    </div>
+                    <p class="text-[12px] text-[#45464d] mt-0.5">Receta #{{ rx.id }} · Emitida: {{ formatDate(rx.date) }} {{ formatTime(rx.time) }} por {{ rx.doctorName }}</p>
+                    <div class="flex items-center gap-2 mt-2 flex-wrap">
+                      @for (med of rx.meds; track med.id) {
+                        <span class="px-2 py-0.5 rounded bg-[#f2f4f6] text-[11px] font-semibold text-[#191c1e] border border-[#e0e3e5]" title="{{ med.dose }} · {{ med.frequency }} · {{ med.duration }}">{{ med.name }}</span>
+                      }
+                    </div>
+                    @if (rx.notes) {
+                      <p class="text-[12px] text-[#76777d] mt-2 italic">"{{ rx.notes }}"</p>
+                    }
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 self-end md:self-center">
+                  <app-button variant="light" size="sm" icon="picture_as_pdf" (click)="handleDownloadPrescription(rx.id)">Ver PDF</app-button>
+                  <app-button variant="outline" size="sm" icon="print" (click)="handlePrintPrescription(rx.id)">Imprimir</app-button>
+                </div>
+              </div>
+            }
+          }
+        </div>
+        <div modal-footer class="flex items-center justify-end gap-2.5">
+          <app-button variant="light" size="md" (click)="closeDocModal()">Cerrar</app-button>
+        </div>
+      </app-modal>
       <app-toast />
     </div>
   `,
@@ -291,15 +314,69 @@ export class RecetasComponent {
     return id ? this.data.getPatient(id) ?? null : null;
   });
 
-  readonly filteredExamOrders = computed(() => {
-    const id = this.filterPatientId();
-    return id ? this.data.getExamOrdersByPatient(id) : this.data.getExamOrders();
+  /**
+   * Una sola lista: pacientes con al menos una orden o una receta, con el
+   * conteo de cada tipo y el documento más reciente (para ordenar la lista
+   * por actividad). Respeta el filtro de paciente si está activo.
+   */
+  readonly patientDocRows = computed(() => {
+    const filterId = this.filterPatientId();
+    const source = filterId
+      ? this.data.patients().filter(p => p.id === filterId)
+      : this.data.patients();
+    const rows = source
+      .map((patient) => {
+        const orders = this.data.getExamOrdersByPatient(patient.id);
+        const recipes = this.data.getPrescriptionsByPatient(patient.id);
+        const last =
+          [...orders, ...recipes]
+            .map(d => `${d.date}T${d.time}`)
+            .sort()
+            .pop() ?? '';
+        return {
+          patient,
+          orders,
+          recipes,
+          lastDate: last.slice(0, 10),
+          lastTime: last.slice(11, 16),
+        };
+      })
+      .filter(r => r.orders.length > 0 || r.recipes.length > 0);
+    rows.sort((a, b) => `${b.lastDate}T${b.lastTime}`.localeCompare(`${a.lastDate}T${a.lastTime}`));
+    return rows;
   });
 
-  readonly filteredPrescriptions = computed(() => {
-    const id = this.filterPatientId();
-    return id ? this.data.getPrescriptionsByPatient(id) : this.data.getPrescriptions();
+  /** Modal de documentos: qué paciente y qué tipo (orden o receta). */
+  readonly docModal = signal<{ patient: Patient; kind: 'order' | 'recipe' } | null>(null);
+
+  readonly docSubtitle = computed(() => {
+    const d = this.docModal();
+    return d ? `${d.patient.name} · CI: ${d.patient.ci}` : '';
   });
+
+  readonly modalOrders = computed<ExamOrder[]>(() => {
+    const d = this.docModal();
+    if (!d || d.kind !== 'order') return [];
+    return this.sortNewestFirst(this.data.getExamOrdersByPatient(d.patient.id));
+  });
+
+  readonly modalRecipes = computed<Prescription[]>(() => {
+    const d = this.docModal();
+    if (!d || d.kind !== 'recipe') return [];
+    return this.sortNewestFirst(this.data.getPrescriptionsByPatient(d.patient.id));
+  });
+
+  openDocModal(patient: Patient, kind: 'order' | 'recipe'): void {
+    this.docModal.set({ patient, kind });
+  }
+
+  closeDocModal(): void {
+    this.docModal.set(null);
+  }
+
+  private sortNewestFirst<T extends { date: string; time: string }>(docs: T[]): T[] {
+    return [...docs].sort((a, b) => `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`));
+  }
 
   onFilterPatient(id: string | null): void {
     this.filterPatientId.set(id);
