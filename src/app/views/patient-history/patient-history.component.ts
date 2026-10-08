@@ -11,6 +11,7 @@ import { ModalComponent } from '../../shared/modal/modal.component';
 import { ToastComponent } from '../../shared/toast/toast.component';
 import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-timeline/clinical-history-timeline.component';
 import { NewPatientModalComponent } from '../../shared/new-patient-modal/new-patient-modal.component';
+import { PickerItem, SelectionPickerComponent } from '../../shared/selection-picker/selection-picker.component';
 import { formatDateDisplay, formatTimeDisplay } from '../../core/utils/date-utils';
 
 @Component({
@@ -24,6 +25,7 @@ import { formatDateDisplay, formatTimeDisplay } from '../../core/utils/date-util
     ToastComponent,
     ClinicalHistoryTimelineComponent,
     NewPatientModalComponent,
+    SelectionPickerComponent,
   ],
   template: `
     <div class="flex flex-col w-full">
@@ -41,48 +43,18 @@ import { formatDateDisplay, formatTimeDisplay } from '../../core/utils/date-util
         </div>
 
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 mb-4 border-b border-[#eceef0]">
-          <div class="relative flex-1 max-w-md">
-            <div class="relative">
-              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#76777d] text-[18px] pointer-events-none" aria-hidden="true">search</span>
-              <input
-                type="text"
-                placeholder="Buscar paciente por nombre o CI..."
-                title="Buscar un paciente por nombre o CI para seleccionarlo en la ficha clínica"
-                class="w-full pl-9 pr-3 py-2 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] placeholder:text-[#76777d] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61] transition-colors"
-                [value]="searchPatientTerm()"
-                (input)="onSearchPatient($event)"
-                (focus)="showPatientDropdown.set(true)"
-                (blur)="onBlurPatient()"
-              />
-            </div>
-            @if (showPatientDropdown() && filteredPatients().length > 0) {
-              <div class="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-lg border border-[#e6e8ea] max-h-60 overflow-y-auto">
-                @for (p of filteredPatients(); track p.id) {
-                  <button
-                    type="button"
-                    class="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[#f2f4f6] transition-colors first:rounded-t-xl last:rounded-b-xl"
-                    [class]="selectedPatient()?.id === p.id ? 'bg-[#f2f4f6]' : ''"
-                    (mousedown)="handleSelectPatient(p.id)"
-                  >
-                    <div class="w-8 h-8 rounded-lg bg-[#006a61] text-white flex items-center justify-center text-[11px] font-bold ring-1 ring-[#eceef0] shrink-0">
-                      {{ data.getInitials(p.name) }}
-                    </div>
-                    <div class="flex flex-col min-w-0">
-                      <span class="text-[13px] font-semibold text-[#191c1e] truncate">{{ p.name }}</span>
-                      <span class="text-[11px] text-[#76777d]">CI: {{ p.ci }} · {{ p.age }} años</span>
-                    </div>
-                    @if (selectedPatient()?.id === p.id) {
-                      <span class="material-symbols-outlined text-[#006a61] text-[16px] ml-auto shrink-0">check</span>
-                    }
-                  </button>
-                }
-              </div>
-            }
-            @if (showPatientDropdown() && searchPatientTerm() && filteredPatients().length === 0) {
-              <div class="absolute z-30 mt-1 w-full bg-white rounded-xl shadow-lg border border-[#e6e8ea] p-4 text-center">
-                <span class="text-[12px] text-[#76777d]">No se encontraron pacientes con "{{ searchPatientTerm() }}"</span>
-              </div>
-            }
+          <div class="flex-1 max-w-md">
+            <app-selection-picker
+              icon="search"
+              noun="paciente"
+              placeholder="Buscar paciente por nombre o CI..."
+              hint="Busque un paciente por nombre o CI para abrir su ficha clínica"
+              emptyMessage="No se encontraron pacientes con {term}"
+              [searchKeys]="['name', 'ci']"
+              [items]="patientItems()"
+              [selectedId]="selectedPatient()?.id ?? null"
+              (selectedChange)="onPickPatient($event)"
+            />
           </div>
           <app-button variant="primary" size="md" icon="person_add" (click)="handleOpenNewPatient()" title="Abrir el formulario para registrar un nuevo paciente en el sistema">
             Nuevo Paciente
@@ -494,8 +466,6 @@ export class PatientHistoryComponent {
     { id: 'med-' + Date.now(), name: '', dose: '', frequency: '', duration: '' },
   ]);
   readonly recipeNotes = signal('');
-  readonly searchPatientTerm = signal('');
-  readonly showPatientDropdown = signal(false);
 
   readonly patientConsultations = computed(() => {
     const patient = this.selectedPatient();
@@ -513,36 +483,39 @@ export class PatientHistoryComponent {
     return consult?.vitals ?? null;
   });
 
-  readonly filteredPatients = computed(() => {
-    const term = this.searchPatientTerm().toLowerCase().trim();
-    if (!term) return this.data.patients();
-    return this.data.patients().filter(
-      (p) => p.name.toLowerCase().includes(term) || p.ci.toLowerCase().includes(term)
-    );
-  });
+  readonly patientItems = computed<PickerItem[]>(() =>
+    this.data.patients().map((p) => ({
+      id: p.id,
+      title: p.name,
+      subtitle: `CI: ${p.ci} · ${p.age} años`,
+      search: { name: p.name, ci: p.ci },
+    })),
+  );
+
+  /**
+   * El picker compartido: elegir desde el buscador llama a handleSelectPatient
+   * (igual que los chips de acceso rápido); "Cambiar" emite null y vuelve al
+   * estado sin selección.
+   */
+  onPickPatient(id: string | null): void {
+    if (id) {
+      this.handleSelectPatient(id);
+      return;
+    }
+    this.selectedPatient.set(null);
+    this.nav.setBreadcrumb([{ label: 'Pacientes' }]);
+  }
 
   handleSelectPatient(id: string): void {
     const patient = this.data.getPatient(id);
     if (!patient) return;
     this.data.selectPatient(id);
     this.selectedPatient.set(patient);
-    this.searchPatientTerm.set('');
-    this.showPatientDropdown.set(false);
     this.nav.setBreadcrumb([
       { label: 'Pacientes', route: 'pacientes-y-historial-clinico' },
       { label: 'Ficha Clínica Electrónica' },
       { label: `HCE-${patient.id}` },
     ]);
-  }
-
-  onSearchPatient(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.searchPatientTerm.set(value);
-    this.showPatientDropdown.set(true);
-  }
-
-  onBlurPatient(): void {
-    setTimeout(() => this.showPatientDropdown.set(false), 150);
   }
 
   handleOpenNewPatient(): void {
