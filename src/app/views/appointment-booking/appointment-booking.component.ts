@@ -4,6 +4,7 @@ import { catchError, map } from 'rxjs/operators';
 import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
+import { AuthService } from '../../core/services/auth.service';
 import { BookableDay, ConsultationType, Patient } from '../../core/models/types';
 import { PickerItem, SelectionPickerComponent } from '../../shared/selection-picker/selection-picker.component';
 import { ButtonComponent } from '../../shared/button/button.component';
@@ -484,6 +485,7 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
   nav = inject(NavigationService);
   data = inject(MockDataService);
   toast = inject(ToastService);
+  auth = inject(AuthService);
 
   timeLeft = signal(582);
   consultationType = signal('control');
@@ -699,6 +701,10 @@ export class AppointmentBookingComponent implements OnInit, OnDestroy {
       },
       error: () => this.loadingTypes.set(false),
     });
+
+    // Un médico logueado arranca con su propia agenda seleccionada; un admin
+    // sigue eligiendo a mano (arranca vacío, como el selector de paciente).
+    if (this.auth.isDoctor()) this.selectedDoctorId.set(this.auth.getDoctorId());
 
     this.loadDoctorContext();
   }

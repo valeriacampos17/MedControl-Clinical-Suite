@@ -8,11 +8,12 @@ import { ButtonComponent } from '../../shared/button/button.component';
 import { BadgeComponent } from '../../shared/badge/badge.component';
 import { ModalComponent } from '../../shared/modal/modal.component';
 import { ToastComponent } from '../../shared/toast/toast.component';
+import { PickerItem, SelectionPickerComponent } from '../../shared/selection-picker/selection-picker.component';
 
 @Component({
   selector: 'app-recetas',
   standalone: true,
-  imports: [ButtonComponent, BadgeComponent, ModalComponent, ToastComponent],
+  imports: [ButtonComponent, BadgeComponent, ModalComponent, ToastComponent, SelectionPickerComponent],
   template: `
     <div class="flex flex-col w-full">
       <div class="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-6">
@@ -27,6 +28,23 @@ import { ToastComponent } from '../../shared/toast/toast.component';
           <app-button variant="primary" size="md" icon="add" (click)="openEmitModal()">Emitir Nueva Receta</app-button>
         </div>
 
+        <div class="max-w-xl mb-6">
+          <app-selection-picker
+            icon="search"
+            noun="paciente"
+            placeholder="Buscar paciente por nombre o CI..."
+            hint="Filtre por paciente: sin filtro se muestran todas las órdenes y recetas"
+            emptyMessage="No se encontraron pacientes con {term}"
+            [searchKeys]="['name', 'ci']"
+            [items]="patientItems()"
+            [selectedId]="filterPatientId()"
+            [quickAccess]="recentPatientItems()"
+            quickAccessLabel="Acceso rápido · atendidos recientemente:"
+            (selectedChange)="onFilterPatient($event)"
+            (quickAccessSelect)="onFilterPatient($event)"
+          />
+        </div>
+
         <div class="flex items-center gap-3 mb-4">
           <span class="w-8 h-8 rounded-lg bg-[#acedff]/30 text-[#1e3a5f] flex items-center justify-center shrink-0">
             <span class="material-symbols-outlined text-[20px]">biotech</span>
@@ -37,15 +55,20 @@ import { ToastComponent } from '../../shared/toast/toast.component';
           </div>
         </div>
 
-        @if (examOrders().length === 0) {
+        @if (filteredExamOrders().length === 0) {
           <div class="p-8 text-center flex flex-col items-center bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
             <span class="material-symbols-outlined text-[32px] text-[#76777d] mb-2">science</span>
-            <p class="text-[13px] text-[#45464d]">Aún no hay órdenes de exámenes registradas.</p>
-            <p class="text-[12px] text-[#76777d] mt-1">Las órdenes se generan al guardar una consulta en "Nueva Consulta".</p>
+            @if (filterPatientId()) {
+              <p class="text-[13px] text-[#45464d]">No hay órdenes de exámenes para {{ selectedFilterPatient()?.name ?? 'este paciente' }}.</p>
+              <p class="text-[12px] text-[#76777d] mt-1">Cambie el filtro para ver todas las órdenes.</p>
+            } @else {
+              <p class="text-[13px] text-[#45464d]">Aún no hay órdenes de exámenes registradas.</p>
+              <p class="text-[12px] text-[#76777d] mt-1">Las órdenes se generan al guardar una consulta en "Nueva Consulta".</p>
+            }
           </div>
         } @else {
           <div class="grid grid-cols-1 gap-4 mb-8">
-            @for (order of examOrders(); track order.id) {
+            @for (order of filteredExamOrders(); track order.id) {
               <div class="bg-white rounded-xl p-5 shadow-sm border border-[#e6e8ea] flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div class="flex items-start gap-3.5">
                   <div class="w-10 h-10 rounded-xl bg-[#acedff]/30 text-[#004e5c] flex items-center justify-center shrink-0">
@@ -87,15 +110,20 @@ import { ToastComponent } from '../../shared/toast/toast.component';
           </div>
         </div>
 
-        @if (prescriptions().length === 0) {
+        @if (filteredPrescriptions().length === 0) {
           <div class="p-8 text-center flex flex-col items-center bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
             <span class="material-symbols-outlined text-[32px] text-[#76777d] mb-2">prescriptions</span>
-            <p class="text-[13px] text-[#45464d]">Aún no hay recetas médicas registradas.</p>
-            <p class="text-[12px] text-[#76777d] mt-1">Use "Emitir Nueva Receta" para prescribir medicamentos a un paciente.</p>
+            @if (filterPatientId()) {
+              <p class="text-[13px] text-[#45464d]">No hay recetas médicas para {{ selectedFilterPatient()?.name ?? 'este paciente' }}.</p>
+              <p class="text-[12px] text-[#76777d] mt-1">Cambie el filtro para ver todas las recetas.</p>
+            } @else {
+              <p class="text-[13px] text-[#45464d]">Aún no hay recetas médicas registradas.</p>
+              <p class="text-[12px] text-[#76777d] mt-1">Use "Emitir Nueva Receta" para prescribir medicamentos a un paciente.</p>
+            }
           </div>
         } @else {
           <div class="grid grid-cols-1 gap-4">
-            @for (rx of prescriptions(); track rx.id) {
+            @for (rx of filteredPrescriptions(); track rx.id) {
               <div class="bg-white rounded-xl p-5 shadow-sm border border-[#e6e8ea] flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div class="flex items-start gap-3.5">
                   <div class="w-10 h-10 rounded-xl bg-[#006a61]/10 text-[#006a61] flex items-center justify-center shrink-0">
@@ -221,9 +249,61 @@ export class RecetasComponent {
     return formatTimeDisplay(value);
   }
 
-  examOrders = computed(() => this.data.getExamOrders());
-  prescriptions = computed(() => this.data.getPrescriptions());
   medicationCatalog = computed(() => this.data.medicationCatalog());
+
+  /** null = sin filtro: se muestran todas las órdenes y recetas. */
+  readonly filterPatientId = signal<string | null>(null);
+
+  readonly patientItems = computed<PickerItem[]>(() =>
+    this.data.patients().map(p => ({
+      id: p.id,
+      title: p.name,
+      subtitle: `CI: ${p.ci} · ${p.age} años`,
+      search: { name: p.name, ci: p.ci },
+    })),
+  );
+
+  /**
+   * Atendidos recientemente: los pacientes con la atención más nueva primero
+   * (mismo cruce con las consultas que usa la ficha clínica). Si todavía no
+   * hay atenciones, cae a los primeros del padrón, igual que el acceso rápido
+   * del módulo de pacientes.
+   */
+  readonly recentPatientItems = computed<PickerItem[]>(() => {
+    const byId = new Map(this.data.patients().map(p => [p.id, p]));
+    const seen = new Set<string>();
+    const items: PickerItem[] = [];
+    const ordered = [...this.data.consultations()].sort((a, b) =>
+      `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`),
+    );
+    for (const c of ordered) {
+      const p = byId.get(c.patientId);
+      if (!p || seen.has(c.patientId)) continue;
+      seen.add(c.patientId);
+      items.push({ id: p.id, title: p.name, subtitle: `CI: ${p.ci}`, search: { name: p.name, ci: p.ci } });
+      if (items.length === 5) break;
+    }
+    return items.length > 0 ? items : this.patientItems().slice(0, 5);
+  });
+
+  readonly selectedFilterPatient = computed(() => {
+    const id = this.filterPatientId();
+    return id ? this.data.getPatient(id) ?? null : null;
+  });
+
+  readonly filteredExamOrders = computed(() => {
+    const id = this.filterPatientId();
+    return id ? this.data.getExamOrdersByPatient(id) : this.data.getExamOrders();
+  });
+
+  readonly filteredPrescriptions = computed(() => {
+    const id = this.filterPatientId();
+    return id ? this.data.getPrescriptionsByPatient(id) : this.data.getPrescriptions();
+  });
+
+  onFilterPatient(id: string | null): void {
+    this.filterPatientId.set(id);
+  }
 
   readonly showEmitModal = signal(false);
   readonly emitPatientId = signal<string>('');
@@ -233,8 +313,9 @@ export class RecetasComponent {
   ]);
 
   openEmitModal(): void {
-    const first = this.data.patients()[0];
-    this.emitPatientId.set(first?.id ?? '');
+    // Si el filtro ya apunta a un paciente, la receta sale emitida a ese.
+    const fallback = this.data.patients()[0];
+    this.emitPatientId.set(this.filterPatientId() ?? fallback?.id ?? '');
     this.emitMeds.set([{ id: 'med-init', name: '', dose: '', frequency: '', duration: '' }]);
     this.emitNotes.set('');
     this.showEmitModal.set(true);

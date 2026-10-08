@@ -77,6 +77,26 @@ export interface PickerItem {
             </div>
           }
         </div>
+        @if (quickAccess().length > 0) {
+          <div class="mt-3 pt-3 border-t border-[#fde68a] flex flex-col gap-2">
+            <span class="text-[11px] font-bold text-[#76777d] uppercase tracking-wider">{{ quickAccessLabel() }}</span>
+            <div class="flex flex-wrap items-center gap-2">
+              @for (qa of quickAccess(); track qa.id) {
+                <button
+                  type="button"
+                  class="px-2.5 py-1.5 rounded-xl bg-white hover:bg-[#006a61] text-[#191c1e] hover:text-white text-[12px] font-semibold border border-[#e0e3e5] transition-all flex items-center gap-1.5 shadow-xs group"
+                  (mousedown)="quickAccessSelect.emit(qa.id)"
+                  (click)="quickAccessSelect.emit(qa.id)"
+                >
+                  <div class="w-5 h-5 rounded-full bg-[#006a61] text-white group-hover:bg-white group-hover:text-[#006a61] flex items-center justify-center text-[9px] font-bold">
+                    {{ initials(qa.title) }}
+                  </div>
+                  <span>{{ qa.title }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        }
       </div>
     } @else {
       <div class="p-4 rounded-xl bg-[#f2f4f6] border border-[#e0e3e5]">
@@ -137,9 +157,13 @@ export class SelectionPickerComponent {
   readonly searchKeys = input<string[]>(['title', 'subtitle']);
   readonly items = input<PickerItem[]>([]);
   readonly selectedId = input<string | null>(null);
+  /** Chips de acceso rapido, solo se ven mientras no hay nada escogido. */
+  readonly quickAccess = input<PickerItem[]>([]);
+  readonly quickAccessLabel = input('Acceso rápido:');
 
   readonly selectedChange = output<string | null>();
   readonly secondaryClick = output<void>();
+  readonly quickAccessSelect = output<string>();
 
   readonly term = signal('');
   readonly open = signal(false);
