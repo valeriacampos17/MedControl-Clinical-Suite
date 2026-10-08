@@ -310,7 +310,7 @@ export class DoctorsManagementComponent {
         shortName: f.shortName.trim() || name,
         specialty: f.specialty.trim() || 'Medicina General',
         activeToday: true,
-        avatarUrl: '',
+        avatarUrl: f.avatarUrl,
       },
       this.withAccount() ? undefined : (r) => this.toast.show('Médico Creado', `${r.doctor.name} aparecerá en Ver Médico.`),
     );

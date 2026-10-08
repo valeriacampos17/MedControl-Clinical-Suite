@@ -527,6 +527,8 @@ export class MockDataService {
         };
       })
     );
+    const triagedApt = this.appointments().find((a) => a.id === aptId);
+    if (triagedApt) this.insertTriageRecord(triagedApt, vitals);
     this.currentTriageAppointmentId.set(null);
     this.api.patch<{ appointment: AppointmentItem }>(`/appointments/${aptId}/complete-triage`, {
       systolic: vitals.systolic,
@@ -540,6 +542,43 @@ export class MockDataService {
     }).subscribe({
       next: (r) => this.replaceAppointment(r.appointment),
     });
+  }
+
+  /** Registro ligero del triaje de recepción en el historial clínico del paciente. */
+  private insertTriageRecord(apt: AppointmentItem, v: TriageVitals): void {
+    const patient = this.patients().find((p) => p.id === apt.patientId);
+    const doctor = this.doctors().find((d) => d.id === apt.doctorId);
+    this.consultations.update((list) => [
+      {
+        id: `TRIAGE-${apt.id}`,
+        patientId: apt.patientId,
+        patientName: patient?.name ?? 'Paciente',
+        doctorName: doctor?.name ?? 'Médico',
+        date: apt.date,
+        time: apt.time,
+        type: 'Triaje de Admisión',
+        chiefComplaint: 'Triaje de recepción — paciente pendiente de consulta médica.',
+        historyOfPresentIllness: '',
+        physicalExam: '',
+        vitals: {
+          systolic: v.systolic ?? 0,
+          diastolic: v.diastolic ?? 0,
+          pulse: v.pulse ?? 0,
+          temperature: v.temp ?? 0,
+          spo2: v.spo2 ?? 0,
+          weight: v.weight ?? 0,
+          height: v.height ?? 0,
+        },
+        diagnosisCode: '',
+        diagnosisDescription: '',
+        treatmentPlan: '',
+        notes: v.notes ?? '',
+        status: 'draft',
+      },
+      ...list.filter(
+        (c) => !(c.patientId === apt.patientId && c.id.startsWith('TRIAGE-') && c.date === apt.date)
+      ),
+    ]);
   }
 
   cancelTriage(): void {
@@ -783,7 +822,12 @@ export class MockDataService {
   ]);
 
   addConsultation(consultation: Consultation): void {
-    this.consultations.update((list) => [consultation, ...list]);
+    this.consultations.update((list) => [
+      consultation,
+      ...list.filter(
+        (c) => !(c.patientId === consultation.patientId && c.id.startsWith('TRIAGE-') && c.date === consultation.date)
+      ),
+    ]);
     this.api.post<{ consultation: { id: string } }>('/consultations', {
       patientId: consultation.patientId,
       date: consultation.date,
