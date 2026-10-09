@@ -76,8 +76,8 @@ interface FormErrors {
                   <span class="material-symbols-outlined text-[20px]">monitor_heart</span>
                 </span>
                 <div>
-                  <h3 class="text-[15px] font-bold text-[#191c1e]">Signos Vitales (Triaje Actual)</h3>
-                  <p class="text-[12px] text-[#45464d]">Mediciones tomadas en la consulta/triaje de hoy</p>
+                  <h3 class="text-[15px] font-bold text-[#191c1e]">{{ data.triageEnabled() ? 'Signos Vitales (Triaje Actual)' : 'Signos Vitales' }}</h3>
+                  <p class="text-[12px] text-[#45464d]">Mediciones tomadas en la consulta de hoy</p>
                 </div>
               </div>
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">

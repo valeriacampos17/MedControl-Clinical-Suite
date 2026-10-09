@@ -255,7 +255,8 @@ CREATE TABLE IF NOT EXISTS organization_settings (
   email         TEXT,
   slogan        TEXT,
   footer_text   TEXT,
-  signature_name TEXT
+  signature_name TEXT,
+  triage_enabled INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS alert_rules (

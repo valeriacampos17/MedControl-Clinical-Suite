@@ -33,6 +33,7 @@ import { BadgeComponent } from '../badge/badge.component';
               <span class="material-symbols-outlined text-[16px]">history_edu</span>
               <span>Consultas ({{ patientConsultations().length }})</span>
             </button>
+            @if (data.triageEnabled()) {
             <button
               type="button"
               (click)="activeTab.set('triaje')"
@@ -42,6 +43,7 @@ import { BadgeComponent } from '../badge/badge.component';
               <span class="material-symbols-outlined text-[16px]">monitor_heart</span>
               <span>Evolución Triaje</span>
             </button>
+            }
           </div>
         </div>
       }
@@ -353,7 +355,7 @@ import { BadgeComponent } from '../badge/badge.component';
             }
           }
 
-          @if (activeTab() === 'triaje') {
+          @if (activeTab() === 'triaje' && data.triageEnabled()) {
             <div class="overflow-x-auto">
               <table class="w-full text-left text-[12px] border-collapse">
                 <thead>
@@ -405,7 +407,7 @@ export class ClinicalHistoryTimelineComponent implements OnChanges {
   @Input() showTitle: boolean = true;
   @Input() compact: boolean = false;
 
-  private data = inject(MockDataService);
+  data = inject(MockDataService);
 
   formatDate(value: string): string {
     return formatDateDisplay(value);

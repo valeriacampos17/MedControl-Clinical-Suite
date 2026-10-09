@@ -29,9 +29,21 @@ import { formatDateDisplay, formatTimeDisplay } from '../../core/utils/date-util
   ],
   template: `
     <div class="flex flex-col w-full">
-      <div class="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-6">
-        <div class="absolute -top-40 -left-20 w-96 h-96 rounded-full bg-[#86f2e4] opacity-20 blur-3xl pointer-events-none -z-10"></div>
-        <div class="absolute top-80 right-0 w-80 h-80 rounded-full bg-[#acedff] opacity-20 blur-3xl pointer-events-none -z-10"></div>
+        <div class="relative w-full px-4 sm:px-6 lg:px-8 py-6">
+          <div class="absolute inset-0 overflow-hidden pointer-events-none -z-10" aria-hidden="true">
+            <div class="absolute -top-40 -left-20 w-96 h-96 rounded-full bg-[#86f2e4] opacity-20 blur-3xl"></div>
+            <div class="absolute top-80 right-0 w-80 h-80 rounded-full bg-[#acedff] opacity-20 blur-3xl"></div>
+          </div>
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-6 border-b border-[#eceef0]">
+          <div>
+            <h1 class="text-[20px] sm:text-[22px] font-bold text-[#191c1e] tracking-tight">Pacientes & Historial Clínico</h1>
+            <p class="text-[13px] text-[#45464d] mt-1">Gestión de expedientes clínicos, recetas electrónicas e historial de consultas</p>
+          </div>
+          <app-button variant="primary" size="md" icon="person_add" (click)="handleOpenNewPatient()" title="Abrir el formulario para registrar un nuevo paciente en el sistema">
+            Nuevo Paciente
+          </app-button>
+        </div>
 
         <div class="flex items-center gap-2.5 flex-wrap mb-4 pb-4 border-b border-[#eceef0]">
           @if (selectedPatient()) {
@@ -42,8 +54,8 @@ import { formatDateDisplay, formatTimeDisplay } from '../../core/utils/date-util
           }
         </div>
 
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-4 mb-4 border-b border-[#eceef0]">
-          <div class="flex-1 max-w-md">
+        <div class="pb-4 mb-4 border-b border-[#eceef0]">
+          <div>
             <app-selection-picker
               icon="search"
               noun="paciente"
@@ -53,12 +65,12 @@ import { formatDateDisplay, formatTimeDisplay } from '../../core/utils/date-util
               [searchKeys]="['name', 'ci']"
               [items]="patientItems()"
               [selectedId]="selectedPatient()?.id ?? null"
+              [quickAccess]="recentPatientItems()"
+              quickAccessLabel="Acceso rápido · atendidos recientemente:"
               (selectedChange)="onPickPatient($event)"
+              (quickAccessSelect)="onPickPatient($event)"
             />
           </div>
-          <app-button variant="primary" size="md" icon="person_add" (click)="handleOpenNewPatient()" title="Abrir el formulario para registrar un nuevo paciente en el sistema">
-            Nuevo Paciente
-          </app-button>
         </div>
 
         @if (selectedPatient(); as patient) {
@@ -159,6 +171,7 @@ import { formatDateDisplay, formatTimeDisplay } from '../../core/utils/date-util
             </div>
           </div>
 
+          @if (data.triageEnabled()) {
           <div class="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-[#e6e8ea] flex flex-col justify-between">
             <div class="flex items-center justify-between">
               <span class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Signos Vitales (Triaje)</span>
@@ -192,7 +205,7 @@ import { formatDateDisplay, formatTimeDisplay } from '../../core/utils/date-util
               </div>
             }
           </div>
-
+          }
           <div class="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-[#e6e8ea] flex flex-col justify-between">
             <div class="flex items-center justify-between">
               <span class="text-[11px] font-bold text-[#45464d] uppercase tracking-wider">Adherencia Farmacológica</span>
@@ -302,41 +315,6 @@ import { formatDateDisplay, formatTimeDisplay } from '../../core/utils/date-util
             </div>
           </div>
         </div>
-        } @else {
-          <div class="bg-white rounded-xl shadow-sm border border-[#e6e8ea] p-8 sm:p-14 text-center flex flex-col items-center">
-            <div class="w-16 h-16 rounded-2xl bg-[#006a61]/10 text-[#006a61] flex items-center justify-center mb-4 ring-8 ring-[#006a61]/5">
-              <span class="material-symbols-outlined text-[32px]">person_search</span>
-            </div>
-            <h2 class="text-[20px] font-bold text-[#191c1e]">Selecciona un Paciente</h2>
-            <p class="text-[13px] text-[#45464d] mt-1.5 max-w-md leading-relaxed">
-              Usa el buscador para consultar la Ficha Clínica Electrónica, Triaje y atenciones anteriores del paciente.
-            </p>
-
-            <div class="mt-6 w-full max-w-lg flex flex-col items-center gap-3">
-              <span class="text-[11px] font-bold text-[#76777d] uppercase tracking-wider">Acceso rápido a pacientes de demostración:</span>
-              <div class="flex flex-wrap items-center justify-center gap-2">
-                @for (demoP of data.patients().slice(0, 5); track demoP.id) {
-                  <button
-                    type="button"
-                    (click)="handleSelectPatient(demoP.id)"
-                    class="px-3.5 py-2 rounded-xl bg-[#f2f4f6] hover:bg-[#006a61] text-[#191c1e] hover:text-white text-[12.5px] font-semibold border border-[#e0e3e5] transition-all flex items-center gap-2 shadow-xs group"
-                  >
-                    <div class="w-6 h-6 rounded-full bg-[#006a61] text-white group-hover:bg-white group-hover:text-[#006a61] flex items-center justify-center text-[10px] font-bold">
-                      {{ data.getInitials(demoP.name) }}
-                    </div>
-                    <span>{{ demoP.name }}</span>
-                  </button>
-                }
-              </div>
-            </div>
-
-            <div class="mt-8 pt-6 border-t border-[#eceef0] flex items-center gap-3">
-              <span class="text-[12px] text-[#76777d]">¿No encuentra al paciente?</span>
-              <app-button variant="outline" size="sm" icon="person_add" (click)="handleOpenNewPatient()" title="Abrir el formulario para registrar un nuevo paciente">
-                Registrar Nuevo Paciente
-              </app-button>
-            </div>
-          </div>
         }
       </div>
       <app-new-patient-modal
@@ -491,6 +469,23 @@ export class PatientHistoryComponent {
       search: { name: p.name, ci: p.ci },
     })),
   );
+
+  readonly recentPatientItems = computed<PickerItem[]>(() => {
+    const byId = new Map(this.data.patients().map((p) => [p.id, p]));
+    const seen = new Set<string>();
+    const items: PickerItem[] = [];
+    const ordered = [...this.data.consultations()].sort((a, b) =>
+      `${b.date}T${b.time}`.localeCompare(`${a.date}T${a.time}`),
+    );
+    for (const c of ordered) {
+      const p = byId.get(c.patientId);
+      if (!p || seen.has(c.patientId)) continue;
+      seen.add(c.patientId);
+      items.push({ id: p.id, title: p.name, subtitle: `CI: ${p.ci}`, search: { name: p.name, ci: p.ci } });
+      if (items.length === 6) break;
+    }
+    return items;
+  });
 
   /**
    * El picker compartido: elegir desde el buscador llama a handleSelectPatient

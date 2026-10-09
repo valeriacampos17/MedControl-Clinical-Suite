@@ -1,5 +1,6 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { AuthService } from '../../core/services/auth.service';
+import { MockDataService } from '../../core/services/mock-data.service';
 import { ExamsManagementComponent } from './tabs/exams-management.component';
 import { MedicationsManagementComponent } from './tabs/medications-management.component';
 import { DiagnosesManagementComponent } from './tabs/diagnoses-management.component';
@@ -82,15 +83,23 @@ type ConfigTab = 'exams' | 'medications' | 'diagnoses' | 'triage' | 'organizatio
 })
 export class ConfigurationComponent {
   auth = inject(AuthService);
+  private data = inject(MockDataService);
 
   readonly activeTab = signal<ConfigTab>('exams');
 
+  private triageOffEffect = effect(() => {
+    if (!this.data.triageEnabled() && this.activeTab() === 'triage') {
+      this.activeTab.set('exams');
+    }
+  });
+
   readonly tabs = computed<{ id: ConfigTab; label: string; icon: string }[]>(() => {
+    const triageEnabled = this.data.triageEnabled();
     const all: { id: ConfigTab; label: string; icon: string; adminOnly?: boolean }[] = [
       { id: 'exams', label: 'Exámenes', icon: 'science' },
       { id: 'medications', label: 'Medicamentos', icon: 'medication' },
       { id: 'diagnoses', label: 'Diagnósticos CIE-10', icon: 'event_note' },
-      { id: 'triage', label: 'Triajes', icon: 'monitor_heart' },
+      ...(triageEnabled ? [{ id: 'triage' as ConfigTab, label: 'Triajes', icon: 'monitor_heart' }] : []),
       { id: 'doctors', label: 'Médicos', icon: 'stethoscope', adminOnly: true },
       { id: 'organization', label: 'Organización', icon: 'apartment', adminOnly: true },
       { id: 'alerts', label: 'Alertas', icon: 'notifications_active' },

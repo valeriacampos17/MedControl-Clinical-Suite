@@ -7,6 +7,11 @@ import type { AppointmentItem, TriageVitals } from '../types.js';
 
 export const appointmentsRouter = Router();
 
+function triageEnabled(): boolean {
+  const row = db.prepare('SELECT triage_enabled FROM organization_settings LIMIT 1').get() as { triage_enabled: number } | undefined;
+  return !row || row.triage_enabled !== 0;
+}
+
 interface AppointmentRow {
   id: string;
   date: string;
@@ -143,6 +148,10 @@ appointmentsRouter.patch('/:id/status', (req, res) => {
 });
 
 appointmentsRouter.patch('/:id/start-triage', (req, res) => {
+  if (!triageEnabled()) {
+    res.status(400).json({ error: 'El módulo de triaje está deshabilitado en la configuración de la organización' });
+    return;
+  }
   const existing = db.prepare('SELECT id FROM appointments WHERE id = ?').get(req.params.id);
   if (!existing) {
     res.status(404).json({ error: 'Cita no encontrada' });
@@ -165,6 +174,10 @@ const triageSchema = z.object({
 });
 
 appointmentsRouter.patch('/:id/complete-triage', (req, res) => {
+  if (!triageEnabled()) {
+    res.status(400).json({ error: 'El módulo de triaje está deshabilitado en la configuración de la organización' });
+    return;
+  }
   const parsed = triageSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues.map((i) => i.message).join('; ') });

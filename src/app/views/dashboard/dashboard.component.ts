@@ -154,7 +154,11 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
               <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-[#86f2e4]/30 text-[#006f66] text-[11px] font-semibold">Check-in</span>
             </div>
             <div class="mt-3 pt-2 border-t border-[#f2f4f6] flex items-center justify-between text-[#45464d] text-[11px]">
-              <span>Sala Triage: {{ data.triageCount() }}</span>
+              @if (data.triageEnabled()) {
+                <span>Sala Triage: {{ data.triageCount() }}</span>
+              } @else {
+                <span></span>
+              }
               <span>Recepción: {{ data.receptionCount() }}</span>
             </div>
             <div class="w-full bg-[#e6e8ea] h-1.5 rounded-full mt-2 overflow-hidden">
@@ -757,9 +761,15 @@ Triage
                         Registrar Llegada
                       </button>
                     } @else if (patient.status === 'checked-in') {
-                      <button type="button" (click)="handleStartTriage(patient.id)" class="px-3 py-1.5 rounded-lg bg-[#f59e0b] text-white text-[12px] font-semibold hover:bg-[#d97706] transition-colors" title="Iniciar evaluación de signos vitales (triage)">
-                        Iniciar Triage
-                      </button>
+                      @if (data.triageEnabled()) {
+                        <button type="button" (click)="handleStartTriage(patient.id)" class="px-3 py-1.5 rounded-lg bg-[#f59e0b] text-white text-[12px] font-semibold hover:bg-[#d97706] transition-colors" title="Iniciar evaluación de signos vitales (triage)">
+                          Iniciar Triage
+                        </button>
+                      } @else {
+                        <button type="button" (click)="handleStartConsultation(patient.patientId)" class="px-3 py-1.5 rounded-lg bg-[#006a61] text-white text-[12px] font-semibold hover:bg-[#005049] transition-colors" title="Iniciar consulta médica directamente">
+                          Iniciar Consulta
+                        </button>
+                      }
                     } @else if (patient.status === 'in-triage') {
                       <span class="px-3 py-1.5 rounded-lg bg-[#fffbeb] text-[#92400e] text-[12px] font-semibold border border-[#fde68a]">En Triage...</span>
                     }
