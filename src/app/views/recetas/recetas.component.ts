@@ -39,7 +39,7 @@ import { PickerItem, SelectionPickerComponent } from '../../shared/selection-pic
             [items]="patientItems()"
             [selectedId]="filterPatientId()"
             [quickAccess]="recentPatientItems()"
-            quickAccessLabel="Acceso rápido · atendidos recientemente:"
+            quickAccessLabel="Acceso rápido:"
             (selectedChange)="onFilterPatient($event)"
             (quickAccessSelect)="onFilterPatient($event)"
           />
@@ -123,7 +123,7 @@ import { PickerItem, SelectionPickerComponent } from '../../shared/selection-pic
               [items]="patientItems()"
               [selectedId]="emitPatientId()"
               [quickAccess]="recentPatientItems()"
-              quickAccessLabel="Acceso rápido · atendidos recientemente:"
+              quickAccessLabel="Acceso rápido:"
               (selectedChange)="emitPatientId.set($event)"
             />
           </div>
