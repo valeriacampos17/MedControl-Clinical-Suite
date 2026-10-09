@@ -45,7 +45,16 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
                 </td>
                 <td class="px-4 py-3 text-[#45464d]">{{ doctor.specialty }}</td>
                 <td class="px-4 py-3">
-                  <app-badge variant="outline" size="sm">{{ doctor.activeToday ? 'Activo' : 'Inactivo' }}</app-badge>
+                  <div class="flex items-center gap-2">
+                    <button
+                      class="p-1 rounded-lg text-[#006a61] hover:bg-[#86f2e4]/20 transition-colors"
+                      title="Activar / Desactivar"
+                      (click)="toggle(doctor.id)"
+                    >
+                      <span class="material-symbols-outlined text-[22px]">{{ doctor.activeToday ? 'toggle_on' : 'toggle_off' }}</span>
+                    </button>
+                    <app-badge variant="outline" size="sm">{{ doctor.activeToday ? 'Activo' : 'Inactivo' }}</app-badge>
+                  </div>
                 </td>
                 <td class="px-4 py-3 text-right">
                   <div class="inline-flex items-center gap-1.5">
@@ -55,13 +64,6 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
                       (click)="edit(doctor)"
                     >
                       <span class="material-symbols-outlined text-[18px]">edit</span>
-                    </button>
-                    <button
-                      class="p-1.5 rounded-lg text-[#006a61] hover:bg-[#86f2e4]/20 transition-colors"
-                      title="Activar / Desactivar"
-                      (click)="toggle(doctor.id)"
-                    >
-                      <span class="material-symbols-outlined text-[18px]">{{ doctor.activeToday ? 'toggle_on' : 'toggle_off' }}</span>
                     </button>
                     <button
                       class="p-1.5 rounded-lg text-[#ba1a1a] hover:bg-[#ffdad6]/40 transition-colors"

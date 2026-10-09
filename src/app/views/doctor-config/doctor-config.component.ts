@@ -239,15 +239,18 @@ import { DaySchedule } from '../../core/models/types';
               <span class="inline-flex items-center gap-1.5">
                 <span class="w-3 h-3 rounded bg-white border border-[#d8dbde]"></span>Sin marcar
               </span>
-              <span class="ml-auto">{{ markedCount() }} días marcados en {{ markingMonthLabel() }}</span>
+              <span class="ml-auto">{{ markedCount() }} días marcados</span>
             </div>
 
-            <p class="mt-3 text-[11px] text-[#76777d]">
-              Clic en un día para marcarlo o desmarcarlo. Clic en uno y después en otro marca todo el rango.
-              @if (targetDoctorIds().length > 1) {
-                Los cambios se guardan solos para {{ whoLabel() }}.
-              }
-            </p>
+            <div class="mt-4 pt-3 border-t border-[#eceef0] flex items-start gap-1 text-[12px] text-[#45464d]">
+              <span class="material-symbols-outlined text-[16px] text-[#006a61] leading-none mt-0.5">info</span>
+              <span>
+                Clic en un día para marcarlo o desmarcarlo. Clic en uno y después en otro marca todo el rango.
+                @if (targetDoctorIds().length > 1) {
+                  Los cambios se guardan solos para {{ whoLabel() }}.
+                }
+              </span>
+            </div>
             @if (markedWithoutHours().length > 0) {
               <p class="mt-3 p-2.5 rounded-lg bg-[#fff7ed] border border-[#fed7aa] text-[12px] text-[#92400e]">
                 Marcó {{ markedWithoutHours().length }} día(s) sin horario configurado para ese día de la semana:
@@ -276,12 +279,12 @@ import { DaySchedule } from '../../core/models/types';
               </div>
             </div>
             <div class="overflow-x-auto">
-              <table class="w-full text-left text-[12px] border-collapse min-w-[700px]">
+              <table class="w-full text-left text-[12px] border-collapse min-w-0">
                 <thead>
                   <tr class="border-b border-[#eceef0] text-[#76777d] uppercase text-[11px] font-bold tracking-wider">
-                    <th class="py-2.5 px-3">Día</th>
-                    <th class="py-2.5 px-3">Horario</th>
-                    <th class="py-2.5 px-3 text-right">
+                    <th class="py-2.5 px-2 whitespace-nowrap">Día</th>
+                    <th class="py-2.5 px-2 whitespace-nowrap">Horario</th>
+                    <th class="py-2.5 px-2 text-right whitespace-nowrap">
                       <div class="flex items-center justify-end gap-1.5">
                         <span>Cupos</span>
                         <input
@@ -290,8 +293,8 @@ import { DaySchedule } from '../../core/models/types';
                           max="999"
                           [value]="defaultCapacity()"
                           (change)="onDefaultCapacityChange($event)"
-                          title="Se aplica a todos los días. Si un día necesita otro número, cámbialo en su fila."
-                          class="w-20 px-2 py-1 rounded-md border border-[#006a61] text-[13px] font-bold text-[#006a61] text-right focus:outline-none focus:ring-2 focus:ring-[#006a61]/30"
+                          title="Se aplica a todos los días. Si un día necesita otro número, cámbielo en su fila."
+                          class="w-14 px-1.5 py-1 rounded-md border border-[#006a61] text-[12px] font-bold text-[#006a61] text-right focus:outline-none focus:ring-2 focus:ring-[#006a61]/30"
                         />
                       </div>
                     </th>
@@ -303,46 +306,34 @@ import { DaySchedule } from '../../core/models/types';
                       [class.opacity-60]="!day.enabled && !isDivergent(day.dayOfWeek)"
                       [class.bg-[#fffaf3]]="isDivergent(day.dayOfWeek)"
                     >
-                      <td class="py-3 px-3">
-                        <div class="flex items-center gap-2.5">
+                      <td class="py-3 px-2">
+                        <div class="flex items-center gap-2">
                           <app-switch [checked]="day.enabled" (toggled)="toggleDay(idx)" size="sm" />
-                          <span class="font-bold text-[13px] text-[#191c1e]">{{ day.day }}</span>
-                          @if (isDivergent(day.dayOfWeek)) {
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#ffedd5] text-[#9a3412] uppercase tracking-wide">
-                              difieren
-                            </span>
-                          }
+                          <span class="font-bold text-[13px] text-[#191c1e] whitespace-nowrap">{{ day.day }}</span>
                         </div>
                       </td>
-                      <td class="py-3 px-3">
+                      <td class="py-3 px-2">
                         @if (day.enabled || isDivergent(day.dayOfWeek)) {
-                          <div class="flex flex-col gap-1">
-                            <div class="flex items-center gap-1.5">
-                              <input
-                                type="time"
-                                [value]="day.startTime"
-                                (change)="onTimeChange(idx, 'startTime', $event)"
-                                class="px-2 py-1 rounded-md border border-[#d7d9dc] text-[12px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
-                              />
-                              <span class="text-[#76777d]">-</span>
-                              <input
-                                type="time"
-                                [value]="day.endTime"
-                                (change)="onTimeChange(idx, 'endTime', $event)"
-                                class="px-2 py-1 rounded-md border border-[#d7d9dc] text-[12px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
-                              />
-                            </div>
-                            @if (isDivergent(day.dayOfWeek)) {
-                              <span class="text-[11px] text-[#9a3412] leading-snug" [title]="divergenceDetail(day.dayOfWeek)">
-                                Cada médico tiene un horario. Escriba aquí para dejar el mismo para todos.
-                              </span>
-                            }
+                          <div class="flex items-center gap-1">
+                            <input
+                              type="time"
+                              [value]="day.startTime"
+                              (change)="onTimeChange(idx, 'startTime', $event)"
+                              class="w-[86px] px-1.5 py-1 rounded-md border border-[#d7d9dc] text-[12px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                            />
+                            <span class="text-[#76777d]">-</span>
+                            <input
+                              type="time"
+                              [value]="day.endTime"
+                              (change)="onTimeChange(idx, 'endTime', $event)"
+                              class="w-[86px] px-1.5 py-1 rounded-md border border-[#d7d9dc] text-[12px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                            />
                           </div>
                         } @else {
                           <span class="text-[#76777d] italic">Sin jornada</span>
                         }
                       </td>
-                      <td class="py-3 px-3 text-right">
+                      <td class="py-3 px-2 text-right">
                         @if (day.enabled || isDivergent(day.dayOfWeek)) {
                           <input
                             type="number"
@@ -351,7 +342,7 @@ import { DaySchedule } from '../../core/models/types';
                             [value]="day.totalCapacity"
                             (change)="onCapacityChange(idx, $event)"
                             [title]="day.totalCapacity === defaultCapacity() ? 'Mismo valor para todos los días' : 'Excepción: solo ' + day.day.toLowerCase() + ' tiene ' + day.totalCapacity + ' cupos'"
-                            class="w-20 px-2 py-1 rounded-md border text-[13px] font-bold text-right focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
+                            class="w-14 px-1.5 py-1 rounded-md border text-[12px] font-bold text-right focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]"
                             [class.border-[#d7d9dc]]="day.totalCapacity === defaultCapacity()"
                             [class.text-[#006a61]]="day.totalCapacity === defaultCapacity()"
                             [class.border-[#b45309]]="day.totalCapacity !== defaultCapacity()"
@@ -373,6 +364,12 @@ import { DaySchedule } from '../../core/models/types';
                 El campo de arriba aplica el mismo número de cupos a todos los días. Solo cámbielo en la fila de un día si ese día necesita otro.
               </span>
             </div>
+            @if (divergentDays().length > 0) {
+              <p class="mt-3 p-2.5 rounded-lg bg-[#fff7ed] border border-[#fed7aa] text-[12px] text-[#92400e]">
+                El horario de <strong>{{ divergentDays().join(', ') }}</strong> difiere entre los médicos seleccionados.
+                Escriba una hora en la fila para dejar el mismo horario para todos.
+              </p>
+            }
               </div>
             </div>
           </div>
@@ -589,6 +586,11 @@ export class DoctorConfigComponent implements OnInit {
       })
       .join(' · ');
   }
+
+  /** Dias cuyo horario difiere entre los medicos del scope, para el aviso bajo la tabla. */
+  readonly divergentDays = computed(() =>
+    this.scheduleDays().filter(d => this.isDivergent(d.dayOfWeek)).map(d => d.day),
+  );
 
   // ---- dias a laborar (fechas marcadas) ----
 

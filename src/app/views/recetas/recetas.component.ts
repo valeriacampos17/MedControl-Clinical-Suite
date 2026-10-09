@@ -16,19 +16,18 @@ import { PickerItem, SelectionPickerComponent } from '../../shared/selection-pic
   imports: [ButtonComponent, BadgeComponent, ModalComponent, ToastComponent, SelectionPickerComponent],
   template: `
     <div class="flex flex-col w-full">
-      <div class="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-6">
+        <div class="relative w-full px-4 sm:px-6 lg:px-8 py-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-6 border-b border-[#eceef0]">
           <div>
             <div class="flex items-center gap-3">
               <h1 class="text-[20px] sm:text-[22px] font-bold text-[#191c1e] tracking-tight">Recetas & Exámenes Electrónicos</h1>
-              <app-badge variant="teal" size="sm">Firma Avanzada MINSAL</app-badge>
             </div>
             <p class="text-[13px] text-[#45464d] mt-1">Registro centralizado de recetas médicas electrónicas y órdenes de exámenes complementarios</p>
           </div>
           <app-button variant="primary" size="md" icon="add" (click)="openEmitModal()">Emitir Nueva Receta</app-button>
         </div>
 
-        <div class="max-w-xl mb-6">
+        <div class="mb-6">
           <app-selection-picker
             icon="search"
             noun="paciente"
@@ -572,7 +571,7 @@ export class RecetasComponent {
       </tr>`).join('');
     return this.docShell('Receta ' + rx.id, `
     <div class="head">
-      ${this.brandHeader('Receta Electrónica · Firma Avanzada MINSAL')}
+      ${this.brandHeader('Receta Electrónica')}
       <div class="type"><span class="badge">RECETA MÉDICA ELECTRÓNICA</span></div>
     </div>
     <div class="grid">
