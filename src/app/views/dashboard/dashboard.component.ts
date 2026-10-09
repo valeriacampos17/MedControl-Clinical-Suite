@@ -206,9 +206,9 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                 <span class="material-symbols-outlined text-[20px]">speed</span>
               </span>
             </div>
-            <div class="mt-3 flex items-baseline justify-between">
+            <div class="mt-3 flex flex-wrap items-baseline justify-between gap-x-2">
               <span class="text-[34px] font-extrabold text-[#191c1e] leading-none tracking-tight">{{ punctuality().pct }}%</span>
-              <div class="flex items-center text-[12px] font-bold" [class]="punctuality().optimal ? 'text-[#006a61]' : 'text-[#b45309]'">
+              <div class="flex items-center text-[12px] font-bold shrink-0 whitespace-nowrap ml-auto" [class]="punctuality().optimal ? 'text-[#006a61]' : 'text-[#b45309]'">
                 <span class="material-symbols-outlined text-[16px]">{{ punctuality().optimal ? 'trending_up' : 'trending_down' }}</span>
                 <span>{{ dayStats().completed }} completadas</span>
               </div>
