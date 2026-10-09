@@ -1168,7 +1168,10 @@ export class MockDataService {
     slogan: 'Centro médico docente y de rehabilitación',
     footerText: 'Documento electrónico generado por MedControl Clinical Suite. La firma del prescriptor valida este documento conforme a la normativa MINSAL de firma avanzada.',
     signatureName: 'Dra. Noemí Aguirre',
+    triageEnabled: true,
   });
+
+  readonly triageEnabled = computed(() => this.organization().triageEnabled !== false);
 
   updateOrganization(org: OrganizationSettings): void {
     this.organization.set({ ...org });

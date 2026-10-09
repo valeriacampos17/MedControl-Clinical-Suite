@@ -4,11 +4,12 @@ import { ToastService } from '../../../core/services/toast.service';
 import { OrganizationSettings } from '../../../core/models/types';
 import { ButtonComponent } from '../../../shared/button/button.component';
 import { ToastComponent } from '../../../shared/toast/toast.component';
+import { SwitchComponent } from '../../../shared/switch/switch.component';
 
 @Component({
   selector: 'app-organization-management',
   standalone: true,
-  imports: [ButtonComponent, ToastComponent],
+  imports: [ButtonComponent, ToastComponent, SwitchComponent],
   template: `
     <div class="flex flex-col gap-4 max-w-3xl">
       <div>
@@ -55,6 +56,16 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
         </label>
       </div>
 
+      <div class="bg-white rounded-xl shadow-sm border border-[#e6e8ea] p-5">
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <span class="text-[13px] font-bold text-[#191c1e]">Módulo de Triaje</span>
+            <p class="text-[12px] text-[#45464d] mt-0.5">Paso de signos vitales antes de la consulta. Desactívelo en clínicas estéticas o de baja complejidad.</p>
+          </div>
+          <app-switch [checked]="form().triageEnabled !== false" (toggled)="onToggleTriage($event)" size="md" />
+        </div>
+      </div>
+
       <div>
         <app-button variant="primary" size="md" icon="save" (click)="save()">Guardar Organización</app-button>
       </div>
@@ -74,6 +85,10 @@ export class OrganizationManagementComponent {
 
   onInput(key: string, event: Event): void {
     this.update(key, (event.target as HTMLInputElement).value);
+  }
+
+  onToggleTriage(on: boolean): void {
+    this.update('triageEnabled', on);
   }
 
   save(): void {

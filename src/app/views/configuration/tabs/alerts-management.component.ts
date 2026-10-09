@@ -91,7 +91,9 @@ import { ToastComponent } from '../../../shared/toast/toast.component';
             <label class="flex flex-col gap-1.5">
               <span class="text-[12px] font-bold text-[#191c1e]">Categoría</span>
               <select [value]="form().category" (change)="onSelect('category', $event)" class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61]">
-                <option value="triage">Triaje</option>
+                @if (data.triageEnabled()) {
+                  <option value="triage">Triaje</option>
+                }
                 <option value="receta">Receta</option>
                 <option value="examen">Examen</option>
                 <option value="cita">Cita</option>
@@ -125,7 +127,10 @@ export class AlertsManagementComponent {
   data = inject(MockDataService);
   toast = inject(ToastService);
 
-  rules = computed(() => this.data.getAlertRules());
+  rules = computed(() => {
+    const all = this.data.getAlertRules();
+    return this.data.triageEnabled() ? all : all.filter((r) => r.category !== 'triage');
+  });
 
   readonly showModal = signal(false);
   readonly editing = signal<string | null>(null);
@@ -155,7 +160,7 @@ export class AlertsManagementComponent {
 
   openNew(): void {
     this.editing.set(null);
-    this.form.set({ id: '', name: '', description: '', category: 'triage', severity: 'info', icon: 'notifications_active', actionLabel: 'Ver Detalle', active: true });
+    this.form.set({ id: '', name: '', description: '', category: this.data.triageEnabled() ? 'triage' : 'cita', severity: 'info', icon: 'notifications_active', actionLabel: 'Ver Detalle', active: true });
     this.showModal.set(true);
   }
 

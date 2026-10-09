@@ -336,6 +336,7 @@ export interface OrganizationSettings {
   slogan?: string;
   footerText: string;
   signatureName: string;
+  triageEnabled?: boolean;
 }
 
 export type AlertCategory = 'triage' | 'receta' | 'examen' | 'cita';

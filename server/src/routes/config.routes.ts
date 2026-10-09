@@ -215,6 +215,7 @@ interface OrganizationRow {
   slogan: string | null;
   footer_text: string | null;
   signature_name: string | null;
+  triage_enabled: number | null;
 }
 
 configRouter.get('/organization', (_req, res) => {
@@ -230,6 +231,7 @@ configRouter.get('/organization', (_req, res) => {
       slogan: row.slogan ?? '',
       footerText: row.footer_text ?? '',
       signatureName: row.signature_name ?? '',
+      triageEnabled: row.triage_enabled !== 0,
     },
   });
 });
@@ -245,6 +247,7 @@ configRouter.put('/organization', (req, res) => {
     slogan?: string;
     footerText?: string;
     signatureName?: string;
+    triageEnabled?: boolean;
   };
   if (!org?.name) {
     res.status(400).json({ error: 'El nombre de la organización es requerido' });
@@ -252,8 +255,8 @@ configRouter.put('/organization', (req, res) => {
   }
   const id = org.id ?? 'ORG-001';
   db.prepare(`
-    INSERT INTO organization_settings (id, name, rut, address, phone, email, slogan, footer_text, signature_name)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO organization_settings (id, name, rut, address, phone, email, slogan, footer_text, signature_name, triage_enabled)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       rut = excluded.rut,
@@ -262,8 +265,9 @@ configRouter.put('/organization', (req, res) => {
       email = excluded.email,
       slogan = excluded.slogan,
       footer_text = excluded.footer_text,
-      signature_name = excluded.signature_name
-  `).run(id, org.name, org.rut, org.address ?? '', org.phone ?? '', org.email ?? '', org.slogan ?? '', org.footerText ?? '', org.signatureName ?? '');
+      signature_name = excluded.signature_name,
+      triage_enabled = excluded.triage_enabled
+  `).run(id, org.name, org.rut, org.address ?? '', org.phone ?? '', org.email ?? '', org.slogan ?? '', org.footerText ?? '', org.signatureName ?? '', org.triageEnabled === false ? 0 : 1);
   const row = db.prepare('SELECT * FROM organization_settings WHERE id = ?').get(id) as OrganizationRow;
   res.json({
     organization: {
@@ -276,6 +280,7 @@ configRouter.put('/organization', (req, res) => {
       slogan: row.slogan ?? '',
       footerText: row.footer_text ?? '',
       signatureName: row.signature_name ?? '',
+      triageEnabled: row.triage_enabled !== 0,
     },
   });
 });
