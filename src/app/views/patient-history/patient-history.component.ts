@@ -12,7 +12,9 @@ import { ToastComponent } from '../../shared/toast/toast.component';
 import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-timeline/clinical-history-timeline.component';
 import { NewPatientModalComponent } from '../../shared/new-patient-modal/new-patient-modal.component';
 import { PickerItem, SelectionPickerComponent } from '../../shared/selection-picker/selection-picker.component';
+import { PatientAvatarComponent } from '../../shared/patient-avatar/patient-avatar.component';
 import { formatDateDisplay, formatTimeDisplay } from '../../core/utils/date-utils';
+import { fileToCompressedDataUrl, isImageFile } from '../../core/utils/image.utils';
 
 @Component({
   selector: 'app-patient-history',
@@ -26,6 +28,7 @@ import { formatDateDisplay, formatTimeDisplay } from '../../core/utils/date-util
     ClinicalHistoryTimelineComponent,
     NewPatientModalComponent,
     SelectionPickerComponent,
+    PatientAvatarComponent,
   ],
   template: `
     <div class="flex flex-col w-full">
@@ -77,8 +80,29 @@ import { formatDateDisplay, formatTimeDisplay } from '../../core/utils/date-util
         <section class="bg-white rounded-xl shadow-sm border border-[#e6e8ea] p-4 sm:p-6 mb-6 transition-all">
           <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-5 lg:gap-6">
             <div class="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5 min-w-0 flex-1">
-              <div class="w-16 h-16 sm:w-20 sm:h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#006a61] text-white flex items-center justify-center text-[22px] sm:text-[28px] font-bold ring-2 ring-[#eceef0] shadow-sm shrink-0">
-                {{ data.getInitials(patient.name) }}
+              <div class="relative shrink-0">
+                <app-patient-avatar
+                  [name]="patient.name"
+                  [photoUrl]="patient.photoUrl ?? ''"
+                  class="w-16 h-16 sm:w-20 sm:h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#006a61] text-white text-[22px] sm:text-[28px] font-bold ring-2 ring-[#eceef0] shadow-sm"
+                />
+                <label
+                  class="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-white border border-[#d7d9dc] shadow-sm flex items-center justify-center cursor-pointer text-[#006a61] hover:bg-[#f2f4f6] transition-colors"
+                  title="Subir foto del paciente"
+                >
+                  <span class="material-symbols-outlined text-[18px]">photo_camera</span>
+                  <input type="file" accept="image/*" class="hidden" (change)="handlePatientPhoto($event)" />
+                </label>
+                @if (patient.photoUrl) {
+                  <button
+                    type="button"
+                    (click)="removePatientPhoto()"
+                    class="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-[#ba1a1a] text-white shadow-sm flex items-center justify-center hover:bg-[#93000a] transition-colors"
+                    title="Quitar foto del paciente"
+                  >
+                    <span class="material-symbols-outlined text-[14px]">close</span>
+                  </button>
+                }
               </div>
               <div class="flex flex-col min-w-0 flex-1">
                 <div class="flex flex-wrap items-center gap-2 mb-1">
@@ -599,5 +623,33 @@ export class PatientHistoryComponent {
       this.data.selectPatient(patient.id);
       this.router.navigate(['nueva-consulta']);
     }
+  }
+
+  async handlePatientPhoto(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    const patient = this.selectedPatient();
+    if (!file || !patient) return;
+    if (!isImageFile(file)) {
+      this.toast.show('Formato no válido', 'Seleccione una imagen (JPG, PNG o WebP).', 'error');
+      return;
+    }
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file, { maxSize: 512, quality: 0.85, maxBytes: 400_000 });
+      this.data.setPatientPhoto(patient.id, dataUrl);
+      this.selectedPatient.set({ ...patient, photoUrl: dataUrl });
+      this.toast.show('Foto Actualizada', `Se actualizó la foto de ${patient.name}.`);
+    } catch {
+      this.toast.show('Error al Procesar', 'No se pudo procesar la imagen seleccionada.', 'error');
+    }
+  }
+
+  removePatientPhoto(): void {
+    const patient = this.selectedPatient();
+    if (!patient) return;
+    this.data.removePatientPhoto(patient.id);
+    this.selectedPatient.set({ ...patient, photoUrl: '' });
+    this.toast.show('Foto Eliminada', `Se quitó la foto de ${patient.name}.`);
   }
 }

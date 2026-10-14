@@ -19,6 +19,7 @@ interface PatientRow {
   allergies: string;
   chronic_conditions: string;
   consent_signed: number;
+  photo_url: string | null;
 }
 
 function toPatient(r: PatientRow): Patient {
@@ -36,6 +37,7 @@ function toPatient(r: PatientRow): Patient {
     allergies: JSON.parse(r.allergies || '[]') as string[],
     chronicConditions: JSON.parse(r.chronic_conditions || '[]') as string[],
     consentSigned: Boolean(r.consent_signed),
+    photoUrl: r.photo_url ?? '',
   };
 }
 
@@ -66,6 +68,7 @@ const patientSchema = z.object({
   allergies: z.array(z.string()).optional(),
   chronicConditions: z.array(z.string()).optional(),
   consentSigned: z.boolean().optional(),
+  photoUrl: z.string().optional(),
 });
 
 patientsRouter.post('/', (req, res) => {
@@ -80,8 +83,8 @@ patientsRouter.post('/', (req, res) => {
   const id = 'MED-' + String(next).padStart(4, '0');
   const ci = data.ci.includes('-') ? data.ci : data.ci;
   db.prepare(`
-    INSERT INTO patients (id, ci, name, age, birth_date, phone, email, address, insurance, blood_type, allergies, chronic_conditions, consent_signed)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO patients (id, ci, name, age, birth_date, phone, email, address, insurance, blood_type, allergies, chronic_conditions, consent_signed, photo_url)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     ci,
@@ -96,9 +99,41 @@ patientsRouter.post('/', (req, res) => {
     JSON.stringify(data.allergies ?? []),
     JSON.stringify(data.chronicConditions ?? []),
     data.consentSigned ? 1 : 0,
+    data.photoUrl ?? null,
   );
   const row = db.prepare('SELECT * FROM patients WHERE id = ?').get(id) as PatientRow;
   res.status(201).json({ patient: toPatient(row) });
+});
+
+const patientPhotoSchema = z.object({
+  photoUrl: z.string(),
+});
+
+patientsRouter.put('/:id/photo', (req, res) => {
+  const parsed = patientPhotoSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues.map((i) => i.message).join('; ') });
+    return;
+  }
+  const exists = db.prepare('SELECT id FROM patients WHERE id = ?').get(req.params.id);
+  if (!exists) {
+    res.status(404).json({ error: 'Paciente no encontrado' });
+    return;
+  }
+  db.prepare('UPDATE patients SET photo_url = ? WHERE id = ?').run(parsed.data.photoUrl, req.params.id);
+  const row = db.prepare('SELECT * FROM patients WHERE id = ?').get(req.params.id) as PatientRow;
+  res.json({ patient: toPatient(row) });
+});
+
+patientsRouter.delete('/:id/photo', (req, res) => {
+  const exists = db.prepare('SELECT id FROM patients WHERE id = ?').get(req.params.id);
+  if (!exists) {
+    res.status(404).json({ error: 'Paciente no encontrado' });
+    return;
+  }
+  db.prepare("UPDATE patients SET photo_url = '' WHERE id = ?").run(req.params.id);
+  const row = db.prepare('SELECT * FROM patients WHERE id = ?').get(req.params.id) as PatientRow;
+  res.json({ patient: toPatient(row) });
 });
 
 patientsRouter.get('/:id/consultations', (req, res) => {

@@ -91,7 +91,7 @@ import { NavRoute } from '../../core/models/types';
               class="relative p-2 rounded-lg text-[#45464d] hover:bg-[#eceef0] hover:text-[#191c1e] transition-colors"
             >
               <span class="material-symbols-outlined text-[22px]">notifications</span>
-              @if (auth.isDoctor() ? setupPending() : true) {
+              @if (auth.isDoctor() ? setupPending() : data.unreadNotifications() > 0) {
                 <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#ba1a1a] ring-2 ring-white"></span>
               }
             </button>
@@ -111,7 +111,7 @@ import { NavRoute } from '../../core/models/types';
                       {{ setupPending() ? setupCount() + (setupCount() === 1 ? ' Pendiente' : ' Pendientes') : 'Al día' }}
                     </span>
                   } @else {
-                    <span class="text-[10px] bg-[#ffdad6] text-[#ba1a1a] font-bold px-1.5 py-0.5 rounded">2 Nuevas</span>
+                    <span class="text-[10px] bg-[#ffdad6] text-[#ba1a1a] font-bold px-1.5 py-0.5 rounded">{{ data.unreadNotifications() }} Nuevas</span>
                   }
                 </div>
                 <div class="flex flex-col gap-2 max-h-80 overflow-y-auto">
@@ -143,16 +143,26 @@ import { NavRoute } from '../../core/models/types';
                       </div>
                     }
                   } @else {
-                    <div class="p-2 bg-[#f2f4f6] rounded-lg text-left">
-                      <p class="text-[12px] font-semibold text-[#191c1e]">Alergia confirmada - Juan Pérez</p>
-                      <p class="text-[11px] text-[#45464d]">Reportada reacción anafiláctica a Penicilina.</p>
-                      <span class="text-[10px] text-[#76777d]">Hace 12 min</span>
-                    </div>
-                    <div class="p-2 bg-[#f2f4f6] rounded-lg text-left">
-                      <p class="text-[12px] font-semibold text-[#191c1e]">Cancelación de Turno 16:00</p>
-                      <p class="text-[11px] text-[#45464d]">Slot liberado reasignado a lista prioritaria.</p>
-                      <span class="text-[10px] text-[#76777d]">Hace 35 min</span>
-                    </div>
+                    @for (note of data.notifications().slice(0, 4); track note.id) {
+                      <button
+                        type="button"
+                        (click)="onNotificationClick(note.route)"
+                        class="p-2 rounded-lg text-left transition-colors hover:bg-[#e6e8ea]"
+                        [class]="note.isRead ? 'bg-[#f2f4f6]' : 'bg-[#ffdad6]/30'"
+                      >
+                        <span class="flex items-center gap-1.5 text-[12px] font-semibold text-[#191c1e]">
+                          @if (!note.isRead) {
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#ba1a1a] shrink-0"></span>
+                          }
+                          <span class="material-symbols-outlined text-[15px] text-[#006a61]">{{ note.icon }}</span>
+                          <span class="truncate">{{ note.title }}</span>
+                        </span>
+                        <span class="text-[11px] text-[#45464d] mt-0.5 block leading-snug">{{ note.description }}</span>
+                        <span class="text-[10px] text-[#76777d]">{{ relativeTime(note.time) }}</span>
+                      </button>
+                    } @empty {
+                      <div class="p-3 text-[13px] text-[#76777d] text-center">No hay notificaciones.</div>
+                    }
                   }
                 </div>
                 @if (auth.isAdmin()) {
@@ -331,6 +341,22 @@ export class HeaderComponent {
   onSetupTaskClick(task: SetupTask): void {
     this.showNotifications.set(false);
     this.nav.navigate(task.route);
+  }
+
+  onNotificationClick(route: NavRoute | undefined): void {
+    this.showNotifications.set(false);
+    this.nav.navigate(route ?? 'notificaciones-y-alertas');
+  }
+
+  relativeTime(iso: string): string {
+    const then = new Date(iso).getTime();
+    if (Number.isNaN(then)) return iso;
+    const minutes = Math.max(0, Math.floor((Date.now() - then) / 60000));
+    if (minutes < 1) return 'Ahora mismo';
+    if (minutes < 60) return `Hace ${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `Hace ${hours} h`;
+    return `Hace ${Math.floor(hours / 24)} d`;
   }
 
   onConfigClick(): void {

@@ -8,12 +8,13 @@ import { ToastService } from '../../core/services/toast.service';
 import { ButtonComponent } from '../../shared/button/button.component';
 import { BadgeComponent } from '../../shared/badge/badge.component';
 import { ToastComponent } from '../../shared/toast/toast.component';
+import { PatientAvatarComponent } from '../../shared/patient-avatar/patient-avatar.component';
 import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models/types';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [FormsModule, ButtonComponent, BadgeComponent, ToastComponent],
+  imports: [FormsModule, ButtonComponent, BadgeComponent, ToastComponent, PatientAvatarComponent],
   template: `
     <div class="flex flex-col w-full">
       <div class="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-6">
@@ -103,8 +104,8 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
               <app-button variant="light" size="md" icon="emergency" (click)="handleDeclareEmergency()" [disabled]="data.selectedDoctorId() === null" title="Activar protocolo de emergencia y notificar al equipo">
                 Declarar Urgencia
               </app-button>
-              <app-button variant="primary" size="md" icon="stethoscope" (click)="handleOpenConsultation()" [disabled]="data.selectedDoctorId() === null" title="Ir a nueva consulta o continuar consulta activa">
-                Consulta en Curso
+              <app-button variant="primary" size="md" [icon]="attendingPatient()?.mode === 'continue' ? 'play_circle' : 'stethoscope'" (click)="handleOpenConsultation()" [disabled]="!attendingPatient()" [title]="consultationButtonTitle()">
+                {{ consultationButtonLabel() }}
               </app-button>
             </div>
           </div>
@@ -264,9 +265,11 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                       <div class="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
                         <div class="flex items-center gap-3 min-w-0">
                           <div class="relative shrink-0">
-                            <div class="w-10 h-10 rounded-full bg-white border border-[#c6c6cd] flex items-center justify-center text-[13px] font-bold text-[#191c1e]">
-                              {{ data.getInitials(patient?.name ?? '') }}
-                            </div>
+                            <app-patient-avatar
+                              [name]="patient?.name ?? ''"
+                              [photoUrl]="patient?.photoUrl ?? ''"
+                              class="w-10 h-10 rounded-full bg-white border border-[#c6c6cd] text-[13px] font-bold text-[#191c1e]"
+                            />
                             @if (data.selectedDoctorId() === null && doctor) {
                               @if (doctor.avatarUrl) {
                               <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
@@ -312,9 +315,11 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
                         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                           <div class="flex items-center gap-3 min-w-0">
                             <div class="relative shrink-0">
-                              <div class="w-12 h-12 rounded-xl bg-[#006a61] text-white flex items-center justify-center text-[14px] font-bold shadow-xs">
-                                {{ data.getInitials(patient?.name ?? '') }}
-                              </div>
+                              <app-patient-avatar
+                                [name]="patient?.name ?? ''"
+                                [photoUrl]="patient?.photoUrl ?? ''"
+                                class="w-12 h-12 rounded-xl bg-[#006a61] text-white text-[14px] font-bold shadow-xs"
+                              />
                               @if (data.selectedDoctorId() === null && doctor) {
                                 @if (doctor.avatarUrl) {
                               <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
@@ -388,9 +393,11 @@ Triage
                         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                           <div class="flex items-center gap-3 min-w-0">
                             <div class="relative shrink-0">
-                              <div class="w-12 h-12 rounded-xl bg-[#fef3c7] border border-[#f59e0b]/30 flex items-center justify-center text-[14px] font-bold text-[#92400e] shadow-xs">
-                                {{ data.getInitials(patient?.name ?? '') }}
-                              </div>
+                              <app-patient-avatar
+                                [name]="patient?.name ?? ''"
+                                [photoUrl]="patient?.photoUrl ?? ''"
+                                class="w-12 h-12 rounded-xl bg-[#fef3c7] border border-[#f59e0b]/30 text-[14px] font-bold text-[#92400e] shadow-xs"
+                              />
                               @if (data.selectedDoctorId() === null && doctor) {
                                 @if (doctor.avatarUrl) {
                               <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
@@ -459,9 +466,11 @@ Triage
                       <div class="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
                         <div class="flex items-center gap-3 min-w-0">
                           <div class="relative shrink-0">
-                            <div class="w-10 h-10 rounded-full bg-[#f59e0b]/20 text-[#92400e] flex items-center justify-center text-[13px] font-bold">
-                              {{ data.getInitials(patient?.name ?? '') }}
-                            </div>
+                            <app-patient-avatar
+                              [name]="patient?.name ?? ''"
+                              [photoUrl]="patient?.photoUrl ?? ''"
+                              class="w-10 h-10 rounded-full bg-[#f59e0b]/20 text-[#92400e] text-[13px] font-bold"
+                            />
                             @if (data.selectedDoctorId() === null && doctor) {
                               @if (doctor.avatarUrl) {
                               <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
@@ -508,9 +517,11 @@ Triage
                       <div class="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
                         <div class="flex items-center gap-3 min-w-0">
                           <div class="relative shrink-0">
-                            <div class="w-10 h-10 rounded-full bg-[#131b2e] text-white flex items-center justify-center text-[13px] font-bold">
-                              {{ data.getInitials(patient?.name ?? '') }}
-                            </div>
+                            <app-patient-avatar
+                              [name]="patient?.name ?? ''"
+                              [photoUrl]="patient?.photoUrl ?? ''"
+                              class="w-10 h-10 rounded-full bg-[#131b2e] text-white text-[13px] font-bold"
+                            />
                             @if (data.selectedDoctorId() === null && doctor) {
                               @if (doctor.avatarUrl) {
                               <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
@@ -577,9 +588,11 @@ Triage
                       <div class="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
                         <div class="flex items-center gap-3 min-w-0">
                           <div class="relative shrink-0">
-                            <div class="w-10 h-10 rounded-full bg-[#fde68a] text-[#a16207] flex items-center justify-center text-[13px] font-bold">
-                              {{ data.getInitials(patient?.name ?? '') }}
-                            </div>
+                            <app-patient-avatar
+                              [name]="patient?.name ?? ''"
+                              [photoUrl]="patient?.photoUrl ?? ''"
+                              class="w-10 h-10 rounded-full bg-[#fde68a] text-[#a16207] text-[13px] font-bold"
+                            />
                             @if (data.selectedDoctorId() === null && doctor) {
                               @if (doctor.avatarUrl) {
                               <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
@@ -747,9 +760,11 @@ Triage
                       ? 'border-[#f59e0b] bg-[#fffbeb]'
                       : 'border-[#e0e3e5] bg-white hover:border-[#006a61]'">
                   <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-[#131b2e] text-white flex items-center justify-center text-[13px] font-bold shrink-0">
-                      {{ data.getInitials(wp?.name ?? '') }}
-                    </div>
+                    <app-patient-avatar
+                      [name]="wp?.name ?? ''"
+                      [photoUrl]="wp?.photoUrl ?? ''"
+                      class="w-10 h-10 rounded-full bg-[#131b2e] text-white text-[13px] font-bold shrink-0"
+                    />
                     <div>
                       <p class="text-[13px] font-semibold text-[#191c1e]">{{ wp?.name }}</p>
                       <p class="text-[11px] text-[#76777d]">{{ patient.time }} · {{ patient.reason }}</p>
@@ -1032,6 +1047,34 @@ export class DashboardComponent {
     this.data.selectedDateAppointments().some((a) => a.status === 'in-progress')
   );
 
+  /** Paciente objetivo del botón "Consulta en Curso" (solo médicos). */
+  readonly attendingPatient = computed<{ apt: AppointmentItem; mode: 'continue' | 'start' } | null>(() => {
+    if (!this.auth.isDoctor()) return null;
+    const list = this.data.selectedDateAppointments();
+    const inProgress = list.find((a) => a.status === 'in-progress');
+    if (inProgress) return { apt: inProgress, mode: 'continue' };
+    const ready = list
+      .filter((a) => a.status === 'triaged' || a.status === 'checked-in')
+      .sort((a, b) => this.parseTimeMin(a.time) - this.parseTimeMin(b.time));
+    return ready.length > 0 ? { apt: ready[0], mode: 'start' } : null;
+  });
+
+  readonly consultationButtonLabel = computed(() => {
+    const target = this.attendingPatient();
+    if (!target) return 'Consulta en Curso';
+    if (target.mode === 'continue') return 'Continuar Consulta';
+    const name = this.data.getPatient(target.apt.patientId)?.name ?? 'paciente';
+    return `Atender ${name.split(' ')[0]}`;
+  });
+
+  readonly consultationButtonTitle = computed(() => {
+    if (!this.auth.isDoctor()) return 'Disponible solo para médicos';
+    if (!this.attendingPatient()) return 'No hay pacientes en espera';
+    return this.attendingPatient()!.mode === 'continue'
+      ? 'Retomar la consulta en curso'
+      : 'Iniciar la consulta del paciente citado';
+  });
+
   readonly nextAppointment = computed(() => {
     const now = this.nowMinutes();
     const upcoming = this.data
@@ -1099,7 +1142,10 @@ export class DashboardComponent {
   }
 
   handleOpenConsultation(): void {
-    if (this.data.selectedDoctorId() === null) return;
+    const target = this.attendingPatient();
+    if (!target) return;
+    if (target.mode === 'start') this.data.startConsultation(target.apt.patientId);
+    this.data.selectPatient(target.apt.patientId);
     this.router.navigate(['nueva-consulta']);
   }
 
@@ -1110,8 +1156,19 @@ export class DashboardComponent {
   }
 
   handleDeclareEmergency(): void {
-    if (this.data.selectedDoctorId() === null) return;
-    this.toast.show('Alerta de Urgencia Activada', 'Notificación transmitida a Triage y Secretaría Central.');
+    const doctorId = this.data.selectedDoctorId();
+    if (doctorId === null) return;
+    const doctor = this.data.doctors().find((d) => d.id === doctorId);
+    const doctorName = doctor?.name ?? 'el médico';
+    this.data.recordNotification({
+      level: 'critical',
+      title: `Urgencia declarada — ${doctorName}`,
+      description: `Protocolo de emergencia activado en el consultorio de ${doctorName}.`,
+      icon: 'emergency',
+      action: 'Ver Centro de Alertas',
+      route: 'notificaciones-y-alertas',
+    });
+    this.toast.show('Urgencia Declarada', `Se notificó al equipo sobre la urgencia de ${doctorName}.`, 'warning');
   }
 
   handleCheckIn(patientId: string): void {

@@ -60,6 +60,12 @@ import { NavRoute } from '../../core/models/types';
                 {{ al.action }}
               </app-button>
             </div>
+          } @empty {
+            <div class="p-8 rounded-xl border border-dashed border-[#d7d9dc] bg-white text-center">
+              <span class="material-symbols-outlined text-[32px] text-[#76777d]">notifications_off</span>
+              <p class="text-[13px] font-semibold text-[#191c1e] mt-2">No hay notificaciones</p>
+              <p class="text-[12px] text-[#45464d] mt-1">Las urgencias declaradas y eventos clínicos aparecerán aquí.</p>
+            </div>
           }
         </div>
       </div>
@@ -72,56 +78,36 @@ export class AlertasComponent {
   toast = inject(ToastService);
   data = inject(MockDataService);
 
-  readonly systemAlerts = [
-    {
-      id: 'al-1',
-      title: 'Alergia Crítica Confirmada - Paciente Juan Pérez Morales',
-      desc: 'Se detectó antecedente severo de anafilaxia a Penicilina en ficha clínica. Alerta activa en módulo de prescripción.',
-      time: 'Hace 12 min',
-      level: 'critical',
-      icon: 'warning',
-      action: 'Ver Ficha',
-      route: 'pacientes-y-historial-clinico' as NavRoute,
-    },
-    {
-      id: 'al-2',
-      title: 'Liberación de Turno 16:00 PM y Reasignación',
-      desc: 'Cancelación procesada vía WhatsApp. El sistema contactó automáticamente al siguiente paciente en lista prioritaria.',
-      time: 'Hace 35 min',
-      level: 'info',
-      icon: 'sync_alt',
-      action: 'Ver Agenda',
-      route: 'agenda-y-disponibilidad' as NavRoute,
-    },
-    {
-      id: 'al-3',
-      title: 'Recordatorios Automatizados de Turno Enviados (14 Pacientes)',
-      desc: 'Twilio SMS Gateway despachó recordatorios para el bloque vespertino. 92% de confirmación en línea.',
-      time: 'Hoy 08:00 AM',
-      level: 'success',
-      icon: 'sms',
-      action: 'Ver Detalle',
-      route: 'dashboard-de-citas' as NavRoute,
-    },
-  ];
-
-  readonly alerts = computed(() => {
-    const rules = this.data.getActiveAlertRules().map((r) => ({
-      id: r.id,
-      title: r.name,
-      desc: r.description || 'Regla de alerta configurada en Mantenimiento de Catálogos.',
-      time: `Regla ${r.category} · ${r.severity}`,
-      level: r.severity,
-      icon: r.icon,
-      action: r.actionLabel,
-      route: 'mantenimiento-de-catalogos' as NavRoute,
-    }));
-    return [...rules, ...this.systemAlerts];
-  });
+  readonly alerts = computed(() =>
+    this.data.notifications().map((n) => ({
+      id: n.id,
+      title: n.title,
+      desc: n.description || 'Sin detalle adicional.',
+      time: this.relativeTime(n.time),
+      level: n.level,
+      icon: n.icon,
+      action: n.action,
+      route: n.route ?? ('notificaciones-y-alertas' as NavRoute),
+    })),
+  );
 
   readonly criticalCount = computed(() => this.alerts().filter((a) => a.level === 'critical').length);
 
   handleMarkAllRead(): void {
+    this.data.markAllNotificationsRead();
     this.toast.show('Alertas Marcadas', 'Todas las alertas han sido marcadas como leídas.');
+  }
+
+  /** "Hace 12 min" a partir del timestamp ISO guardado en la notificación. */
+  private relativeTime(iso: string): string {
+    const then = new Date(iso).getTime();
+    if (Number.isNaN(then)) return iso;
+    const minutes = Math.max(0, Math.floor((Date.now() - then) / 60000));
+    if (minutes < 1) return 'Ahora mismo';
+    if (minutes < 60) return `Hace ${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `Hace ${hours} h`;
+    const days = Math.floor(hours / 24);
+    return `Hace ${days} d`;
   }
 }

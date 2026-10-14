@@ -23,6 +23,7 @@ export interface Patient {
   allergies: string[];
   chronicConditions: string[];
   consentSigned: boolean;
+  photoUrl?: string;
 }
 
 export interface Doctor {
@@ -60,6 +61,15 @@ export interface TriageVitalsSnapshot {
   pulse: number;
   temp: number;
   spo2: number;
+}
+
+export interface ConsultationPhoto {
+  id: string;
+  consultationId: string;
+  patientId: string;
+  dataUrl: string;
+  caption: string;
+  takenAt: string;
 }
 
 export interface WorkingDay {

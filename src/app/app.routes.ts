@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { consultationGuard } from './core/guards/consultation.guard';
 import { BreadcrumbSegment } from './layout/breadcrumb/breadcrumb.component';
 
 export const routes: Routes = [
@@ -49,7 +50,7 @@ export const routes: Routes = [
   },
   {
     path: 'nueva-consulta',
-    canActivate: [authGuard],
+    canActivate: [authGuard, consultationGuard],
     data: { breadcrumb: [{ label: 'Pacientes', route: 'pacientes-y-historial-clinico' }, { label: 'Nueva Consulta' }] as BreadcrumbSegment[] },
     loadComponent: () => import('./views/consulta/consulta.component').then(m => m.ConsultaComponent),
   },

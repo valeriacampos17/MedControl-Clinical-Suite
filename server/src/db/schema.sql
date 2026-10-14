@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS patients (
   blood_type        TEXT,
   allergies         TEXT NOT NULL DEFAULT '[]',
   chronic_conditions TEXT NOT NULL DEFAULT '[]',
-  consent_signed    INTEGER NOT NULL DEFAULT 0
+  consent_signed    INTEGER NOT NULL DEFAULT 0,
+  photo_url         TEXT
 );
 
 CREATE TABLE IF NOT EXISTS appointments (
@@ -82,6 +83,19 @@ CREATE TABLE IF NOT EXISTS consultations (
   treatment_plan       TEXT,
   notes                TEXT,
   status               TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('draft','completed'))
+);
+
+-- Fotos clinicas adjuntas a una consulta. Se guardan como data URL base64 en
+-- su propia tabla (no como columna JSON de consultations) para que los
+-- listados de consultas no arrastren las imagenes: se piden bajo demanda.
+CREATE TABLE IF NOT EXISTS consultation_photos (
+  id              TEXT PRIMARY KEY,
+  consultation_id TEXT NOT NULL REFERENCES consultations(id),
+  patient_id      TEXT NOT NULL REFERENCES patients(id),
+  data_url        TEXT NOT NULL,
+  caption         TEXT,
+  taken_at        TEXT NOT NULL DEFAULT (datetime('now')),
+  ord             INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS prescriptions (
@@ -281,6 +295,11 @@ CREATE INDEX IF NOT EXISTS idx_exam_orders_patient ON exam_orders(patient_id);
 --  de mas arriba. Tener los dos solo encarecia cada escritura de horarios.)
 
 CREATE INDEX IF NOT EXISTS idx_consultations_date ON consultations(date);
+
+CREATE INDEX IF NOT EXISTS idx_consultation_photos_consultation
+  ON consultation_photos(consultation_id);
+CREATE INDEX IF NOT EXISTS idx_consultation_photos_patient
+  ON consultation_photos(patient_id);
 
 CREATE INDEX IF NOT EXISTS idx_prescriptions_patient_date
   ON prescriptions(patient_id, date);
