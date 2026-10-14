@@ -1,14 +1,15 @@
 import { Component, Input, computed, inject, signal, OnChanges, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MockDataService } from '../../core/services/mock-data.service';
-import { Consultation, ExamOrder, Prescription } from '../../core/models/types';
+import { Consultation, ConsultationPhoto, ExamOrder, Prescription } from '../../core/models/types';
 import { formatDateDisplay, formatTimeDisplay } from '../../core/utils/date-utils';
 import { BadgeComponent } from '../badge/badge.component';
+import { ImageLightboxComponent, LightboxImage } from '../image-lightbox/image-lightbox.component';
 
 @Component({
   selector: 'app-clinical-history-timeline',
   standalone: true,
-  imports: [FormsModule, BadgeComponent],
+  imports: [FormsModule, BadgeComponent, ImageLightboxComponent],
   template: `
     <div class="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-[#e6e8ea]">
       @if (showTitle) {
@@ -222,6 +223,25 @@ import { BadgeComponent } from '../badge/badge.component';
                         </div>
                       }
 
+                      @let photos = photosFor(c.id);
+                      @if (photos.length > 0) {
+                        <div>
+                          <span class="text-[11px] font-bold text-[#006a61] uppercase tracking-wider block mb-1.5">Fotos de la Consulta</span>
+                          <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                            @for (photo of photos; track photo.id; let pi = $index) {
+                              <button
+                                type="button"
+                                class="aspect-square rounded-lg overflow-hidden border border-[#e0e3e5] bg-[#f8fafc] hover:border-[#006a61] hover:shadow-sm transition-all"
+                                (click)="openPhoto(photos, pi)"
+                                [title]="photo.caption || 'Ver foto'"
+                              >
+                                <img [src]="photo.dataUrl" alt="Foto de la consulta" class="w-full h-full object-cover" />
+                              </button>
+                            }
+                          </div>
+                        </div>
+                      }
+
                       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="bg-[#f2f4f6]/60 p-3.5 rounded-lg border border-[#e0e3e5]">
                           <span class="text-[11px] font-bold text-[#006a61] uppercase tracking-wider block mb-1">Motivo de Consulta</span>
@@ -400,6 +420,13 @@ import { BadgeComponent } from '../badge/badge.component';
             </div>
           }
         </div>
+
+        <app-image-lightbox
+          [isOpen]="lightboxOpen()"
+          [images]="lightboxImages()"
+          [startIndex]="lightboxIndex()"
+          (dismiss)="lightboxOpen.set(false)"
+        />
       `,
 })
 export class ClinicalHistoryTimelineComponent implements OnChanges {
@@ -422,6 +449,22 @@ export class ClinicalHistoryTimelineComponent implements OnChanges {
   accordionMode = signal<boolean>(true);
   historySearchTerm = signal('');
   collapsedConsultations = signal<Set<string>>(new Set());
+
+  lightboxOpen = signal(false);
+  lightboxIndex = signal(0);
+  lightboxImages = signal<LightboxImage[]>([]);
+
+  /** Fotos de una consulta; dispara la carga perezosa la primera vez. */
+  photosFor(consultationId: string): ConsultationPhoto[] {
+    this.data.loadConsultationPhotos(consultationId);
+    return this.data.getConsultationPhotos(consultationId);
+  }
+
+  openPhoto(photos: ConsultationPhoto[], index: number): void {
+    this.lightboxImages.set(photos.map((p) => ({ dataUrl: p.dataUrl, caption: p.caption })));
+    this.lightboxIndex.set(index);
+    this.lightboxOpen.set(true);
+  }
 
   readonly patientConsultations = computed(() => {
     if (!this.patientId) return [];

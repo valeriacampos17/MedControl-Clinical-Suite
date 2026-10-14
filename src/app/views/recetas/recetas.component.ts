@@ -9,11 +9,12 @@ import { BadgeComponent } from '../../shared/badge/badge.component';
 import { ModalComponent } from '../../shared/modal/modal.component';
 import { ToastComponent } from '../../shared/toast/toast.component';
 import { PickerItem, SelectionPickerComponent } from '../../shared/selection-picker/selection-picker.component';
+import { PatientAvatarComponent } from '../../shared/patient-avatar/patient-avatar.component';
 
 @Component({
   selector: 'app-recetas',
   standalone: true,
-  imports: [ButtonComponent, BadgeComponent, ModalComponent, ToastComponent, SelectionPickerComponent],
+  imports: [ButtonComponent, BadgeComponent, ModalComponent, ToastComponent, SelectionPickerComponent, PatientAvatarComponent],
   template: `
     <div class="flex flex-col w-full">
         <div class="relative w-full px-4 sm:px-6 lg:px-8 py-6">
@@ -70,9 +71,11 @@ import { PickerItem, SelectionPickerComponent } from '../../shared/selection-pic
             @for (row of patientDocRows(); track row.patient.id) {
               <div class="bg-white rounded-xl p-5 shadow-sm border border-[#e6e8ea] flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div class="flex items-start gap-3.5">
-                  <div class="w-10 h-10 rounded-xl bg-[#006a61] text-white flex items-center justify-center text-[13px] font-bold shrink-0">
-                    {{ data.getInitials(row.patient.name) }}
-                  </div>
+                  <app-patient-avatar
+                    [name]="row.patient.name"
+                    [photoUrl]="row.patient.photoUrl ?? ''"
+                    class="w-10 h-10 rounded-xl bg-[#006a61] text-white text-[13px] font-bold shrink-0"
+                  />
                   <div>
                     <div class="flex items-center gap-2 flex-wrap">
                       <span class="text-[15px] font-bold text-[#191c1e]">{{ row.patient.name }}</span>

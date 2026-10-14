@@ -5,12 +5,14 @@ import { ToastService } from '../../core/services/toast.service';
 import { Patient, NewPatientInput } from '../../core/models/types';
 import { ButtonComponent } from '../button/button.component';
 import { ModalComponent } from '../modal/modal.component';
+import { PatientAvatarComponent } from '../patient-avatar/patient-avatar.component';
+import { fileToCompressedDataUrl, isImageFile } from '../../core/utils/image.utils';
 import { inputValue, selectValue } from '../../core/utils/form.utils';
 
 @Component({
   selector: 'app-new-patient-modal',
   standalone: true,
-  imports: [FormsModule, ButtonComponent, ModalComponent],
+  imports: [FormsModule, ButtonComponent, ModalComponent, PatientAvatarComponent],
   template: `
     <app-modal
       [isOpen]="isOpen()"
@@ -22,6 +24,29 @@ import { inputValue, selectValue } from '../../core/utils/form.utils';
       (dismiss)="dismiss.emit()"
     >
       <form class="flex flex-col gap-4">
+        <div class="flex items-center gap-4 pb-1">
+          <div class="relative shrink-0">
+            <app-patient-avatar
+              [name]="form().name || 'Nuevo Paciente'"
+              [photoUrl]="form().photoUrl ?? ''"
+              class="w-16 h-16 rounded-2xl bg-[#006a61] text-white text-[20px] font-bold ring-2 ring-[#eceef0] shadow-sm"
+            />
+            <label class="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white border border-[#d7d9dc] shadow-sm flex items-center justify-center cursor-pointer text-[#006a61] hover:bg-[#f2f4f6] transition-colors" title="Subir foto">
+              <span class="material-symbols-outlined text-[16px]">photo_camera</span>
+              <input type="file" accept="image/*" class="hidden" (change)="handlePhoto($event)" />
+            </label>
+            @if (form().photoUrl) {
+              <button type="button" (click)="clearPhoto()" class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#ba1a1a] text-white shadow-sm flex items-center justify-center hover:bg-[#93000a] transition-colors" title="Quitar foto">
+                <span class="material-symbols-outlined text-[12px]">close</span>
+              </button>
+            }
+          </div>
+          <div class="text-[12px] text-[#76777d] leading-relaxed">
+            <span class="font-bold text-[#191c1e] block">Foto del Paciente (opcional)</span>
+            Se recortará y optimizará automáticamente. Puede agregarla o cambiarla luego desde la ficha.
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label class="flex flex-col gap-1.5 sm:col-span-2">
             <span class="text-[12px] font-bold text-[#191c1e]">Nombre Completo *</span>
@@ -169,6 +194,7 @@ export class NewPatientModalComponent {
     insurance: '',
     bloodType: '',
     allergies: '',
+    photoUrl: '',
   });
 
   canSubmit = computed(() => this.form().name.trim() !== '' && this.form().rut.trim() !== '');
@@ -176,6 +202,27 @@ export class NewPatientModalComponent {
   setField(field: keyof NewPatientInput, event: Event): void {
     const value = field === 'bloodType' ? selectValue(event) : inputValue(event);
     this.form.update((f) => ({ ...f, [field]: value }));
+  }
+
+  async handlePhoto(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (!isImageFile(file)) {
+      this.toast.show('Formato no válido', 'Seleccione una imagen (JPG, PNG o WebP).', 'error');
+      return;
+    }
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file, { maxSize: 512, quality: 0.85, maxBytes: 400_000 });
+      this.form.update((f) => ({ ...f, photoUrl: dataUrl }));
+    } catch {
+      this.toast.show('Error al Procesar', 'No se pudo procesar la imagen seleccionada.', 'error');
+    }
+  }
+
+  clearPhoto(): void {
+    this.form.update((f) => ({ ...f, photoUrl: '' }));
   }
 
   handleCreatePatient(): void {
@@ -201,9 +248,10 @@ export class NewPatientModalComponent {
       allergies: f.allergies.split(',').map((a) => a.trim()).filter(Boolean),
       chronicConditions: [],
       consentSigned: false,
+      photoUrl: f.photoUrl ?? '',
     };
     this.data.addPatient(patient);
     this.created.emit(patient);
-    this.form.set({ name: '', rut: '', age: '', birthDate: '', phone: '', email: '', insurance: '', bloodType: '', allergies: '' });
+    this.form.set({ name: '', rut: '', age: '', birthDate: '', phone: '', email: '', insurance: '', bloodType: '', allergies: '', photoUrl: '' });
   }
 }

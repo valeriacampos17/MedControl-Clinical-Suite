@@ -34,6 +34,7 @@ export interface Patient {
   allergies: string[];
   chronicConditions: string[];
   consentSigned: boolean;
+  photoUrl?: string;
 }
 
 export interface Doctor {
@@ -161,6 +162,7 @@ export interface NewPatientInput {
   insurance: string;
   bloodType: string;
   allergies: string;
+  photoUrl?: string;
 }
 
 export interface VitalSigns {
@@ -171,6 +173,15 @@ export interface VitalSigns {
   spo2: number;
   weight: number;
   height: number;
+}
+
+export interface ConsultationPhoto {
+  id: string;
+  consultationId: string;
+  patientId: string;
+  dataUrl: string;
+  caption: string;
+  takenAt: string;
 }
 
 export interface TriageVitals {
@@ -201,6 +212,7 @@ export interface Consultation {
   treatmentPlan: string;
   notes: string;
   status: 'draft' | 'completed';
+  photos?: ConsultationPhoto[];
 }
 
 export type ExamCategory = 'laboratorio' | 'imagen' | 'funcional' | 'procedimiento';
@@ -361,4 +373,20 @@ export interface AppUser {
   role: 'admin' | 'doctor';
   doctorId?: string;
   active: boolean;
+}
+
+export type NotificationLevel = 'critical' | 'info' | 'success';
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  description: string;
+  time: string;
+  level: NotificationLevel;
+  icon: string;
+  action: string;
+  route?: NavRoute;
+  patientId?: string;
+  appointmentId?: string;
+  isRead: boolean;
 }

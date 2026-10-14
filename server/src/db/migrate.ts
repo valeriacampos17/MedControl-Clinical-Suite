@@ -6,6 +6,7 @@ import { toIsoDate, toIsoTime } from '../services/dates.js';
 const ADD_ORGANIZATION_SLOGAN = `ALTER TABLE organization_settings ADD COLUMN slogan TEXT`;
 const ADD_MUST_CHANGE_PASSWORD = `ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0`;
 const ADD_TRIAGE_ENABLED = `ALTER TABLE organization_settings ADD COLUMN triage_enabled INTEGER NOT NULL DEFAULT 1`;
+const ADD_PATIENT_PHOTO = `ALTER TABLE patients ADD COLUMN photo_url TEXT`;
 
 /**
  * PRAGMA y DDL se arman por interpolacion, asi que todo identificador que
@@ -118,6 +119,7 @@ export function migrate(): void {
   migrateColumn('organization_settings', 'slogan', ADD_ORGANIZATION_SLOGAN);
   migrateColumn('users', 'must_change_password', ADD_MUST_CHANGE_PASSWORD);
   migrateColumn('organization_settings', 'triage_enabled', ADD_TRIAGE_ENABLED);
+  migrateColumn('patients', 'photo_url', ADD_PATIENT_PHOTO);
 
   // Era el mismo predicado que idx_day_schedules_doctor_day, solo que duplicado.
   dropIndexIfExists('uq_day_schedules_global');

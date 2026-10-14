@@ -8,6 +8,7 @@ import {
   DaySchedule,
   AbsenceBlock,
   Consultation,
+  ConsultationPhoto,
   TriageVitals,
   WorkingDay,
   ExamTemplate,
@@ -20,6 +21,7 @@ import {
   OrganizationSettings,
   AlertRule,
   AppUser,
+  AppNotification,
   BookableDay,
   AvailableSlots,
   ConsultationType,
@@ -78,11 +80,13 @@ export class MockDataService {
       firstValueFrom(this.api.get<{ consultations: Consultation[] }>('/consultations')),
       firstValueFrom(this.api.get<{ prescriptions: Prescription[] }>('/records/prescriptions')),
       firstValueFrom(this.api.get<{ examOrders: ExamOrder[] }>('/records/exam-orders')),
+      firstValueFrom(this.api.get<{ notifications: AppNotification[] }>('/notifications')),
     ]);
     const [
       patients, doctors, appointments, absences, workingDays,
       organization, alertRules, catalogUsers, exams, medications,
       diagnoses, triageLevels, triageRules, consultations, prescriptions, examOrders,
+      notifications,
     ] = result;
     if (patients.status === 'fulfilled') this.patients.set(patients.value.patients);
     if (doctors.status === 'fulfilled') this.doctors.set(doctors.value.doctors);
@@ -100,6 +104,7 @@ export class MockDataService {
     if (consultations.status === 'fulfilled') this.consultations.set(consultations.value.consultations);
     if (prescriptions.status === 'fulfilled') this.prescriptions.set(prescriptions.value.prescriptions);
     if (examOrders.status === 'fulfilled') this.examOrders.set(examOrders.value.examOrders);
+    if (notifications.status === 'fulfilled') this.notifications.set(notifications.value.notifications);
     this.initialized.set(true);
   }
 
@@ -644,7 +649,9 @@ export class MockDataService {
     }
   }
 
-  readonly activePatientId = signal<string>('MED-0001');
+  readonly activePatientId = signal<string>('');
+
+  readonly hasActivePatient = computed(() => this.patients().some((p) => p.id === this.activePatientId()));
 
   readonly activePatient = computed<Patient>(
     () => this.patients().find((p) => p.id === this.activePatientId()) ?? this.patients()[0]
@@ -671,12 +678,29 @@ export class MockDataService {
       allergies: targeting.allergies ?? [],
       chronicConditions: targeting.chronicConditions ?? [],
       consentSigned: targeting.consentSigned ?? false,
+      photoUrl: targeting.photoUrl ?? '',
     }).subscribe({
       next: (r) => {
         this.patients.update((list) => [...list.filter((p) => p.id !== patient.id), r.patient]);
         this.activePatientId.set(r.patient.id);
       },
       error: () => this.patients.update((list) => list.filter((p) => p.id !== patient.id)),
+    });
+  }
+
+  /** Sube (o reemplaza) la foto de perfil de un paciente. */
+  setPatientPhoto(id: string, photoUrl: string): void {
+    this.patients.update((list) => list.map((p) => (p.id === id ? { ...p, photoUrl } : p)));
+    this.api.put<{ patient: Patient }>(`/patients/${id}/photo`, { photoUrl }).subscribe({
+      next: (r) => this.patients.update((list) => list.map((p) => (p.id === id ? { ...r.patient } : p))),
+    });
+  }
+
+  /** Quita la foto de perfil de un paciente. */
+  removePatientPhoto(id: string): void {
+    this.patients.update((list) => list.map((p) => (p.id === id ? { ...p, photoUrl: '' } : p)));
+    this.api.delete<{ patient: Patient }>(`/patients/${id}/photo`).subscribe({
+      next: (r) => this.patients.update((list) => list.map((p) => (p.id === id ? { ...r.patient } : p))),
     });
   }
 
@@ -821,7 +845,7 @@ export class MockDataService {
     },
   ]);
 
-  addConsultation(consultation: Consultation): void {
+  addConsultation(consultation: Consultation, photos: { dataUrl: string; caption?: string }[] = []): void {
     this.consultations.update((list) => [
       consultation,
       ...list.filter(
@@ -843,7 +867,11 @@ export class MockDataService {
       notes: consultation.notes,
       status: consultation.status,
     }).subscribe({
-      next: () => {
+      next: (res) => {
+        const serverId = res.consultation.id;
+        for (const photo of photos) {
+          this.addConsultationPhoto(serverId, photo);
+        }
         this.api.get<{ consultations: Consultation[] }>(`/patients/${consultation.patientId}/consultations`).subscribe((r) => {
           this.consultations.update((list) => [...r.consultations, ...list.filter((c) => !r.consultations.some((incoming) => incoming.id === c.id))]);
         });
@@ -853,6 +881,71 @@ export class MockDataService {
 
   getConsultationsByPatient(patientId: string): Consultation[] {
     return this.consultations().filter((c) => c.patientId === patientId);
+  }
+
+  readonly consultationPhotos = signal<Record<string, ConsultationPhoto[]>>({});
+
+  private readonly photosLoading = new Set<string>();
+
+  getConsultationPhotos(consultationId: string): ConsultationPhoto[] {
+    return this.consultationPhotos()[consultationId] ?? [];
+  }
+
+  /** Carga (una vez) las fotos de una consulta desde el backend. */
+  loadConsultationPhotos(consultationId: string): void {
+    if (this.consultationPhotos()[consultationId] || this.photosLoading.has(consultationId)) return;
+    this.photosLoading.add(consultationId);
+    this.api.get<{ photos: ConsultationPhoto[] }>(`/consultations/${consultationId}/photos`).subscribe({
+      next: (r) => {
+        this.photosLoading.delete(consultationId);
+        this.consultationPhotos.update((map) => ({ ...map, [consultationId]: r.photos }));
+      },
+      error: () => {
+        this.photosLoading.delete(consultationId);
+        this.consultationPhotos.update((map) => ({ ...map, [consultationId]: [] }));
+      },
+    });
+  }
+
+  /** Agrega una foto a una consulta (optimista + POST). */
+  addConsultationPhoto(consultationId: string, photo: { dataUrl: string; caption?: string }): void {
+    const optimistic: ConsultationPhoto = {
+      id: 'CPH-opt-' + Date.now() + Math.random().toString(36).slice(2, 6),
+      consultationId,
+      patientId: '',
+      dataUrl: photo.dataUrl,
+      caption: photo.caption ?? '',
+      takenAt: new Date().toISOString(),
+    };
+    this.consultationPhotos.update((map) => ({
+      ...map,
+      [consultationId]: [...(map[consultationId] ?? []), optimistic],
+    }));
+    this.api.post<{ photo: ConsultationPhoto }>(`/consultations/${consultationId}/photos`, {
+      dataUrl: photo.dataUrl,
+      caption: photo.caption,
+    }).subscribe({
+      next: (r) => this.consultationPhotos.update((map) => ({
+        ...map,
+        [consultationId]: (map[consultationId] ?? []).map((p) => (p.id === optimistic.id ? r.photo : p)),
+      })),
+      error: () => this.consultationPhotos.update((map) => ({
+        ...map,
+        [consultationId]: (map[consultationId] ?? []).filter((p) => p.id !== optimistic.id),
+      })),
+    });
+  }
+
+  /** Elimina una foto de una consulta (optimista + DELETE). */
+  deleteConsultationPhoto(consultationId: string, photoId: string): void {
+    const previous = this.consultationPhotos()[consultationId] ?? [];
+    this.consultationPhotos.update((map) => ({
+      ...map,
+      [consultationId]: previous.filter((p) => p.id !== photoId),
+    }));
+    this.api.delete<{ ok: boolean }>(`/consultations/${consultationId}/photos/${photoId}`).subscribe({
+      error: () => this.consultationPhotos.update((map) => ({ ...map, [consultationId]: previous })),
+    });
   }
 
   readonly examCatalog = this.storage<ExamTemplate[]>('medcontrol.exams', [
@@ -1212,6 +1305,38 @@ export class MockDataService {
   deactivateAlertRule(id: string): void {
     this.alertRules.update((list) => list.filter((r) => r.id !== id));
     this.api.delete<{ ok: boolean }>(`/config/alert-rules/${id}`).subscribe();
+  }
+
+  readonly notifications = this.storage<AppNotification[]>('medcontrol.notifications', []);
+
+  readonly unreadNotifications = computed(() => this.notifications().filter((n) => !n.isRead).length);
+
+  /** Registra una notificación real (p. ej. urgencia declarada) y la persiste en el backend. */
+  recordNotification(input: Partial<AppNotification> & { title: string }): void {
+    const notification: AppNotification = {
+      id: input.id ?? 'NT-' + Date.now().toString().slice(-6),
+      title: input.title,
+      description: input.description ?? '',
+      time: input.time ?? new Date().toISOString(),
+      level: input.level ?? 'info',
+      icon: input.icon ?? 'notifications',
+      action: input.action ?? 'Ver Detalle',
+      route: input.route,
+      patientId: input.patientId,
+      appointmentId: input.appointmentId,
+      isRead: false,
+    };
+    this.notifications.update((list) => [notification, ...list]);
+    this.persist('medcontrol.notifications', this.notifications());
+    this.api.post<{ notification: AppNotification }>('/notifications', { ...notification }).subscribe({
+      next: (r) => this.notifications.update((list) => list.map((x) => (x.id === notification.id ? { ...r.notification } : x))),
+    });
+  }
+
+  markAllNotificationsRead(): void {
+    this.notifications.update((list) => list.map((n) => ({ ...n, isRead: true })));
+    this.persist('medcontrol.notifications', this.notifications());
+    this.api.patch<{ ok: boolean }>('/notifications/read-all', {}).subscribe();
   }
 
   readonly catalogUsers = this.storage<AppUser[]>('medcontrol.users', [

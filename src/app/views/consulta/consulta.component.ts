@@ -5,7 +5,10 @@ import { ToastService } from '../../core/services/toast.service';
 import { Consultation, ExamOrder, ExamTemplate, ExamOrderItem, ExamCategory, Prescription, PrescriptionMedication } from '../../core/models/types';
 import { ButtonComponent } from '../../shared/button/button.component';
 import { ClinicalHistoryTimelineComponent } from '../../shared/clinical-history-timeline/clinical-history-timeline.component';
+import { PatientAvatarComponent } from '../../shared/patient-avatar/patient-avatar.component';
+import { ImageLightboxComponent, LightboxImage } from '../../shared/image-lightbox/image-lightbox.component';
 import { ToastComponent } from '../../shared/toast/toast.component';
+import { fileToCompressedDataUrl, isImageFile } from '../../core/utils/image.utils';
 
 interface FormErrors {
   chiefComplaint?: boolean;
@@ -16,7 +19,7 @@ interface FormErrors {
 @Component({
   selector: 'app-consulta',
   standalone: true,
-  imports: [ButtonComponent, ClinicalHistoryTimelineComponent, ToastComponent],
+  imports: [ButtonComponent, ClinicalHistoryTimelineComponent, PatientAvatarComponent, ImageLightboxComponent, ToastComponent],
   template: `
     <div class="flex flex-col w-full">
       <div class="relative w-full overflow-hidden px-4 sm:px-6 lg:px-8 py-6">
@@ -41,11 +44,20 @@ interface FormErrors {
         </button>
         <app-toast />
 
+        <app-image-lightbox
+          [isOpen]="lightboxOpen()"
+          [images]="photoLightboxImages()"
+          [startIndex]="lightboxIndex()"
+          (dismiss)="lightboxOpen.set(false)"
+        />
+
         <div class="bg-white rounded-xl shadow-sm border border-[#e6e8ea] p-5 sm:p-6 mb-6">
           <div class="flex items-center gap-4 flex-wrap sm:flex-nowrap">
-            <div class="w-14 h-14 rounded-xl bg-[#006a61] text-white flex items-center justify-center text-[18px] font-bold ring-2 ring-[#eceef0] shadow-sm shrink-0">
-              {{ data.getInitials(data.activePatient().name) }}
-            </div>
+            <app-patient-avatar
+              [name]="data.activePatient().name"
+              [photoUrl]="data.activePatient().photoUrl ?? ''"
+              class="w-14 h-14 rounded-xl bg-[#006a61] text-white text-[18px] font-bold ring-2 ring-[#eceef0] shadow-sm shrink-0"
+            />
             <div class="flex flex-col min-w-0">
               <h1 class="text-[18px] font-bold text-[#191c1e] truncate">{{ data.activePatient().name }}</h1>
               <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px] text-[#45464d]">
@@ -157,6 +169,44 @@ interface FormErrors {
               <label class="flex flex-col gap-1.5">
                 <textarea rows="4" placeholder="Estado general, cabeza y cuello, tórax, abdomen, extremidades, neurológico..." class="px-3.5 py-2.5 rounded-lg border border-[#d7d9dc] bg-white text-[13px] text-[#191c1e] focus:outline-none focus:ring-2 focus:ring-[#006a61]/30 focus:border-[#006a61] resize-none" [value]="physicalExam()" (input)="physicalExam.set(($any($event.target)).value)"></textarea>
               </label>
+            </div>
+
+            <div class="bg-white rounded-xl p-5 sm:p-6 shadow-sm border border-[#e6e8ea]">
+              <div class="flex items-center gap-3 mb-4">
+                <span class="w-8 h-8 rounded-lg bg-[#006a61]/10 text-[#006a61] flex items-center justify-center shrink-0">
+                  <span class="material-symbols-outlined text-[20px]">add_a_photo</span>
+                </span>
+                <div class="flex-1 min-w-0">
+                  <h3 class="text-[15px] font-bold text-[#191c1e]">Fotos de la Consulta</h3>
+                  <p class="text-[12px] text-[#45464d]">Imágenes clínicas adjuntas a esta atención (máx. 6)</p>
+                </div>
+                @if (photos().length > 0) {
+                  <span class="px-2 py-1 rounded-lg bg-[#006a61]/10 text-[#006a61] text-[11px] font-bold shrink-0">{{ photos().length }}/6</span>
+                }
+              </div>
+
+              <div class="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                @for (photo of photos(); track photo.id; let i = $index) {
+                  <div class="relative group aspect-square rounded-lg overflow-hidden border border-[#e0e3e5] bg-[#f8fafc]">
+                    <img [src]="photo.dataUrl" alt="Foto de la consulta" class="w-full h-full object-cover cursor-pointer" (click)="openPhoto(i)" />
+                    <button
+                      type="button"
+                      class="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      (click)="removePhoto(photo.id)"
+                      title="Quitar foto"
+                    >
+                      <span class="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                  </div>
+                }
+                @if (photos().length < 6) {
+                  <label class="aspect-square rounded-lg border-2 border-dashed border-[#d7d9dc] flex flex-col items-center justify-center gap-1 cursor-pointer text-[#76777d] hover:border-[#006a61] hover:text-[#006a61] transition-colors">
+                    <span class="material-symbols-outlined text-[22px]">add_photo_alternate</span>
+                    <span class="text-[10.5px] font-semibold">Agregar</span>
+                    <input type="file" accept="image/*" multiple class="hidden" (change)="handlePhotoFiles($event)" />
+                  </label>
+                }
+              </div>
             </div>
 
             <div class="bg-white rounded-xl p-5 sm:p-6 shadow-sm border border-[#e6e8ea]">
@@ -416,7 +466,7 @@ export class ConsultaComponent {
   data = inject(MockDataService);
   private toast = inject(ToastService);
 
-  readonly vitals = signal({ systolic: 120, diastolic: 80, pulse: 72, temperature: 36.6, spo2: 98, weight: 70, height: 165 });
+  readonly vitals = signal({ systolic: 0, diastolic: 0, pulse: 0, temperature: 0, spo2: 0, weight: 0, height: 0 });
   readonly chiefComplaint = signal('');
   readonly historyOfPresentIllness = signal('');
   readonly physicalExam = signal('');
@@ -426,6 +476,14 @@ export class ConsultaComponent {
   readonly notes = signal('');
 
   readonly formErrors = signal<FormErrors>({});
+
+  readonly photos = signal<{ id: string; dataUrl: string; caption: string }[]>([]);
+  readonly lightboxOpen = signal(false);
+  readonly lightboxIndex = signal(0);
+  readonly photoLightboxImages = computed<LightboxImage[]>(() =>
+    this.photos().map((p) => ({ dataUrl: p.dataUrl, caption: p.caption })),
+  );
+  readonly maxPhotos = 6;
 
   readonly examSearch = signal('');
   readonly examCategory = signal<'all' | ExamCategory>('all');
@@ -466,23 +524,21 @@ export class ConsultaComponent {
 
   constructor() {
     const patientId = this.data.activePatient().id;
-    const apt = this.data.appointments().find(a => a.patientId === patientId && a.vitals);
+    const today = this.data.selectedDate();
+    const apt = this.data
+      .appointments()
+      .find(a => a.patientId === patientId && a.date === today && a.vitals);
     if (apt?.vitals) {
-      const parts = apt.vitals.bp ? apt.vitals.bp.split('/') : ['120', '80'];
+      const parts = apt.vitals.bp ? apt.vitals.bp.split('/') : [];
       this.vitals.set({
-        systolic: Number(parts[0]) || 120,
-        diastolic: Number(parts[1]) || 80,
-        pulse: apt.vitals.pulse || 72,
-        temperature: apt.vitals.temp || 36.6,
-        spo2: apt.vitals.spo2 || 98,
-        weight: 72,
-        height: 165,
+        systolic: Number(parts[0]) || 0,
+        diastolic: Number(parts[1]) || 0,
+        pulse: apt.vitals.pulse ?? 0,
+        temperature: apt.vitals.temp ?? 0,
+        spo2: apt.vitals.spo2 ?? 0,
+        weight: 0,
+        height: 0,
       });
-    } else {
-      const prevConsults = this.data.getConsultationsByPatient(patientId);
-      if (prevConsults.length > 0 && prevConsults[0].vitals) {
-        this.vitals.set({ ...prevConsults[0].vitals });
-      }
     }
   }
 
@@ -619,6 +675,42 @@ export class ConsultaComponent {
     this.router.navigate(['pacientes-y-historial-clinico']);
   }
 
+  async handlePhotoFiles(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    if (files.length === 0) return;
+    const remaining = this.maxPhotos - this.photos().length;
+    if (remaining <= 0) {
+      this.toast.show('Límite Alcanzado', `Puede adjuntar hasta ${this.maxPhotos} fotos por consulta.`, 'warning');
+      return;
+    }
+    for (const file of files.slice(0, remaining)) {
+      if (!isImageFile(file)) continue;
+      try {
+        const dataUrl = await fileToCompressedDataUrl(file, { maxSize: 1280, quality: 0.7, maxBytes: 900_000 });
+        this.photos.update((list) => [
+          ...list,
+          { id: 'IMG-' + Date.now() + Math.random().toString(36).slice(2, 6), dataUrl, caption: '' },
+        ]);
+      } catch {
+        this.toast.show('Error al Procesar', `No se pudo procesar "${file.name}".`, 'error');
+      }
+    }
+    if (files.length > remaining) {
+      this.toast.show('Límite Alcanzado', `Solo se agregaron fotos hasta completar ${this.maxPhotos}.`, 'warning');
+    }
+  }
+
+  removePhoto(id: string): void {
+    this.photos.update((list) => list.filter((p) => p.id !== id));
+  }
+
+  openPhoto(index: number): void {
+    this.lightboxIndex.set(index);
+    this.lightboxOpen.set(true);
+  }
+
   saveConsultation(): void {
     try {
       const complaint = this.chiefComplaint().trim();
@@ -660,7 +752,10 @@ export class ConsultaComponent {
       notes: this.notes(),
       status: 'completed',
     };
-    this.data.addConsultation(consultation);
+    this.data.addConsultation(
+      consultation,
+      this.photos().map((p) => ({ dataUrl: p.dataUrl, caption: p.caption })),
+    );
 
     const selected = this.selectedExams();
     if (selected.length > 0) {
