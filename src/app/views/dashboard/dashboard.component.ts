@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NavigationService } from '../../core/services/navigation.service';
@@ -83,21 +83,27 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
 <h1 class="text-[20px] sm:text-[22px] font-bold text-[#191c1e] tracking-tight truncate">
                       {{ headerDoctor().name }}
                     </h1>
-                  <app-badge [variant]="activeConsultation() ? 'teal' : 'neutral'" [dot]="true" [pulse]="activeConsultation()">{{ activeConsultation() ? 'En Consultorio (Atendiendo Citas)' : 'En Consultorio (Sin Citas Activas)' }}</app-badge>
+                  @if (headerDoctor().id !== 'all') {
+                    <app-badge [variant]="activeConsultation() ? 'teal' : 'neutral'" [dot]="true" [pulse]="activeConsultation()">{{ activeConsultation() ? 'En Consultorio (Atendiendo Citas)' : 'En Consultorio (Sin Citas Activas)' }}</app-badge>
+                  }
                 </div>
                 <p class="text-[13px] text-[#45464d] truncate">
                   {{ doctorRoleLabel() }}
                 </p>
-                <div class="flex flex-wrap items-center gap-4 mt-2 text-[#45464d] text-[12px]">
-                  <span class="flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[16px] text-[#006a61]">verified</span>
-                    Credenciales Validadas
-                  </span>
-                  <span class="flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[16px] text-[#76777d]">schedule</span>
-                    Jornada: 08:00 - 16:00
-                  </span>
-                </div>
+                @if (headerDoctor().id !== 'all') {
+                  <div class="flex flex-wrap items-center gap-4 mt-2 text-[#45464d] text-[12px]">
+                    <span class="flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[16px] text-[#006a61]">verified</span>
+                      Credenciales Validadas
+                    </span>
+                    @if (headerJornada(); as jornada) {
+                      <span class="flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[16px] text-[#76777d]">schedule</span>
+                        Jornada: {{ jornada }}
+                      </span>
+                    }
+                  </div>
+                }
               </div>
             </div>
             <div class="flex items-center flex-wrap gap-2.5 self-start lg:self-center">
@@ -215,7 +221,8 @@ import { AppointmentItem, RescheduleData, TriageVitals } from '../../core/models
               <span class="text-[34px] font-extrabold text-[#191c1e] leading-none tracking-tight">{{ punctuality().pct }}%</span>
               <div class="flex items-center text-[12px] font-bold shrink-0 whitespace-nowrap ml-auto" [class]="punctuality().optimal ? 'text-[#006a61]' : 'text-[#b45309]'">
                 <span class="material-symbols-outlined text-[16px]">{{ punctuality().optimal ? 'trending_up' : 'trending_down' }}</span>
-                <span>{{ dayStats().completed }} completadas</span>
+                <span class="hidden 2xl:inline">{{ dayStats().completed }} completadas</span>
+                <span class="2xl:hidden">{{ dayStats().completed }} comp.</span>
               </div>
             </div>
             <div class="mt-3 pt-2 border-t border-[#f2f4f6] flex items-center justify-between text-[#45464d] text-[11px]">
@@ -1115,6 +1122,24 @@ export class DashboardComponent {
     return `Especialista en ${doctor.specialty} | Equipo Médico MedControl`;
   });
 
+  /**
+   * Jornada real del medico seleccionado para la fecha visible: el rango
+   * start-end del dia de la semana en el horario semanal. null si es "Todos"
+   * o si todavia no hay horario cargado; "No labora este día" cuando el dia
+   * esta deshabilitado.
+   */
+  readonly headerJornada = computed<string | null>(() => {
+    if (this.headerDoctor().id === 'all') return null;
+    const schedule = this.data.schedule();
+    if (schedule.length === 0) return null;
+    const [y, m, d] = this.data.selectedDate().split('-').map(Number);
+    const jsDay = new Date(y, m - 1, d).getDay();
+    const dayOfWeek = jsDay === 0 ? 7 : jsDay;
+    const day = schedule.find((s) => s.dayOfWeek === dayOfWeek);
+    if (!day || !day.enabled || !day.startTime) return 'No labora este día';
+    return `${day.startTime} - ${day.endTime}`;
+  });
+
   emergencyLock = signal(true);
   vacationMode = signal(false);
   showCheckInModal = signal(false);
@@ -1225,6 +1250,19 @@ export class DashboardComponent {
   constructor() {
     this.data.selectedDoctorId.set(this.auth.isDoctor() ? this.auth.getDoctorId() : null);
     this.refreshOpenDates();
+
+    // El horario semanal del medico seleccionado alimenta la jornada de la
+    // card de encabezado; el servicio setea el signal compartido `schedule`.
+    effect(() => {
+      const doctorId = this.data.selectedDoctorId();
+      if (doctorId) {
+        this.data.loadScheduleFor(doctorId).subscribe({
+          error: () => {
+            // Sin horario no se muestra la jornada; el default del signal basta.
+          },
+        });
+      }
+    });
   }
 
   /**
