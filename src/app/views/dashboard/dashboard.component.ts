@@ -553,6 +553,110 @@ Triage
                     </div>
                   }
 
+                  @if (apt.status === 'checked-in') {
+                    <div class="flex flex-col md:flex-row md:items-center gap-3.5 p-4 rounded-xl bg-[#86f2e4]/10 shadow-sm hover:shadow-md transition-shadow border border-[#86f2e4]">
+                      <div class="w-24 shrink-0 flex items-center md:flex-col md:items-start justify-between">
+                        <span class="text-[14px] font-bold text-[#006f66]">{{ apt.time }}</span>
+                        <span class="text-[11px] text-[#76777d]">{{ apt.durationMinutes }} min</span>
+                      </div>
+                      <div class="hidden md:flex w-6 h-6 rounded-full bg-[#006a61] text-white items-center justify-center shrink-0 shadow-xs z-10">
+                        <span class="material-symbols-outlined text-[16px]" title="Paciente en recepción">how_to_reg</span>
+                      </div>
+                      <div class="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
+                        <div class="flex items-center gap-3 min-w-0">
+                          <div class="relative shrink-0">
+                            <app-patient-avatar
+                              [name]="patient?.name ?? ''"
+                              [photoUrl]="patient?.photoUrl ?? ''"
+                              class="w-10 h-10 rounded-full bg-[#006a61]/15 text-[#006f66] text-[13px] font-bold"
+                            />
+                            @if (data.selectedDoctorId() === null && doctor) {
+                              @if (doctor.avatarUrl) {
+                              <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
+                            } @else {
+                              <span class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white bg-[#006a61] text-white shadow-sm flex items-center justify-center text-[10px] font-bold">{{ data.getInitials(doctor.name) }}</span>
+                            }
+                            }
+                          </div>
+                          <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                              <span class="text-[14px] font-semibold text-[#191c1e] truncate">{{ patient?.name }}</span>
+                              <span class="text-[11px] text-[#76777d]">{{ patient?.age }} años</span>
+                            </div>
+                            <p class="text-[12px] text-[#45464d] truncate">{{ apt.reason }}</p>
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-3 self-end sm:self-center">
+                          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#86f2e4]/30 text-[#006f66] text-[11px] font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#006a61] animate-pulse"></span>
+                            En Recepción
+                          </span>
+                          @if (data.triageEnabled()) {
+                            <app-button variant="primary" size="sm" icon="monitor_heart" (click)="handleStartTriage(apt.id)" class="shrink-0" [disabled]="data.selectedDoctorId() === null" title="Iniciar evaluación de signos vitales (triage)">
+                              Iniciar Triage
+                            </app-button>
+                          } @else {
+                            <app-button variant="primary" size="sm" icon="stethoscope" (click)="handleStartConsultation(apt.patientId)" class="shrink-0" [disabled]="data.selectedDoctorId() === null" title="Iniciar consulta médica directamente">
+                              Iniciar Consulta
+                            </app-button>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  }
+
+                  @if (apt.status === 'in-triage') {
+                    <div class="flex flex-col md:flex-row md:items-center gap-3.5 p-4 rounded-xl bg-[#fffbeb] shadow-sm hover:shadow-md transition-shadow border border-[#f59e0b]/40">
+                      <div class="w-24 shrink-0 flex items-center md:flex-col md:items-start justify-between">
+                        <span class="text-[14px] font-bold text-[#92400e]">{{ apt.time }}</span>
+                        <span class="text-[11px] text-[#76777d]">{{ apt.durationMinutes }} min</span>
+                      </div>
+                      <div class="hidden md:flex w-6 h-6 rounded-full bg-[#f59e0b] text-white items-center justify-center shrink-0 shadow-xs z-10">
+                        <span class="material-symbols-outlined text-[16px]" title="Paciente en triage">monitor_heart</span>
+                      </div>
+                      <div class="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
+                        <div class="flex items-center gap-3 min-w-0">
+                          <div class="relative shrink-0">
+                            <app-patient-avatar
+                              [name]="patient?.name ?? ''"
+                              [photoUrl]="patient?.photoUrl ?? ''"
+                              class="w-10 h-10 rounded-full bg-[#fde68a] text-[#92400e] text-[13px] font-bold"
+                            />
+                            @if (data.selectedDoctorId() === null && doctor) {
+                              @if (doctor.avatarUrl) {
+                              <img [src]="doctor.avatarUrl" [alt]="doctor.name" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white object-cover shadow-sm" />
+                            } @else {
+                              <span class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white bg-[#006a61] text-white shadow-sm flex items-center justify-center text-[10px] font-bold">{{ data.getInitials(doctor.name) }}</span>
+                            }
+                            }
+                          </div>
+                          <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                              <span class="text-[14px] font-semibold text-[#191c1e] truncate">{{ patient?.name }}</span>
+                              <span class="text-[11px] text-[#76777d]">{{ patient?.age }} años</span>
+                            </div>
+                            <p class="text-[12px] text-[#45464d] truncate">{{ apt.reason }}</p>
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-3 self-end sm:self-center">
+                          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#fde68a]/50 text-[#92400e] text-[11px] font-semibold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#f59e0b] animate-pulse"></span>
+                            En Triaje
+                          </span>
+                          @if (data.triageEnabled()) {
+                            <app-button variant="primary" size="sm" icon="monitor_heart" (click)="handleStartTriage(apt.id)" class="shrink-0" title="Continuar la evaluación de signos vitales">
+                              Continuar Triage
+                            </app-button>
+                          } @else {
+                            <app-button variant="primary" size="sm" icon="stethoscope" (click)="handleStartConsultation(apt.patientId)" class="shrink-0" title="Iniciar consulta médica directamente">
+                              Iniciar Consulta
+                            </app-button>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  }
+
                   @if (apt.status === 'break') {
                     <div class="flex flex-col md:flex-row md:items-center gap-3.5 p-4 rounded-xl bg-[#f2f4f6] text-[#45464d] border border-dashed border-[#c6c6cd]">
                       <div class="w-24 shrink-0 flex items-center md:flex-col md:items-start justify-between">
