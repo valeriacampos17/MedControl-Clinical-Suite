@@ -1,4 +1,5 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { NavigationService } from '../../core/services/navigation.service';
 import { AuthService } from '../../core/services/auth.service';
 import { MockDataService } from '../../core/services/mock-data.service';
@@ -54,14 +55,14 @@ import { NavRoute } from '../../core/models/types';
                 Resultados coincidentes ({{ searchResults().length }})
               </div>
               @if (searchResults().length > 0) {
-                @for (item of searchResults(); track item.name) {
+                @for (item of searchResults(); track item.id) {
                   <div
-                    (click)="onSearchSelect(item.route)"
+                    (click)="onSearchSelect(item.id)"
                     class="flex items-center justify-between p-2 rounded-lg hover:bg-[#f2f4f6] cursor-pointer"
                   >
                     <div>
                       <p class="text-[13px] font-semibold text-[#191c1e]">{{ item.name }}</p>
-                      <p class="text-[11px] text-[#76777d]">CI: {{ item.rut }} · {{ item.age }}</p>
+                      <p class="text-[11px] text-[#76777d]">CI: {{ item.ci }} · {{ item.age }}</p>
                     </div>
                     <span class="material-symbols-outlined text-[#006a61] text-[18px]">
                       arrow_forward
@@ -252,6 +253,7 @@ import { NavRoute } from '../../core/models/types';
 })
 export class HeaderComponent {
   nav = inject(NavigationService);
+  private router = inject(Router);
   auth = inject(AuthService);
   onboarding = inject(OnboardingService);
   data = inject(MockDataService);
@@ -315,11 +317,16 @@ export class HeaderComponent {
     if (open) this.refreshSetupTasks(true);
   }
 
-  searchResults = signal([
-    { name: 'Juan Pérez Morales', rut: '14.892.401-2', age: '58 años', route: 'pacientes-y-historial-clinico' as NavRoute },
-    { name: 'María Elena Morales', rut: '15.204.912-3', age: '52 años', route: 'dashboard-de-citas' as NavRoute },
-    { name: 'Roberto Gómez', rut: '11.450.812-9', age: '64 años', route: 'agenda-y-disponibilidad' as NavRoute },
-  ]);
+  /** Pacientes reales que coinciden con el termino de busqueda (nombre o CI). */
+  readonly searchResults = computed(() => {
+    const t = this.searchQuery().toLowerCase().trim();
+    if (!t) return [];
+    return this.data
+      .patients()
+      .filter((p) => p.name.toLowerCase().includes(t) || p.ci.toLowerCase().includes(t))
+      .slice(0, 8)
+      .map((p) => ({ id: p.id, name: p.name, ci: p.ci, age: `${p.age} años` }));
+  });
 
   onSearchInput(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -327,8 +334,8 @@ export class HeaderComponent {
     this.showSearchDropdown.set(true);
   }
 
-  onSearchSelect(route: NavRoute): void {
-    this.nav.navigate(route);
+  onSearchSelect(patientId: string): void {
+    this.router.navigate(['/pacientes-y-historial-clinico'], { queryParams: { patient: patientId } });
     this.searchQuery.set('');
     this.showSearchDropdown.set(false);
   }
