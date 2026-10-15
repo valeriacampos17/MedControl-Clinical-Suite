@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationService } from '../../core/services/navigation.service';
 import { MockDataService } from '../../core/services/mock-data.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -437,8 +438,21 @@ import { fileToCompressedDataUrl, isImageFile } from '../../core/utils/image.uti
 export class PatientHistoryComponent {
   nav = inject(NavigationService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   data = inject(MockDataService);
   toast = inject(ToastService);
+
+  constructor() {
+    // La busqueda del header llega como ?patient=MED-0001; si el usuario ya
+    // esta en la pagina, Angular reutiliza el componente, asi que se suscribe
+    // en vez de leer solo el snapshot inicial.
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const id = params.get('patient');
+      if (!id) return;
+      const patient = this.data.patients().find((p) => p.id === id);
+      if (patient) this.selectedPatient.set(patient);
+    });
+  }
 
   formatDate(value: string): string {
     return formatDateDisplay(value);
