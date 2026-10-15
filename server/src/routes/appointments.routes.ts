@@ -69,6 +69,92 @@ appointmentsRouter.get('/', (req, res) => {
   res.json({ appointments: rows.map(toAppointment) });
 });
 
+const APPOINTMENT_STATUSES = ['pending', 'confirmed', 'checked-in', 'in-triage', 'triaged', 'in-progress', 'completed', 'no-show'] as const;
+
+const historyQuerySchema = z.object({
+  dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'dateFrom debe ser YYYY-MM-DD').optional(),
+  dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'dateTo debe ser YYYY-MM-DD').optional(),
+  doctorId: z.string().min(1).optional(),
+  patientId: z.string().min(1).optional(),
+  status: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
+// Historial completo con filtros de rango/doctor/paciente/estado y stats agregadas
+// (pre-LIMIT, para que los KPIs del frontend no dependan de la pagina cargada).
+// Excluye 'break': los bloqueos de disponibilidad no son citas.
+appointmentsRouter.get('/history', (req, res) => {
+  const parsed = historyQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues.map((i) => i.message).join('; ') });
+    return;
+  }
+  const { dateFrom, dateTo, doctorId, patientId, limit, offset } = parsed.data;
+
+  const clauses: string[] = ["status != 'break'"];
+  const params: (string | number)[] = [];
+  if (dateFrom) {
+    clauses.push('date >= ?');
+    params.push(dateFrom);
+  }
+  if (dateTo) {
+    clauses.push('date <= ?');
+    params.push(dateTo);
+  }
+  if (doctorId) {
+    clauses.push('doctor_id = ?');
+    params.push(doctorId);
+  }
+  if (patientId) {
+    clauses.push('patient_id = ?');
+    params.push(patientId);
+  }
+  if (parsed.data.status) {
+    const statuses = parsed.data.status.split(',').map((s) => s.trim()).filter(Boolean);
+    const invalid = statuses.filter((s) => !(APPOINTMENT_STATUSES as readonly string[]).includes(s));
+    if (invalid.length > 0) {
+      res.status(400).json({ error: `Estados invalidos: ${invalid.join(', ')}` });
+      return;
+    }
+    if (statuses.length === 0) {
+      res.json({ appointments: [], total: 0, stats: { total: 0, completed: 0, notFinished: 0, noShow: 0, attendancePct: null } });
+      return;
+    }
+    clauses.push(`status IN (${statuses.map(() => '?').join(', ')})`);
+    params.push(...statuses);
+  }
+
+  const where = `WHERE ${clauses.join(' AND ')}`;
+  const rows = db.prepare(`SELECT * FROM appointments ${where} ORDER BY date DESC, time DESC LIMIT ? OFFSET ?`).all(...params, limit, offset) as AppointmentRow[];
+  const agg = db.prepare(`
+    SELECT
+      COUNT(*) AS total,
+      SUM(status = 'completed') AS completed,
+      SUM(status = 'no-show') AS noShow,
+      SUM(status IN ('pending', 'confirmed', 'checked-in', 'in-triage', 'triaged', 'in-progress')) AS notFinished
+    FROM appointments ${where}
+  `).get(...params) as { total: number; completed: number | null; noShow: number | null; notFinished: number | null };
+
+  const total = agg.total ?? 0;
+  const completed = agg.completed ?? 0;
+  const noShow = agg.noShow ?? 0;
+  const notFinished = agg.notFinished ?? 0;
+  const attended = completed + noShow;
+
+  res.json({
+    appointments: rows.map(toAppointment),
+    total,
+    stats: {
+      total,
+      completed,
+      notFinished,
+      noShow,
+      attendancePct: attended > 0 ? Math.round((completed / attended) * 1000) / 10 : null,
+    },
+  });
+});
+
 const appointmentSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'La fecha debe tener formato YYYY-MM-DD'),
   // Acepta HH:MM y tambien 'h:mm AM/PM'; se guarda siempre en 24 horas.

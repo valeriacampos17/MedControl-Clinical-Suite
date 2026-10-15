@@ -30,11 +30,13 @@ export interface PickerItem {
   standalone: true,
   template: `
     @if (!selected()) {
-      <div class="p-4 rounded-xl bg-[#fffdf5] border border-[#fde68a]">
-        <div class="flex items-center gap-2 mb-3">
-          <span class="material-symbols-outlined text-[#b45309] text-[18px]">{{ icon() }}</span>
-          <span class="text-[12.5px] font-semibold text-[#92400e]">{{ hint() }}</span>
-        </div>
+      <div [class]="bare() ? '' : 'p-4 rounded-xl bg-[#fffdf5] border border-[#fde68a]'">
+        @if (!bare()) {
+          <div class="flex items-center gap-2 mb-3">
+            <span class="material-symbols-outlined text-[#b45309] text-[18px]">{{ icon() }}</span>
+            <span class="text-[12.5px] font-semibold text-[#92400e]">{{ hint() }}</span>
+          </div>
+        }
         <div class="relative">
           <span
             class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#76777d] text-[18px] pointer-events-none"
@@ -77,7 +79,7 @@ export interface PickerItem {
             </div>
           }
         </div>
-        @if (quickAccess().length > 0) {
+        @if (!bare() && quickAccess().length > 0) {
           <div class="mt-3 pt-3 border-t border-[#fde68a] flex flex-col gap-2">
             <span class="text-[11px] font-bold text-[#76777d] uppercase tracking-wider">{{ quickAccessLabel() }}</span>
             <div class="flex flex-wrap items-center gap-2">
@@ -153,6 +155,8 @@ export class SelectionPickerComponent {
   readonly noun = input('elemento');
   readonly secondaryLabel = input<string | null>(null);
   readonly secondaryIcon = input('person_add');
+  /** Muestra solo el input de búsqueda, sin el contenedor de aviso ni el hint. */
+  readonly bare = input(false);
   /** Campos por los que se filtra, en minusculas. */
   readonly searchKeys = input<string[]>(['title', 'subtitle']);
   readonly items = input<PickerItem[]>([]);
