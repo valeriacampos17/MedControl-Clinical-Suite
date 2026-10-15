@@ -65,6 +65,31 @@ export interface TriageVitalsSnapshot {
   spo2: number;
 }
 
+export interface AppointmentHistoryQuery {
+  dateFrom?: string;
+  dateTo?: string;
+  doctorId?: string;
+  patientId?: string;
+  /** CSV de estados validados por el backend. */
+  status?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface AppointmentHistoryStats {
+  total: number;
+  completed: number;
+  notFinished: number;
+  noShow: number;
+  attendancePct: number | null;
+}
+
+export interface AppointmentHistoryResponse {
+  appointments: AppointmentItem[];
+  total: number;
+  stats: AppointmentHistoryStats;
+}
+
 export interface RescheduleData {
   appointmentId: string;
   patientId: string;

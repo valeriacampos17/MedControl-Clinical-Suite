@@ -26,6 +26,8 @@ import {
   AvailableSlots,
   ConsultationType,
   WorkingDateItem,
+  AppointmentHistoryQuery,
+  AppointmentHistoryResponse,
 } from '../models/types';
 import { ApiService } from './api.service';
 
@@ -470,6 +472,23 @@ export class MockDataService {
     return this.api
       .get<{ consultationTypes: ConsultationType[] }>('/config/consultation-types')
       .pipe(map(r => r.consultationTypes));
+  }
+
+  /**
+   * Historial de citas con filtros de rango/doctor/paciente/estado.
+   * Devuelve la pagina pedida mas las stats agregadas del backend (pre-LIMIT).
+   */
+  fetchAppointmentHistory(query: AppointmentHistoryQuery): Observable<AppointmentHistoryResponse> {
+    const params = new URLSearchParams();
+    if (query.dateFrom) params.set('dateFrom', query.dateFrom);
+    if (query.dateTo) params.set('dateTo', query.dateTo);
+    if (query.doctorId) params.set('doctorId', query.doctorId);
+    if (query.patientId) params.set('patientId', query.patientId);
+    if (query.status) params.set('status', query.status);
+    if (query.limit != null) params.set('limit', String(query.limit));
+    if (query.offset != null) params.set('offset', String(query.offset));
+    const qs = params.toString();
+    return this.api.get<AppointmentHistoryResponse>(`/appointments/history${qs ? `?${qs}` : ''}`);
   }
 
   readonly currentTriageAppointmentId = signal<string | null>(null);
